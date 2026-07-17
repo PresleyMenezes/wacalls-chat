@@ -15,12 +15,6 @@ services:
       - wacalls-redis
     expose:
       - "8080"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wacalls.rule=Host(`wacalls.seudominio.com.br`)"
-      - "traefik.http.routers.wacalls.entrypoints=websecure"
-      - "traefik.http.routers.wacalls.tls.certresolver=letsencrypt"
-      - "traefik.http.services.wacalls.loadbalancer.server.port=8080"
 
   wacalls-redis:
     image: redis:7-alpine
