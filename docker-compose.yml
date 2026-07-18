@@ -2,7 +2,8 @@ version: "3.8"
 
 services:
   wacalls:
-    image: ghcr.io/presleymenezes/wacalls-chat:latest
+    REGISTRY: ghcr.io
+    IMAGE_NAME: presleymenezes/wacalls-chat
     container_name: wacalls
     restart: unless-stopped
     environment:
