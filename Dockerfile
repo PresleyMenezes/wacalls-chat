@@ -34,7 +34,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY --from=backend /app/wacalls-server ./wacalls-server
 COPY --from=frontend /app/client/dist ./dist
+COPY entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh && mkdir -p /data
 
+EXPOSE 8080
+
+ENTRYPOINT ["./entrypoint.sh"]
 RUN mkdir -p /data
 EXPOSE 8080
 
