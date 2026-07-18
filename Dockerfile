@@ -4,7 +4,18 @@ WORKDIR /app/client
 COPY client/package*.json ./
 RUN npm install --no-audit --no-fund
 COPY client/ ./
-RUN npm run build
+RUN npm run build && \
+    if [ ! -f /app/client/dist/index.html ]; then \
+        echo "dist não encontrado em client/dist, procurando..." && \
+        FOUND=$(find /app -maxdepth 3 -name "index.html" -path "*dist*" 2>/dev/null | head -n1) && \
+        if [ -n "$FOUND" ]; then \
+            echo "Encontrado em: $FOUND" && \
+            mkdir -p /app/client/dist && \
+            cp -r "$(dirname "$FOUND")"/. /app/client/dist/; \
+        else \
+            echo "ERRO: build não encontrado em nenhum lugar" && exit 1; \
+        fi; \
+    fi
 
 # ---------- Stage 2: build do backend Go ----------
 FROM golang:1.26 AS backend
