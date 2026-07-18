@@ -2,27 +2,28 @@ version: "3.8"
 
 services:
   wacalls:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/presleymenezes/wacalls-chat:latest
     container_name: wacalls
     restart: unless-stopped
     environment:
-      - REDIS_URL=redis://:${REDIS_PASSWORD}@wacalls-redis:6379/0
+      - 'REDIS_URL=redis://:${REDIS_PASSWORD}@wacalls-redis:6379/0'
     volumes:
-      - wacalls_data:/data
+      - 'wacalls_data:/data'
     depends_on:
       - wacalls-redis
     expose:
-      - "8080"
+      - '8080'
 
   wacalls-redis:
-    image: redis:7-alpine
+    image: 'redis:7-alpine'
     container_name: wacalls-redis
     restart: unless-stopped
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    command:
+      - redis-server
+      - '--requirepass'
+      - '${REDIS_PASSWORD}'
     volumes:
-      - wacalls_redis_data:/data
+      - 'wacalls_redis_data:/data'
 
 volumes:
   wacalls_data:
