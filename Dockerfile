@@ -20,7 +20,7 @@ RUN npm run build && \
 # ---------- Stage 2: build do backend Go (com áudio nativo) ----------
 FROM golang:1.26 AS backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc libc6-dev pkg-config \
+    gcc libc6-dev pkg-config libopus-dev \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -31,19 +31,12 @@ RUN CGO_ENABLED=1 GO111MODULE=on go build -tags mlow -o wacalls-server ./cmd/ser
 # ---------- Stage 3: imagem final ----------
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates ffmpeg sqlite3 apache2-utils openssl \
+    ca-certificates ffmpeg sqlite3 apache2-utils openssl libopus0 \
     && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 COPY --from=backend /app/wacalls-server ./wacalls-server
 COPY --from=frontend /app/client/dist ./dist
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh && mkdir -p /data
-
 EXPOSE 8080
-
 ENTRYPOINT ["./entrypoint.sh"]
-RUN mkdir -p /data
-EXPOSE 8080
-
-CMD ["./wacalls-server", "-addr", ":8080", "-static", "/app/dist", "-db", "/data/wacalls.db"]
