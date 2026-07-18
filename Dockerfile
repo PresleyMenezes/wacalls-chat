@@ -17,13 +17,16 @@ RUN npm run build && \
         fi; \
     fi
 
-# ---------- Stage 2: build do backend Go ----------
+# ---------- Stage 2: build do backend Go (com áudio nativo) ----------
 FROM golang:1.26 AS backend
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GO111MODULE=on go build -o wacalls-server ./cmd/server
+RUN CGO_ENABLED=1 GO111MODULE=on go build -tags mlow -o wacalls-server ./cmd/server
 
 # ---------- Stage 3: imagem final ----------
 FROM debian:bookworm-slim
