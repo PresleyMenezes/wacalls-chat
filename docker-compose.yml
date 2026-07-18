@@ -1,9 +1,7 @@
 version: "3.8"
-
 services:
   wacalls:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: presleymenezes/wacalls-chat
+    image: ghcr.io/presleymenezes/wacalls-chat:latest
     container_name: wacalls
     restart: unless-stopped
     environment:
@@ -14,7 +12,6 @@ services:
       - wacalls-redis
     expose:
       - '8080'
-
   wacalls-redis:
     image: 'redis:7-alpine'
     container_name: wacalls-redis
@@ -25,7 +22,6 @@ services:
       - '${REDIS_PASSWORD}'
     volumes:
       - 'wacalls_redis_data:/data'
-
 volumes:
   wacalls_data:
   wacalls_redis_data:
