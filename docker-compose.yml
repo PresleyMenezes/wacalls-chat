@@ -13,6 +13,16 @@ services:
       - 'wacalls_data:/data'
     depends_on:
       - wacalls-redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wacalls.rule=Host(`chat2.sendconnect.com.br`)"
+      - "traefik.http.routers.wacalls.entrypoints=websecure"
+      - "traefik.http.routers.wacalls.tls.certresolver=letsencrypt"
+      - "traefik.http.services.wacalls.loadbalancer.server.url=http://187.77.59.5:8081"
+      - "traefik.http.routers.wacalls-http.rule=Host(`chat2.sendconnect.com.br`)"
+      - "traefik.http.routers.wacalls-http.entrypoints=web"
+      - "traefik.http.routers.wacalls-http.middlewares=wacalls-https-redirect"
+      - "traefik.http.middlewares.wacalls-https-redirect.redirectscheme.scheme=https"
 
   wacalls-redis:
     image: 'redis:7-alpine'
