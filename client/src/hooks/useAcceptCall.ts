@@ -10,7 +10,7 @@ export const useAcceptCall = (micId: string | null, outId?: string | null) =>
       const res = await acceptCall(vars.sid, vars.callId);
       try {
         const conn = await openCall(vars.sid, res.call.callId, micId, { video: vars.video, outputDeviceId: outId });
-        registerOwnConnection(res.call.callId, conn);
+        registerOwnConnection(res.call.callId, conn, vars.sid);
       } catch (wrtcErr) {
         try {
           await endCall(vars.sid, res.call.callId);
