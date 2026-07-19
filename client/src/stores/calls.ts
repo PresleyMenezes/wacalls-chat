@@ -9,19 +9,21 @@ import type { CallSummary, IncomingPayload } from "@/types/call";
 type State = {
   calls: CallSummary[];
   ownConnections: Map<string, OpenCall>;
+  ownSessions: Map<string, string>;
   incoming: IncomingPayload | null;
 };
 
 export const useCalls = create<State>(() => ({
   calls: [],
   ownConnections: new Map(),
+  ownSessions: new Map(),
   incoming: null,
 }));
 
 export const resetCallsStore = (): void => {
   const current = useCalls.getState();
   for (const conn of current.ownConnections.values()) conn.close();
-  useCalls.setState({ calls: [], ownConnections: new Map(), incoming: null });
+  useCalls.setState({ calls: [], ownConnections: new Map(), ownSessions: new Map(), incoming: null });
 };
 
 let wired = false;
@@ -47,9 +49,12 @@ export const ensureCallsWired = (): void => {
         if (msg) toast.error(msg);
         const next = new Map(s.ownConnections);
         next.delete(ev.id);
+        const nextSessions = new Map(s.ownSessions);
+        nextSessions.delete(ev.id);
         return {
           calls: s.calls.filter((c) => c.callId !== ev.id),
           ownConnections: next,
+          ownSessions: nextSessions,
           incoming: s.incoming?.callId === ev.id ? null : s.incoming,
         };
       });
@@ -107,11 +112,13 @@ const callEndMessage = (reason: string): string | null => {
   return null;
 };
 
-export const registerOwnConnection = (id: string, conn: OpenCall): void => {
+export const registerOwnConnection = (id: string, conn: OpenCall, sid?: string): void => {
   useCalls.setState((s) => {
     const next = new Map(s.ownConnections);
     next.set(id, conn);
-    return { ownConnections: next };
+    const nextSessions = new Map(s.ownSessions);
+    if (sid) nextSessions.set(id, sid);
+    return { ownConnections: next, ownSessions: nextSessions };
   });
 };
 
