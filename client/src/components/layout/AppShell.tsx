@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { UserMenu } from "./UserMenu";
 import { IncomingCallModal } from "./IncomingCallModal";
+import { ActiveCallBar } from "./ActiveCallBar";
 
 import { DialerTriggerButton } from "./DialerTriggerButton";
 import { DialerPanel } from "./DialerPanel";
@@ -293,6 +294,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
       </div>
       {user && <DialerPanel />}
       {user && <IncomingCallModal />}
+      {user && <ActiveCallBar />}
     </div>
   );
 };
