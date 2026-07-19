@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   wacalls:
     image: ghcr.io/presleymenezes/wacalls-chat:latest
@@ -11,6 +9,7 @@ services:
       - 'REDIS_URL=redis://:${REDIS_PASSWORD}@127.0.0.1:6380/0'
     volumes:
       - 'wacalls_data:/data'
+      - 'wacalls_media:/app/media'
     depends_on:
       - wacalls-redis
     labels:
@@ -39,4 +38,5 @@ services:
 
 volumes:
   wacalls_data:
+  wacalls_media:
   wacalls_redis_data:
