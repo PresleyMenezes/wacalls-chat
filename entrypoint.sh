@@ -6,7 +6,7 @@ EMAIL="${WACALLS_ADMIN_EMAIL:-wacalls@admin.com}"
 SENHA="${WACALLS_ADMIN_PASSWORD:-admin}"
 
 # Inicia o servidor em background
-./wacalls-server -addr :8080 -static /app/dist -db "$DB" &
+./wacalls-server -addr "${WACALLS_ADDR:-:8080}" -static /app/dist -db "$DB" &
 SERVER_PID=$!
 
 # Aguarda o banco ser criado pelo backend (até 30s)
