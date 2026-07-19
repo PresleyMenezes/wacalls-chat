@@ -6,9 +6,9 @@ services:
     container_name: wacalls
     restart: unless-stopped
     network_mode: host
-    command: ["-addr", ":8081"]
     environment:
-      - 'REDIS_URL=redis://:${REDIS_PASSWORD}@127.0.0.1:6380/0'
+  - 'WACALLS_ADDR=:8081'
+  - 'REDIS_URL=redis://:${REDIS_PASSWORD}@127.0.0.1:6380/0'
     volumes:
       - 'wacalls_data:/data'
     depends_on:
