@@ -4,26 +4,26 @@ import { useCalls } from "@/stores/calls";
 import { useEndCall } from "@/hooks/useEndCall";
 import { formatPhone } from "@/lib/phone-format";
 
-/**
- * Barra persistente exibida enquanto o operador está em uma chamada
- * (feita ou atendida por ele). Resolve a ausência de controles visíveis
- * após aceitar uma chamada ou ao originar uma ligação.
- */
 export const ActiveCallBar = () => {
   const calls = useCalls((s) => s.calls);
   const ownConnections = useCalls((s) => s.ownConnections);
+  const ownSessions = useCalls((s) => s.ownSessions);
   const endCall = useEndCall();
 
-  const activeCall = useMemo(() => {
-    return calls.find((c) => ownConnections.has(c.callId)) ?? null;
-  }, [calls, ownConnections]);
+  const activeCallId = useMemo(() => {
+    const ids = Array.from(ownConnections.keys());
+    return ids.length > 0 ? ids[0] : null;
+  }, [ownConnections]);
 
-  if (!activeCall) return null;
+  if (!activeCallId) return null;
 
-  const phoneLabel = formatPhone(activeCall.peer) || activeCall.peer;
+  const sessionId = ownSessions.get(activeCallId);
+  const callInfo = calls.find((c) => c.callId === activeCallId);
+  const phoneLabel = callInfo ? formatPhone(callInfo.peer) || callInfo.peer : "Em chamada";
 
   const onHangup = () => {
-    endCall.mutate({ sid: activeCall.sessionId, callId: activeCall.callId });
+    if (!sessionId) return;
+    endCall.mutate({ sid: sessionId, callId: activeCallId });
   };
 
   return (
@@ -33,13 +33,13 @@ export const ActiveCallBar = () => {
       </span>
       <div className="flex flex-col">
         <span className="text-sm font-medium">{phoneLabel}</span>
-        <span className="text-xs text-white/50">{activeCall.status || "Em chamada"}</span>
+        <span className="text-xs text-white/50">{callInfo?.status || "Em chamada"}</span>
       </div>
       <button
         type="button"
         aria-label="Encerrar chamada"
         onClick={onHangup}
-        disabled={endCall.isPending}
+        disabled={endCall.isPending || !sessionId}
         className="grid h-10 w-10 place-items-center rounded-full bg-red-600 hover:bg-red-500 active:scale-95 transition disabled:opacity-60"
       >
         <PhoneOff className="h-5 w-5" />
