@@ -653,6 +653,64 @@ func (s *server) registerMessageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/messages/{mid}/forward", s.requireAuth(s.handleMessageForward))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/note", s.requireAuth(s.handleChatNote))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/trigger-flow", s.requireAuth(s.handleChatTriggerFlow))
+	mux.HandleFunc("GET /api/sessions/{sid}/chats/{jid}/participants", s.requireAuth(s.handleGroupParticipants))
+}
+
+// handleGroupParticipants returns the member list of a WhatsApp group, used
+// by the @mention autocomplete in the message composer. Each entry carries
+// the JID (needed for ContextInfo.MentionedJID) and a best-effort display
+// name resolved from the local contact store.
+func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request) {
+	sess := s.sessionByID(w, r, r.PathValue("sid"))
+	if sess == nil {
+		return
+	}
+	if sess.client == nil || sess.client.Store == nil || sess.client.Store.ID == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "not paired"})
+		return
+	}
+	jidStr := r.PathValue("jid")
+	if !strings.HasSuffix(jidStr, "@g.us") {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "not a group"})
+		return
+	}
+	jid, err := types.ParseJID(jidStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid jid"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	gi, gerr := sess.client.GetGroupInfo(ctx, jid)
+	if gerr != nil || gi == nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not fetch group info"})
+		return
+	}
+	type participant struct {
+		JID  string `json:"jid"`
+		Name string `json:"name"`
+	}
+	out := make([]participant, 0, len(gi.Participants))
+	for _, p := range gi.Participants {
+		name := p.DisplayName
+		if name == "" && sess.client.Store.Contacts != nil {
+			if ci, cerr := sess.client.Store.Contacts.GetContact(ctx, p.JID.ToNonAD()); cerr == nil && ci.Found {
+				switch {
+				case ci.FullName != "":
+					name = ci.FullName
+				case ci.PushName != "":
+					name = ci.PushName
+				case ci.BusinessName != "":
+					name = ci.BusinessName
+				}
+			}
+		}
+		if name == "" {
+			name = p.JID.User
+		}
+		out = append(out, participant{JID: p.JID.String(), Name: name})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"participants": out})
 }
 
 func (s *server) handleChatList(w http.ResponseWriter, r *http.Request) {
@@ -722,7 +780,8 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var body struct {
-		Text string `json:"text"`
+		Text          string   `json:"text"`
+		MentionedJIDs []string `json:"mentionedJids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
@@ -754,7 +813,19 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 		user = currentUserFromReq(r)
 	}
 	finalText := applySignature(user, body.Text)
-	msg := &waE2E.Message{Conversation: proto.String(finalText)}
+	var msg *waE2E.Message
+	if len(body.MentionedJIDs) > 0 {
+		msg = &waE2E.Message{
+			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+				Text: proto.String(finalText),
+				ContextInfo: &waE2E.ContextInfo{
+					MentionedJID: body.MentionedJIDs,
+				},
+			},
+		}
+	} else {
+		msg = &waE2E.Message{Conversation: proto.String(finalText)}
+	}
 	resp, err := sess.client.SendMessage(ctx, jid, msg)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
