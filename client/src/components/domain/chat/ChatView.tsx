@@ -115,15 +115,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     return groupParticipants.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
   }, [mentionQuery, groupParticipants]);
   useEffect(() => { setMentionIdx(0); }, [mentionQuery]);
-  useEffect(() => {
-    if (!isGroup || !sessionId || !chatJid) return;
-    let cancelled = false;
-    void listGroupParticipants(sessionId, chatJid).then((list) => {
-      if (!cancelled) setGroupParticipants(list);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, [isGroup, sessionId, chatJid]);
-
+  
   // Insere a menção selecionada no texto, na posição do "@" que disparou a
   // busca, substituindo o texto digitado após o "@" pelo número (formato que
   // o WhatsApp exige para o destaque funcionar) e mantendo o cursor logo após.
@@ -363,6 +355,14 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const displayName = chat?.name && chat.name.trim() !== "" ? chat.name : formatPeer(chatJid);
   const status = chat?.status ?? "open";
   const isGroup = !!chat?.isGroup || isGroupJid(chatJid);
+  useEffect(() => {
+    if (!isGroup || !sessionId || !chatJid) return;
+    let cancelled = false;
+    void listGroupParticipants(sessionId, chatJid).then((list) => {
+      if (!cancelled) setGroupParticipants(list);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isGroup, sessionId, chatJid]);
   const canSend = isGroup || status === "open";
 
   const handleSend = async () => {
