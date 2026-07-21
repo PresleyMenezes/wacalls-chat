@@ -54,10 +54,17 @@ export const listMessages = (sessionId: string, jid: string, opts: { limit?: num
   );
 };
 
-export const sendMessage = (sessionId: string, jid: string, text: string) =>
+export type GroupParticipant = { jid: string; name: string };
+
+export const listGroupParticipants = (sessionId: string, jid: string) =>
+  http<{ participants: GroupParticipant[] }>(
+    `/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/participants`,
+  ).then((r) => r.participants ?? []);
+
+export const sendMessage = (sessionId: string, jid: string, text: string, mentionedJids?: string[]) =>
   http<{ message: ChatMessage }>(`/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/send`, {
     method: "POST",
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, ...(mentionedJids && mentionedJids.length ? { mentionedJids } : {}) }),
   }).then((r) => r.message);
 
 export const assignChat = (sessionId: string, jid: string) =>
