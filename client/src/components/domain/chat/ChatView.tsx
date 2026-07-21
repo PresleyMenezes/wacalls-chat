@@ -3,7 +3,8 @@ import { CheckCheck, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Sen
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
-import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
+import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
+import type { GroupParticipant } from "@/services/chats";
 import { listContacts } from "@/services/contacts";
 import { useOptionsStore } from "@/stores/options";
 import { listUsers } from "@/services/auth";
@@ -91,10 +92,60 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const [showFlows, setShowFlows] = useState(false);
   const [suggestIdx, setSuggestIdx] = useState(-1);
   const [showSuggest, setShowSuggest] = useState(true);
-
   const suggestions = useMemo(() => (showSuggest ? suggestMessages(text) : []), [text, showSuggest]);
   useEffect(() => { setSuggestIdx(-1); }, [text]);
   useEffect(() => { setShowSuggest(true); }, [chatJid]);
+
+  // --- @mention (grupos) ---------------------------------------------
+  // Lista de participantes do grupo atual, carregada sob demanda quando o
+  // usuário digita "@". mentionedJids acumula os JIDs já selecionados para
+  // ir junto no envio (ContextInfo.MentionedJID no backend).
+  const [groupParticipants, setGroupParticipants] = useState<GroupParticipant[]>([]);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = dropdown fechado
+  const [mentionIdx, setMentionIdx] = useState(0);
+  const [mentionedJids, setMentionedJids] = useState<Record<string, string>>({}); // name -> jid
+  useEffect(() => {
+    setMentionedJids({});
+    setGroupParticipants([]);
+    setMentionQuery(null);
+  }, [chatJid]);
+  const mentionCandidates = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return groupParticipants.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [mentionQuery, groupParticipants]);
+  useEffect(() => { setMentionIdx(0); }, [mentionQuery]);
+  useEffect(() => {
+    if (!isGroup || !sessionId || !chatJid) return;
+    let cancelled = false;
+    void listGroupParticipants(sessionId, chatJid).then((list) => {
+      if (!cancelled) setGroupParticipants(list);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isGroup, sessionId, chatJid]);
+
+  // Insere a menção selecionada no texto, na posição do "@" que disparou a
+  // busca, substituindo o texto digitado após o "@" pelo número (formato que
+  // o WhatsApp exige para o destaque funcionar) e mantendo o cursor logo após.
+  const insertMention = (p: GroupParticipant) => {
+    const input = messageInputRef.current;
+    const cursor = input?.selectionStart ?? text.length;
+    const before = text.slice(0, cursor);
+    const at = before.lastIndexOf("@");
+    if (at === -1) return;
+    const digits = p.jid.split("@")[0];
+    const mentionText = `@${digits} `;
+    const newText = text.slice(0, at) + mentionText + text.slice(cursor);
+    setText(newText);
+    setMentionedJids((m) => ({ ...m, [digits]: p.jid }));
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      const pos = at + mentionText.length;
+      input?.focus();
+      input?.setSelectionRange(pos, pos);
+    });
+  };
+  
   const [flows, setFlows] = useState<FlowRow[]>([]);
   const [loadingFlows, setLoadingFlows] = useState(false);
   const [showKanban, setShowKanban] = useState(false);
@@ -354,11 +405,16 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     const finalText = signature.enabled && sigText ? `*${sigText}*\n${composed}` : composed;
     setSending(true);
     try {
-      await sendMessage(sessionId, chatJid, finalText);
+      const mentionJidList = Object.values(mentionedJids).filter((jid) =>
+        finalText.includes(`@${jid.split("@")[0]}`),
+      );
+      await sendMessage(sessionId, chatJid, finalText, mentionJidList);
       rememberMessage(value);
       setText("");
       setShowEmoji(false);
       setReplyTo(null);
+      setMentionedJids({});
+      setMentionQuery(null);
     } catch (e) {
       console.error("send failed", e);
     } finally {
@@ -1033,7 +1089,21 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
               <input
                 ref={messageInputRef}
                 value={text}
-                onChange={(e) => { setText(e.target.value); setShowSuggest(true); }}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setText(val);
+                  setShowSuggest(true);
+                  if (isGroup) {
+                    const cursor = e.target.selectionStart ?? val.length;
+                    const before = val.slice(0, cursor);
+                    const at = before.lastIndexOf("@");
+                    if (at !== -1 && !/\s/.test(before.slice(at + 1))) {
+                      setMentionQuery(before.slice(at + 1));
+                    } else {
+                      setMentionQuery(null);
+                    }
+                  }
+                }}
                 onPaste={(e) => {
                   const items = e.clipboardData?.items;
                   if (!items) return;
@@ -1053,6 +1123,28 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                   }
                 }}
                 onKeyDown={(e) => {
+                  if (mentionCandidates.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setMentionIdx((i) => Math.min(mentionCandidates.length - 1, i + 1));
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setMentionIdx((i) => Math.max(0, i - 1));
+                      return;
+                    }
+                    if (e.key === "Tab" || e.key === "Enter") {
+                      e.preventDefault();
+                      const pick = mentionCandidates[mentionIdx];
+                      if (pick) insertMention(pick);
+                      return;
+                    }
+                    if (e.key === "Escape") {
+                      setMentionQuery(null);
+                      return;
+                    }
+                  }
                   if (suggestions.length > 0) {
                     if (e.key === "ArrowDown") {
                       e.preventDefault();
@@ -1082,6 +1174,24 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                 }`}
                 disabled={sending || (!noteMode && !canSend)}
               />
+              {mentionCandidates.length > 0 && (
+                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
+                  <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Marcar participante · Tab para selecionar
+                  </div>
+                  {mentionCandidates.map((p, i) => (
+                    <button
+                      key={p.jid}
+                      type="button"
+                      onMouseDown={(ev) => { ev.preventDefault(); insertMention(p); }}
+                      onMouseEnter={() => setMentionIdx(i)}
+                      className={`block w-full truncate px-3 py-2 text-left text-sm ${i === mentionIdx ? "bg-accent" : "hover:bg-accent/60"}`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
               {suggestions.length > 0 && (
                 <div className="absolute bottom-full left-0 right-0 z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
