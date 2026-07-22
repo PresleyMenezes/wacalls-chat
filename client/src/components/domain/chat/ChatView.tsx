@@ -118,7 +118,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     return map;
   }, [groupParticipants]);
   const mentionCandidates = useMemo(() => {
-  const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
     return groupParticipants.filter((p) => p.name.toLowerCase().includes(q));
