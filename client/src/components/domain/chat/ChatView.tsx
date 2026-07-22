@@ -344,17 +344,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     teardownAudioVis();
   }, []);
 
-  if (!chatJid) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-        Selecione uma conversa para ver as mensagens.
-      </div>
-    );
-  }
-
-  const displayName = chat?.name && chat.name.trim() !== "" ? chat.name : formatPeer(chatJid);
-  const status = chat?.status ?? "open";
-  const isGroup = !!chat?.isGroup || isGroupJid(chatJid);
+  const isGroup = !!chatJid && (!!chat?.isGroup || isGroupJid(chatJid));
   useEffect(() => {
     if (!isGroup || !sessionId || !chatJid) return;
     let cancelled = false;
@@ -363,6 +353,15 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [isGroup, sessionId, chatJid]);
+  if (!chatJid) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+        Selecione uma conversa para ver as mensagens.
+      </div>
+    );
+  }
+  const displayName = chat?.name && chat.name.trim() !== "" ? chat.name : formatPeer(chatJid);
+  const status = chat?.status ?? "open";
   const canSend = isGroup || status === "open";
 
   const handleSend = async () => {
