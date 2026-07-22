@@ -134,18 +134,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     const at = before.lastIndexOf("@");
     if (at === -1) return;
 
-    // LIDs não são o número de telefone real — tentamos resolver para exibir
-    // algo legível ao operador. A marcação continua funcionando de qualquer
-    // forma, pois usamos o JID (resolvido ou original) tanto no texto quanto
-    // no ContextInfo.MentionedJID enviado ao backend.
-    let jidToUse = p.jid;
-    if (p.jid.endsWith("@lid") && sessionId) {
-      try {
-        const r = await resolveLidPhone(sessionId, p.jid);
-        if (r?.jid) jidToUse = r.jid;
-      } catch { /* mantém o LID original se a resolução falhar */ }
-    }
-
+    // Usamos sempre o JID original do participante (LID ou telefone) para
+    // que os dígitos embutidos na mensagem batam exatamente com a chave
+    // usada no mapa de nomes (mentionNames) — garantindo que o nome apareça
+    // corretamente tanto no campo de digitação quanto no histórico de
+    // mensagens. A marcação funciona no WhatsApp com LID ou telefone.
+    const jidToUse = p.jid;
     const mentionText = `@${p.name} `;
     const newText = text.slice(0, at) + mentionText + text.slice(cursor);
     setText(newText);
