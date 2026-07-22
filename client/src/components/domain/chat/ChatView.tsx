@@ -109,6 +109,15 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     setGroupParticipants([]);
     setMentionQuery(null);
   }, [chatJid]);
+  const mentionNames = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of groupParticipants) {
+      const digits = p.jid.split("@")[0];
+      if (digits && p.name) map[digits] = p.name;
+    }
+    return map;
+  }, [groupParticipants]);
+  const mentionCandidates = useMemo(() => {
   const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
@@ -929,6 +938,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                     message={m}
                     showSender={isGroup && !m.fromMe}
                     reactions={reactionsByTarget.get(m.id)}
+                    mentionNames={mentionNames}
                     onForward={(msg) => setForwardTarget(msg)}
                     onReply={(msg) => setReplyTo(msg)}
                     onEdit={(msg) => {
