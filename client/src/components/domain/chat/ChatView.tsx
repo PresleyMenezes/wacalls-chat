@@ -112,24 +112,37 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
-    return groupParticipants.filter((p) => p.name.toLowerCase().includes(q)).slice(0, 8);
+    return groupParticipants.filter((p) => p.name.toLowerCase().includes(q));
   }, [mentionQuery, groupParticipants]);
   useEffect(() => { setMentionIdx(0); }, [mentionQuery]);
   
   // Insere a menção selecionada no texto, na posição do "@" que disparou a
   // busca, substituindo o texto digitado após o "@" pelo número (formato que
   // o WhatsApp exige para o destaque funcionar) e mantendo o cursor logo após.
-  const insertMention = (p: GroupParticipant) => {
+  const insertMention = async (p: GroupParticipant) => {
     const input = messageInputRef.current;
     const cursor = input?.selectionStart ?? text.length;
     const before = text.slice(0, cursor);
     const at = before.lastIndexOf("@");
     if (at === -1) return;
-    const digits = p.jid.split("@")[0];
+
+    // LIDs não são o número de telefone real — tentamos resolver para exibir
+    // algo legível ao operador. A marcação continua funcionando de qualquer
+    // forma, pois usamos o JID (resolvido ou original) tanto no texto quanto
+    // no ContextInfo.MentionedJID enviado ao backend.
+    let jidToUse = p.jid;
+    if (p.jid.endsWith("@lid") && sessionId) {
+      try {
+        const r = await resolveLidPhone(sessionId, p.jid);
+        if (r?.jid) jidToUse = r.jid;
+      } catch { /* mantém o LID original se a resolução falhar */ }
+    }
+
+    const digits = jidToUse.split("@")[0];
     const mentionText = `@${digits} `;
     const newText = text.slice(0, at) + mentionText + text.slice(cursor);
     setText(newText);
-    setMentionedJids((m) => ({ ...m, [digits]: p.jid }));
+    setMentionedJids((m) => ({ ...m, [digits]: jidToUse }));
     setMentionQuery(null);
     requestAnimationFrame(() => {
       const pos = at + mentionText.length;
@@ -1174,7 +1187,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                 disabled={sending || (!noteMode && !canSend)}
               />
               {mentionCandidates.length > 0 && (
-                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
+                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     Marcar participante · Tab para selecionar
                   </div>
