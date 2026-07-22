@@ -58,9 +58,21 @@ interface BubbleProps {
   // by the parent ChatView). Rendered as a small chip under the bubble
   // so it's clear which message was reacted to.
   reactions?: Array<{ emoji: string; fromMe: boolean; senderName?: string }>;
+  // Participantes do grupo (jid -> nome), usados para trocar "@<dígitos>"
+  // pelo nome legível do contato mencionado ao renderizar o texto.
+  mentionNames?: Record<string, string>;
 }
-
-export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete, onReply, reactions }: BubbleProps) => {
+// Substitui ocorrências de "@<dígitos>" pelo nome do contato correspondente,
+// usando o mapa de participantes do grupo. Dígitos sem correspondência
+// permanecem como estão (fallback seguro).
+const applyMentionNames = (text: string, mentionNames?: Record<string, string>): string => {
+  if (!text || !mentionNames || Object.keys(mentionNames).length === 0) return text;
+  return text.replace(/@(\d{5,20})/g, (full, digits: string) => {
+    const name = mentionNames[digits];
+    return name ? `@${name}` : full;
+  });
+};
+export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete, onReply, reactions, mentionNames }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
@@ -86,9 +98,12 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
   const restoredMediaUrl = deleted ? message.originalMediaUrl : message.mediaUrl;
   const isMedia = !deleted && ["image", "video", "audio", "document", "sticker"].includes(message.kind);
   const caption = isMedia ? message.body : message.kind === "text" ? message.body : previewBody(message.kind, message.body);
-  const body = deleted
-    ? (restoredBody || (restoredMediaUrl ? "" : previewBody(restoredKind, "")))
-    : caption;
+  const body = applyMentionNames(
+    deleted
+      ? (restoredBody || (restoredMediaUrl ? "" : previewBody(restoredKind, "")))
+      : caption,
+    mentionNames,
+  );
 
   const showEdit = !!onEdit && mine && !deleted && message.kind === "text";
   const showDelete = !!onDelete && mine && !deleted;
