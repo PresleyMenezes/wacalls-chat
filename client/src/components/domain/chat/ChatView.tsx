@@ -103,9 +103,9 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const [groupParticipants, setGroupParticipants] = useState<GroupParticipant[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null); // null = dropdown fechado
   const [mentionIdx, setMentionIdx] = useState(0);
-  const [mentionedJids, setMentionedJids] = useState<Record<string, string>>({}); // name -> jid
+  const [mentions, setMentions] = useState<{ name: string; jid: string }[]>([]);
   useEffect(() => {
-    setMentionedJids({});
+    setMentions([]);
     setGroupParticipants([]);
     setMentionQuery(null);
   }, [chatJid]);
@@ -138,11 +138,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
       } catch { /* mantém o LID original se a resolução falhar */ }
     }
 
-    const digits = jidToUse.split("@")[0];
-    const mentionText = `@${digits} `;
+    const mentionText = `@${p.name} `;
     const newText = text.slice(0, at) + mentionText + text.slice(cursor);
     setText(newText);
-    setMentionedJids((m) => ({ ...m, [digits]: jidToUse }));
+    setMentions((m) => [...m, { name: p.name, jid: jidToUse }]);
     setMentionQuery(null);
     requestAnimationFrame(() => {
       const pos = at + mentionText.length;
@@ -417,15 +416,25 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     const finalText = signature.enabled && sigText ? `*${sigText}*\n${composed}` : composed;
     setSending(true);
     try {
-      const mentionJidList = Object.values(mentionedJids).filter((jid) =>
-        finalText.includes(`@${jid.split("@")[0]}`),
-      );
-      await sendMessage(sessionId, chatJid, finalText, mentionJidList);
+      // O campo mostra o nome do contato (@Fulano), mas o WhatsApp só
+      // reconhece a marcação quando o texto enviado contém o número
+      // (@<dígitos>). Convertemos aqui, na hora de enviar.
+      let outgoingText = finalText;
+      const mentionJidList: string[] = [];
+      for (const m of mentions) {
+        const marker = `@${m.name}`;
+        const idx = outgoingText.indexOf(marker);
+        if (idx === -1) continue;
+        const digits = m.jid.split("@")[0];
+        outgoingText = outgoingText.slice(0, idx) + `@${digits}` + outgoingText.slice(idx + marker.length);
+        mentionJidList.push(m.jid);
+      }
+      await sendMessage(sessionId, chatJid, outgoingText, mentionJidList);
       rememberMessage(value);
       setText("");
       setShowEmoji(false);
       setReplyTo(null);
-      setMentionedJids({});
+      setMentions([]);
       setMentionQuery(null);
     } catch (e) {
       console.error("send failed", e);
