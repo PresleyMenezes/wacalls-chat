@@ -1154,6 +1154,47 @@ func (s *server) handleChatRead(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	// Envia o recibo de leitura real ao WhatsApp (o "✓✓" azul no celular do
+	// contato), além do contador interno já atualizado acima. Best-effort:
+	// roda em background e nunca falha a resposta HTTP.
+	if sess.client != nil && sess.client.Store != nil && sess.client.Store.ID != nil {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			rows, rerr := s.messages.ListMessages(ctx, sess.id, jid, 200, 0)
+			if rerr != nil {
+				return
+			}
+			chatJID, perr := types.ParseJID(jid)
+			if perr != nil {
+				return
+			}
+			// Agrupa por remetente: MarkRead exige um "sender" único por
+			// chamada, e em grupos cada participante é o sender de suas
+			// próprias mensagens.
+			bySender := map[string][]types.MessageID{}
+			for _, row := range rows {
+				if row.FromMe || row.Ts > ts {
+					continue
+				}
+				sender := row.SenderJID
+				if sender == "" {
+					sender = jid
+				}
+				bySender[sender] = append(bySender[sender], types.MessageID(row.ID))
+			}
+			for senderStr, ids := range bySender {
+				if len(ids) == 0 {
+					continue
+				}
+				senderJID, serr := types.ParseJID(senderStr)
+				if serr != nil {
+					senderJID = chatJID
+				}
+				_ = sess.client.MarkRead(ids, time.Now(), chatJID, senderJID)
+			}
+		}()
+	}
 	s.broker.emitChatMeta(m)
 	writeJSON(w, http.StatusOK, map[string]any{"meta": m})
 }
