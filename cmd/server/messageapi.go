@@ -1191,7 +1191,7 @@ func (s *server) handleChatRead(w http.ResponseWriter, r *http.Request) {
 				if serr != nil {
 					senderJID = chatJID
 				}
-				_ = sess.client.MarkRead(ids, time.Now(), chatJID, senderJID)
+				_ = sess.client.MarkRead(ctx, ids, time.Now(), chatJID, senderJID)
 			}
 		}()
 	}
