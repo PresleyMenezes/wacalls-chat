@@ -3,7 +3,7 @@ import { CheckCheck, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Sen
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
-import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
+import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
 import type { GroupParticipant } from "@/services/chats";
 import { listContacts } from "@/services/contacts";
 import { useOptionsStore } from "@/stores/options";
@@ -360,6 +360,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
 
   const isGroup = !!chatJid && (!!chat?.isGroup || isGroupJid(chatJid));
   useEffect(() => {
+    useEffect(() => {
     if (!isGroup || !sessionId || !chatJid) return;
     let cancelled = false;
     void listGroupParticipants(sessionId, chatJid).then((list) => {
@@ -367,6 +368,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [isGroup, sessionId, chatJid]);
+  // Marca a conversa como lida (envia recibo de leitura real ao WhatsApp)
+  // sempre que o operador abre um chat com mensagens pendentes.
+  useEffect(() => {
+    if (!sessionId || !chatJid) return;
+    markChatRead(sessionId, chatJid).catch(() => {});
+  }, [sessionId, chatJid]);
   if (!chatJid) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
