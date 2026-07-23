@@ -360,7 +360,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
 
   const isGroup = !!chatJid && (!!chat?.isGroup || isGroupJid(chatJid));
   useEffect(() => {
-    useEffect(() => {
     if (!isGroup || !sessionId || !chatJid) return;
     let cancelled = false;
     void listGroupParticipants(sessionId, chatJid).then((list) => {
