@@ -1158,15 +1158,19 @@ func (s *server) handleChatRead(w http.ResponseWriter, r *http.Request) {
 	// contato), além do contador interno já atualizado acima. Best-effort:
 	// roda em background e nunca falha a resposta HTTP.
 	if sess.client != nil && sess.client.Store != nil && sess.client.Store.ID != nil {
+		s.log.Warn("markread: dispatch", "jid", jid, "ts", ts)
 		go func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			rows, rerr := s.messages.ListMessages(ctx, sess.id, jid, 200, 0)
 			if rerr != nil {
+				s.log.Warn("markread: list messages failed", "err", rerr)
 				return
 			}
+			s.log.Warn("markread: rows loaded", "count", len(rows))
 			chatJID, perr := types.ParseJID(jid)
 			if perr != nil {
+				s.log.Warn("markread: parse jid failed", "err", perr)
 				return
 			}
 			// Agrupa por remetente: MarkRead exige um "sender" único por
@@ -1183,6 +1187,7 @@ func (s *server) handleChatRead(w http.ResponseWriter, r *http.Request) {
 				}
 				bySender[sender] = append(bySender[sender], types.MessageID(row.ID))
 			}
+			s.log.Warn("markread: grouped by sender", "senders", len(bySender))
 			for senderStr, ids := range bySender {
 				if len(ids) == 0 {
 					continue
@@ -1191,9 +1196,12 @@ func (s *server) handleChatRead(w http.ResponseWriter, r *http.Request) {
 				if serr != nil {
 					senderJID = chatJID
 				}
-				_ = sess.client.MarkRead(ctx, ids, time.Now(), chatJID, senderJID)
+				merr := sess.client.MarkRead(ctx, ids, time.Now(), chatJID, senderJID)
+				s.log.Warn("markread: sent", "sender", senderStr, "ids", len(ids), "err", merr)
 			}
 		}()
+	} else {
+		s.log.Warn("markread: skipped, client not ready", "hasClient", sess.client != nil)
 	}
 	s.broker.emitChatMeta(m)
 	writeJSON(w, http.StatusOK, map[string]any{"meta": m})
