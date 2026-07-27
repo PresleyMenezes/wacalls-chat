@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode, type ComponentType } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from "react";
 import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, Minimize2, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
@@ -23,6 +23,7 @@ import { useTheme } from "@/stores/theme";
 import { useFreeTierAlerts } from "@/hooks/useFreeTierAlerts";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { updateFaviconBadge, playNotificationSound } from "@/lib/favicon-badge";
 
 /**
  * When AppShell is rendered inside another AppShell (e.g. the unified Settings
@@ -115,6 +116,17 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
     for (const list of Object.values(chatsBySession)) for (const c of list) if ((c.unread ?? 0) > 0) n += 1;
     return n;
   }, [chatsBySession]);
+  // Badge visual no favicon (bolinha vermelha) + som curto quando o total de
+  // não-lidas aumenta — replica o comportamento do "sininho" também na aba
+  // do navegador, útil quando a aba não está em foco.
+  const prevUnreadRef = useRef(unreadTotal);
+  useEffect(() => {
+    void updateFaviconBadge(unreadTotal > 0);
+    if (unreadTotal > prevUnreadRef.current) {
+      playNotificationSound();
+    }
+    prevUnreadRef.current = unreadTotal;
+  }, [unreadTotal]);
 
   // `feat` mapeia o item de menu para o rótulo do recurso no plano. Quando
   // o plano ativo não inclui o recurso, o item fica oculto para todos
