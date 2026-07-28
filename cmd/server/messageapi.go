@@ -1851,17 +1851,86 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "mensagem indisponível"})
 		return
 	}
-	if src.Kind != "text" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "apenas mensagens de texto podem ser encaminhadas por aqui"})
+	isMediaKind := src.Kind == "image" || src.Kind == "video" || src.Kind == "audio" || src.Kind == "document"
+	if src.Kind != "text" && !isMediaKind {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "este tipo de mensagem não pode ser encaminhado"})
 		return
 	}
+	sent := 0
+	var failures []string
+
+	if isMediaKind {
+		localPath, ok := localMediaPath(src.MediaURL)
+		if !ok {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "arquivo de mídia indisponível para encaminhar"})
+			return
+		}
+		data, rerr := os.ReadFile(localPath)
+		if rerr != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "arquivo de mídia não encontrado no servidor"})
+			return
+		}
+		var appInfo whatsmeow.MediaType
+		switch src.Kind {
+		case "audio":
+			appInfo = whatsmeow.MediaAudio
+		case "video":
+			appInfo = whatsmeow.MediaVideo
+		case "document":
+			appInfo = whatsmeow.MediaDocument
+		default:
+			appInfo = whatsmeow.MediaImage
+		}
+		upCtx, upCancel := context.WithTimeout(r.Context(), 60*time.Second)
+		up, uerr := sess.client.Upload(upCtx, data, appInfo)
+		upCancel()
+		if uerr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": fmt.Sprintf("upload: %v", uerr)})
+			return
+		}
+		mime := src.MediaMime
+		if mime == "" {
+			mime = guessMimeForKind(src.Kind)
+		}
+		for _, t := range body.Targets {
+			target, terr := parseChatJID(t)
+			if terr != nil {
+				failures = append(failures, t+": "+terr.Error())
+				continue
+			}
+			msg := buildMediaMessage(src.Kind, up, mime, src.Body, src.FileName, uint64(len(data)))
+			applyForwardedContext(msg)
+			ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+			resp, serr := sess.client.SendMessage(ctx, target, msg)
+			cancel()
+			if serr != nil {
+				failures = append(failures, t+": "+serr.Error())
+				continue
+			}
+			localURL := saveLocalMedia(resp.ID, src.FileName, data)
+			row := MessageRow{
+				ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
+				SenderJID: jidOrEmpty(sess), FromMe: true,
+				Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body,
+				MediaMime: mime, MediaURL: localURL, FileName: src.FileName, FileSize: int64(len(data)),
+			}
+			if row.Ts == 0 {
+				row.Ts = time.Now().UnixMilli()
+			}
+			_ = s.messages.Insert(r.Context(), row)
+			s.markChatOpen(r.Context(), sess, row.ChatJID, currentUserFromReq(r))
+			s.broker.emitMessage(row)
+			sent++
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"sent": sent, "errors": failures})
+		return
+	}
+
 	text := src.Body
 	if strings.TrimSpace(text) == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "mensagem vazia"})
 		return
 	}
-	sent := 0
-	var failures []string
 	for _, t := range body.Targets {
 		target, err := parseChatJID(t)
 		if err != nil {
@@ -1896,6 +1965,35 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 		sent++
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"sent": sent, "errors": failures})
+}
+
+// localMediaPath resolves a served media URL (e.g. "/api/media/in/<name>")
+// back to its path on disk, restricted to the "in"/"out" media subfolders.
+func localMediaPath(mediaURL string) (string, bool) {
+	switch {
+	case strings.HasPrefix(mediaURL, "/api/media/in/"):
+		return filepath.Join("media", "in", strings.TrimPrefix(mediaURL, "/api/media/in/")), true
+	case strings.HasPrefix(mediaURL, "/api/media/out/"):
+		return filepath.Join("media", "out", strings.TrimPrefix(mediaURL, "/api/media/out/")), true
+	default:
+		return "", false
+	}
+}
+
+// applyForwardedContext marks a freshly built media message as forwarded,
+// mirroring the ContextInfo flags WhatsApp clients set for text forwards.
+func applyForwardedContext(msg *waE2E.Message) {
+	ctxInfo := &waE2E.ContextInfo{IsForwarded: proto.Bool(true), ForwardingScore: proto.Uint32(1)}
+	switch {
+	case msg.ImageMessage != nil:
+		msg.ImageMessage.ContextInfo = ctxInfo
+	case msg.VideoMessage != nil:
+		msg.VideoMessage.ContextInfo = ctxInfo
+	case msg.AudioMessage != nil:
+		msg.AudioMessage.ContextInfo = ctxInfo
+	case msg.DocumentMessage != nil:
+		msg.DocumentMessage.ContextInfo = ctxInfo
+	}
 }
 
 // handleChatNote stores an internal "private note" attached to a chat. The
