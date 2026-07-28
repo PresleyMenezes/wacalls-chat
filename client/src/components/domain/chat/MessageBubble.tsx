@@ -405,7 +405,7 @@ const MediaPreview = ({ message, mine }: { message: ChatMessage; mine: boolean }
       href={url}
       target="_blank"
       rel="noreferrer"
-      download={message.fileName || true}
+      // download={message.fileName || true}
       className={`mb-1 flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs hover:bg-muted/40 ${
         mine ? "border-primary-foreground/30" : "border-border"
       }`}
