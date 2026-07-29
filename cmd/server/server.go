@@ -85,6 +85,10 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	if err != nil {
 		return nil, err
 	}
+	quickReplies, err := newQuickReplyStore(ctx, db)
+	if err != nil {
+		return nil, err
+	}
 	messages, err := newMessageStore(ctx, db)
 	if err != nil {
 		return nil, err
