@@ -63,6 +63,7 @@ func (s *server) routes() http.Handler {
 	s.registerCloudAPIRoutes(mux)
 	s.registerCallControlRoutes(mux)
 	s.registerReportRoutes(mux)
+	s.registerQuickReplyRoutes(mux)
 
 	// Serve recorded media (flow record_audio node + future uploads).
 	_ = os.MkdirAll("media", 0o755)
