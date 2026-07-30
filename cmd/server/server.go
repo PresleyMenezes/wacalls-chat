@@ -14,11 +14,12 @@ import (
 )
 
 type server struct {
-	broker     *Broker
-	sessions   *SessionManager
-	log        *slog.Logger
-	staticDir  string
-	flows      *flowStore
+	broker       *Broker
+	sessions     *SessionManager
+	log          *slog.Logger
+	staticDir    string
+	flows        *flowStore
+	quickReplies *quickReplyStore
 	flowExec   *FlowExecutor
 	flowTracer *flowTracer
 	messages   *messageStore
@@ -205,6 +206,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 			hub.Revoke(t)
 		}
 	}
-	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch}
+	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch}
 	return srv, nil
 }
