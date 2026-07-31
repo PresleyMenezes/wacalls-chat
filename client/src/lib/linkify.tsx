@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 
 // Detecta URLs (http/https/www) dentro de um texto e retorna um array de
 // nós React com os links convertidos em <a> clicáveis, preservando o texto
@@ -28,16 +28,21 @@ export const linkifyText = (text: string): ReactNode[] => {
       url = url.slice(0, -trailing.length);
     }
     const href = url.startsWith("http") ? url : `https://${url}`;
+    const linkKey = "lnk-" + key++;
     parts.push(
-      
-        key={`lnk-${key++}`}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="underline underline-offset-2 hover:opacity-80"
-      >
-        {url}
+      React.createElement(
+        "a",
+        {
+          key: linkKey,
+          href: href,
+          target: "_blank",
+          rel: "noopener noreferrer",
+          onClick: (e: React.MouseEvent) => e.stopPropagation(),
+          className: "underline underline-offset-2 hover:opacity-80",
+        },
+        url,
+      ),
+    );
       </a>,
     );
     if (trailing) parts.push(trailing);
