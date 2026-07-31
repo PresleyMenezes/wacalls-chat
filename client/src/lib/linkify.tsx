@@ -43,8 +43,6 @@ export const linkifyText = (text: string): ReactNode[] => {
         url,
       ),
     );
-      </a>,
-    );
     if (trailing) parts.push(trailing);
     lastIndex = start + raw.length;
   }
