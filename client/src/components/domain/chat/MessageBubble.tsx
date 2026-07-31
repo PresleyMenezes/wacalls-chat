@@ -217,7 +217,7 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
               className="fixed inset-0 z-30 cursor-default bg-transparent"
             />
             <div
-              className={`absolute bottom-full z-40 mb-1 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
+              className={`absolute top-full z-40 mt-1 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
                 mine ? "right-0" : "left-0"
               }`}
             >
