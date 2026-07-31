@@ -1185,6 +1185,28 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                   }
                 }}
                 onKeyDown={(e) => {
+                  if (quickReplyCandidates.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setQuickReplyIdx((i) => Math.min(quickReplyCandidates.length - 1, i + 1));
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setQuickReplyIdx((i) => Math.max(0, i - 1));
+                      return;
+                    }
+                    if (e.key === "Tab" || e.key === "Enter") {
+                      e.preventDefault();
+                      const pick = quickReplyCandidates[quickReplyIdx];
+                      if (pick) insertQuickReply(pick);
+                      return;
+                    }
+                    if (e.key === "Escape") {
+                      setQuickReplyQuery(null);
+                      return;
+                    }
+                  }
                   if (mentionCandidates.length > 0) {
                     if (e.key === "ArrowDown") {
                       e.preventDefault();
@@ -1236,6 +1258,25 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                 }`}
                 disabled={sending || (!noteMode && !canSend)}
               />
+              {quickReplyCandidates.length > 0 && (
+                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
+                  <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Resposta rápida · Tab para selecionar
+                  </div>
+                  {quickReplyCandidates.map((qr, i) => (
+                    <button
+                      key={qr.id}
+                      type="button"
+                      onMouseDown={(ev) => { ev.preventDefault(); insertQuickReply(qr); }}
+                      onMouseEnter={() => setQuickReplyIdx(i)}
+                      className={`block w-full px-3 py-2 text-left text-sm ${i === quickReplyIdx ? "bg-accent" : "hover:bg-accent/60"}`}
+                    >
+                      <div className="font-medium">/{qr.shortcut}</div>
+                      <div className="truncate text-xs text-muted-foreground">{qr.text}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
               {mentionCandidates.length > 0 && (
                 <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
