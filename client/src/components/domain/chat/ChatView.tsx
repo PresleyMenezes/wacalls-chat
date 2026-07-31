@@ -5,6 +5,8 @@ import { useChats, setChatStatus } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
 import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
 import type { GroupParticipant } from "@/services/chats";
+import { listQuickReplies } from "@/services/quickReplies";
+import type { QuickReply } from "@/services/quickReplies";
 import { listContacts } from "@/services/contacts";
 import { useOptionsStore } from "@/stores/options";
 import { listUsers } from "@/services/auth";
@@ -123,6 +125,30 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     return groupParticipants.filter((p) => p.name.toLowerCase().includes(q));
   }, [mentionQuery, groupParticipants]);
   useEffect(() => { setMentionIdx(0); }, [mentionQuery]);
+
+  // --- Respostas rápidas ("/atalho") -----------------------------------
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [quickReplyQuery, setQuickReplyQuery] = useState<string | null>(null);
+  const [quickReplyIdx, setQuickReplyIdx] = useState(0);
+  useEffect(() => {
+    void listQuickReplies().then(setQuickReplies).catch(() => {});
+  }, []);
+  const quickReplyCandidates = useMemo(() => {
+    if (quickReplyQuery === null) return [];
+    const q = quickReplyQuery.toLowerCase();
+    return quickReplies.filter((r) => r.shortcut.toLowerCase().startsWith(q));
+  }, [quickReplyQuery, quickReplies]);
+  useEffect(() => { setQuickReplyIdx(0); }, [quickReplyQuery]);
+  const insertQuickReply = (qr: QuickReply) => {
+    setText(qr.text);
+    setQuickReplyQuery(null);
+    requestAnimationFrame(() => {
+      const input = messageInputRef.current;
+      input?.focus();
+      const pos = qr.text.length;
+      input?.setSelectionRange(pos, pos);
+    });
+  };
   
   // Insere a menção selecionada no texto, na posição do "@" que disparou a
   // busca, substituindo o texto digitado após o "@" pelo número (formato que
@@ -1132,6 +1158,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                     } else {
                       setMentionQuery(null);
                     }
+                  }
+                  // Resposta rápida: "/" apenas no início da mensagem.
+                  if (val.startsWith("/") && !/\s/.test(val.slice(1))) {
+                    setQuickReplyQuery(val.slice(1));
+                  } else {
+                    setQuickReplyQuery(null);
                   }
                 }}
                 onPaste={(e) => {
