@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import type { ChatMessage } from "@/types/chat";
+import { linkifyText } from "@/lib/linkify";
 import { formatTime, previewBody } from "./format";
 import { AudioPlayer } from "./AudioPlayer";
 import { ImageLightbox } from "./ImageLightbox";
@@ -82,7 +83,7 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
             <span>Nota privada{message.senderName ? ` · ${message.senderName}` : ""}</span>
             <span className="font-normal opacity-70">{formatTime(message.ts)}</span>
           </div>
-          <div className="whitespace-pre-wrap break-words">{message.body}</div>
+          <div className="whitespace-pre-wrap break-words">{linkifyText(message.body)}</div>
         </div>
       </div>
     );
@@ -322,7 +323,7 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
               if (interactive) return <InteractiveCard data={interactive} mine={mine} />;
               return (
                 <div className="whitespace-pre-wrap break-words pr-5">
-                  {body || (!isMedia ? <span className="italic opacity-70">(vazio)</span> : null)}
+                  {body ? linkifyText(body) : (!isMedia ? <span className="italic opacity-70">(vazio)</span> : null)}
                 </div>
               );
             })()
