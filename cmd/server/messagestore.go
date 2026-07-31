@@ -8,22 +8,23 @@ import (
 // MessageRow mirrors a row in the `messages` table. Times are unix
 // milliseconds; `FromMe` is 0/1.
 type MessageRow struct {
-	ID         string `json:"id"`
-	SessionID  string `json:"sessionId"`
-	ChatJID    string `json:"chatJid"`
-	SenderJID  string `json:"senderJid"`
-	FromMe     bool   `json:"fromMe"`
-	Ts         int64  `json:"ts"`
-	Kind       string `json:"kind"`
-	Body       string `json:"body"`
-	MediaMime  string `json:"mediaMime,omitempty"`
-	MediaURL   string `json:"mediaUrl,omitempty"`
-	FileName   string `json:"fileName,omitempty"`
-	FileSize   int64  `json:"fileSize,omitempty"`
-	QuotedID   string `json:"quotedId,omitempty"`
-	SenderName string `json:"senderName,omitempty"`
-	Edited     bool   `json:"edited,omitempty"`
-	Deleted    bool   `json:"deleted,omitempty"`
+	ID            string `json:"id"`
+	SessionID     string `json:"sessionId"`
+	ChatJID       string `json:"chatJid"`
+	SenderJID     string `json:"senderJid"`
+	FromMe        bool   `json:"fromMe"`
+	Ts            int64  `json:"ts"`
+	Kind          string `json:"kind"`
+	Body          string `json:"body"`
+	MediaMime     string `json:"mediaMime,omitempty"`
+	MediaURL      string `json:"mediaUrl,omitempty"`
+	FileName      string `json:"fileName,omitempty"`
+	FileSize      int64  `json:"fileSize,omitempty"`
+	QuotedID      string `json:"quotedId,omitempty"`
+	SenderName    string `json:"senderName,omitempty"`
+	Edited        bool   `json:"edited,omitempty"`
+	Deleted       bool   `json:"deleted,omitempty"`
+	SentByUserID  string `json:"sentByUserId,omitempty"`
 }
 
 // ChatSummary is the per-conversation row returned by ListChats.
@@ -77,6 +78,11 @@ func newMessageStore(ctx context.Context, db *sql.DB) (*messageStore, error) {
 		`ALTER TABLE messages ADD COLUMN file_name TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE messages ADD COLUMN file_size INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE messages ADD COLUMN sender_name TEXT NOT NULL DEFAULT ''`,
+		// Rastreia qual usuário da equipe (não o WhatsApp) enviou a mensagem.
+		// Populado apenas em envios novos a partir desta versão — mensagens
+		// antigas ficam com valor vazio (métrica por agente indisponível
+		// retroativamente).
+		`ALTER TABLE messages ADD COLUMN sent_by_user_id TEXT NOT NULL DEFAULT ''`,
 	} {
 		_, _ = db.ExecContext(ctx, q)
 	}
@@ -93,8 +99,8 @@ func (s *messageStore) Insert(ctx context.Context, m MessageRow) error {
 	// the whatsmeow self-echo that follows a media upload — never clobber
 	// the already-persisted media_url/file_name/file_size with empty values.
 	_, err := s.db.ExecContext(ctx, `INSERT INTO messages
-		(id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, media_url, file_name, file_size, sender_name)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, media_url, file_name, file_size, sender_name, sent_by_user_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(session_id, id) DO UPDATE SET
 			chat_jid    = excluded.chat_jid,
 			sender_jid  = excluded.sender_jid,
@@ -107,8 +113,9 @@ func (s *messageStore) Insert(ctx context.Context, m MessageRow) error {
 			media_url   = CASE WHEN excluded.media_url  != '' THEN excluded.media_url  ELSE messages.media_url  END,
 			file_name   = CASE WHEN excluded.file_name  != '' THEN excluded.file_name  ELSE messages.file_name  END,
 			file_size   = CASE WHEN excluded.file_size  > 0  THEN excluded.file_size   ELSE messages.file_size  END,
-			sender_name = CASE WHEN excluded.sender_name != '' THEN excluded.sender_name ELSE messages.sender_name END`,
-		m.ID, m.SessionID, m.ChatJID, m.SenderJID, fromMe, m.Ts, m.Kind, m.Body, m.MediaMime, m.QuotedID, m.MediaURL, m.FileName, m.FileSize, m.SenderName)
+			sender_name = CASE WHEN excluded.sender_name != '' THEN excluded.sender_name ELSE messages.sender_name END,
+			sent_by_user_id = CASE WHEN excluded.sent_by_user_id != '' THEN excluded.sent_by_user_id ELSE messages.sent_by_user_id END`,
+		m.ID, m.SessionID, m.ChatJID, m.SenderJID, fromMe, m.Ts, m.Kind, m.Body, m.MediaMime, m.QuotedID, m.MediaURL, m.FileName, m.FileSize, m.SenderName, m.SentByUserID)
 	return err
 }
 
