@@ -836,14 +836,15 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 	}
 
 	row := MessageRow{
-		ID:        resp.ID,
-		SessionID: sess.id,
-		ChatJID:   jid.String(),
-		SenderJID: jidOrEmpty(sess),
-		FromMe:    true,
-		Ts:        resp.Timestamp.UnixMilli(),
-		Kind:      "text",
-		Body:      finalText,
+		ID:           resp.ID,
+		SessionID:    sess.id,
+		ChatJID:      jid.String(),
+		SenderJID:    jidOrEmpty(sess),
+		FromMe:       true,
+		Ts:           resp.Timestamp.UnixMilli(),
+		Kind:         "text",
+		Body:         finalText,
+		SentByUserID: userIDOrEmpty(user),
 	}
 	if row.Ts == 0 {
 		row.Ts = time.Now().UnixMilli()
@@ -883,14 +884,15 @@ func (s *server) handleCloudChatSend(w http.ResponseWriter, r *http.Request, ses
 	}
 	now := time.Now().UnixMilli()
 	row := MessageRow{
-		ID:        msgID,
-		SessionID: sess.id,
-		ChatJID:   jid.String(),
-		SenderJID: strings.TrimSpace(sess.cloudPhoneID),
-		FromMe:    true,
-		Ts:        now,
-		Kind:      "text",
-		Body:      finalText,
+		ID:           msgID,
+		SessionID:    sess.id,
+		ChatJID:      jid.String(),
+		SenderJID:    strings.TrimSpace(sess.cloudPhoneID),
+		FromMe:       true,
+		Ts:           now,
+		Kind:         "text",
+		Body:         finalText,
+		SentByUserID: userIDOrEmpty(user),
 	}
 	if row.SenderJID == "" {
 		row.SenderJID = sess.id
@@ -1716,6 +1718,16 @@ func jidOrEmpty(s *Session) string {
 		return id.String()
 	}
 	return ""
+}
+
+// userIDOrEmpty safely extracts the ID of the currently authenticated user,
+// used to attribute a sent message to a specific agent (SentByUserID) for
+// per-agent reporting.
+func userIDOrEmpty(u *currentUser) string {
+	if u == nil {
+		return ""
+	}
+	return u.ID
 }
 
 // handleMessageDelete revokes (deletes for everyone) a previously sent
