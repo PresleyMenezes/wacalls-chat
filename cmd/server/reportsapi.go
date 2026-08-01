@@ -48,9 +48,13 @@ type reportLabelCount struct {
 }
 
 type reportAgentCount struct {
-	UserID string `json:"userId"`
-	Email  string `json:"email,omitempty"`
-	Closed int    `json:"closed"`
+	UserID              string `json:"userId"`
+	Email               string `json:"email,omitempty"`
+	Closed              int    `json:"closed"`
+	MessagesSent        int    `json:"messagesSent"`
+	FirstResponses      int    `json:"firstResponses"`
+	AvgFirstResponseMs  int64  `json:"avgFirstResponseMs,omitempty"`
+	totalFirstResponseMs int64 `json:"-"`
 }
 
 type reportRatings struct {
@@ -62,16 +66,17 @@ type reportRatings struct {
 }
 
 type reportSummary struct {
-	From           int64              `json:"from"`
-	To             int64              `json:"to"`
-	SessionID      string             `json:"sessionId,omitempty"`
-	Messages       reportCounter      `json:"messages"`
-	Calls          reportCalls        `json:"calls"`
-	Tickets        reportTickets      `json:"tickets"`
-	Daily          []reportDaily      `json:"daily"`
-	ClosureReasons []reportLabelCount `json:"closureReasons"`
-	Agents         []reportAgentCount `json:"agents"`
-	Ratings        reportRatings      `json:"ratings"`
+	From                 int64              `json:"from"`
+	To                   int64              `json:"to"`
+	SessionID            string             `json:"sessionId,omitempty"`
+	Messages             reportCounter      `json:"messages"`
+	Calls                reportCalls        `json:"calls"`
+	Tickets              reportTickets      `json:"tickets"`
+	Daily                []reportDaily      `json:"daily"`
+	ClosureReasons       []reportLabelCount `json:"closureReasons"`
+	Agents               []reportAgentCount `json:"agents"`
+	Ratings              reportRatings      `json:"ratings"`
+	AvgFirstResponseMs   int64              `json:"avgFirstResponseMs,omitempty"`
 }
 
 func (s *server) registerReportRoutes(mux *http.ServeMux) {
