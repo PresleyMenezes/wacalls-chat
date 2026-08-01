@@ -2034,15 +2034,16 @@ func (s *server) handleChatNote(w http.ResponseWriter, r *http.Request) {
 	jidStr := r.PathValue("jid")
 	user := currentUserFromReq(r)
 	row := MessageRow{
-		ID:         "note_" + newRunID(),
-		SessionID:  sess.id,
-		ChatJID:    jidStr,
-		SenderJID:  user.ID,
-		FromMe:     true,
-		Ts:         time.Now().UnixMilli(),
-		Kind:       "note",
-		Body:       body.Text,
-		SenderName: user.Email,
+		ID:           "note_" + newRunID(),
+		SessionID:    sess.id,
+		ChatJID:      jidStr,
+		SenderJID:    user.ID,
+		FromMe:       true,
+		Ts:           time.Now().UnixMilli(),
+		Kind:         "note",
+		Body:         body.Text,
+		SenderName:   user.Email,
+		SentByUserID: userIDOrEmpty(user),
 	}
 	if err := s.messages.Insert(r.Context(), row); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
