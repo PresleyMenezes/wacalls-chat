@@ -1500,18 +1500,19 @@ func (s *server) handleChatMedia(w http.ResponseWriter, r *http.Request) {
 	// Save a local copy for instant playback / display.
 	localURL := saveLocalMedia(resp.ID, filename, data)
 	row := MessageRow{
-		ID:        resp.ID,
-		SessionID: sess.id,
-		ChatJID:   jid.String(),
-		SenderJID: jidOrEmpty(sess),
-		FromMe:    true,
-		Ts:        resp.Timestamp.UnixMilli(),
-		Kind:      kind,
-		Body:      caption,
-		MediaMime: mime,
-		MediaURL:  localURL,
-		FileName:  filename,
-		FileSize:  int64(len(data)),
+		ID:           resp.ID,
+		SessionID:    sess.id,
+		ChatJID:      jid.String(),
+		SenderJID:    jidOrEmpty(sess),
+		FromMe:       true,
+		Ts:           resp.Timestamp.UnixMilli(),
+		Kind:         kind,
+		Body:         caption,
+		MediaMime:    mime,
+		MediaURL:     localURL,
+		FileName:     filename,
+		FileSize:     int64(len(data)),
+		SentByUserID: userIDOrEmpty(u),
 	}
 	if row.Ts == 0 {
 		row.Ts = time.Now().UnixMilli()
@@ -1925,6 +1926,7 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 				SenderJID: jidOrEmpty(sess), FromMe: true,
 				Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body,
 				MediaMime: mime, MediaURL: localURL, FileName: src.FileName, FileSize: int64(len(data)),
+				SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
 			}
 			if row.Ts == 0 {
 				row.Ts = time.Now().UnixMilli()
@@ -1958,16 +1960,17 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 		}}
 		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 		resp, err := sess.client.SendMessage(ctx, target, msg)
-		cancel()
-		if err != nil {
-			failures = append(failures, t+": "+err.Error())
-			continue
-		}
-		row := MessageRow{
-			ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
-			SenderJID: jidOrEmpty(sess), FromMe: true,
-			Ts: resp.Timestamp.UnixMilli(), Kind: "text", Body: text,
-		}
+			cancel()
+			if err != nil {
+				failures = append(failures, t+": "+err.Error())
+				continue
+			}
+			row := MessageRow{
+				ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
+				SenderJID: jidOrEmpty(sess), FromMe: true,
+				Ts: resp.Timestamp.UnixMilli(), Kind: "text", Body: text,
+				SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
+			}
 		if row.Ts == 0 {
 			row.Ts = time.Now().UnixMilli()
 		}
