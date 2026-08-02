@@ -433,7 +433,7 @@ export default function ReportsPage() {
         .sort((a, b) => b.messagesSent - a.messagesSent)
         .slice(0, 8)
         .map((a) => ({
-          name: (a.email || a.userId).split("@")[0],
+          name: a.name || (a.email || a.userId).split("@")[0],
           closed: a.closed,
           messagesSent: a.messagesSent,
           avgFirstResponseMin: a.avgFirstResponseMs ? Math.round(a.avgFirstResponseMs / 60000) : null,
