@@ -120,6 +120,10 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		if s.messages != nil {
 			rows, err := s.messages.listForReport(r.Context(), sid, from, to)
 			if err == nil {
+				// Rastreia, por conversa, se há uma mensagem recebida aguardando
+				// a primeira resposta de um agente. As linhas já vêm ordenadas
+				// por ts ASC (listForReport), então basta percorrer em sequência.
+				awaitingSince := map[string]int64{}
 				for _, m := range rows {
 					if isGroupChatJID(m.ChatJID) {
 						continue
@@ -131,10 +135,26 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 						if b != nil {
 							b.MessagesOut++
 						}
+						if m.SentByUserID != "" {
+							a := agents[m.SentByUserID]
+							if a == nil {
+								a = &reportAgentCount{UserID: m.SentByUserID}
+								agents[m.SentByUserID] = a
+							}
+							a.MessagesSent++
+							if waitStart, ok := awaitingSince[m.ChatJID]; ok {
+								a.FirstResponses++
+								a.totalFirstResponseMs += m.Ts - waitStart
+								delete(awaitingSince, m.ChatJID)
+							}
+						}
 					} else {
 						summary.Messages.Inbound++
 						if b != nil {
 							b.MessagesIn++
+						}
+						if _, ok := awaitingSince[m.ChatJID]; !ok {
+							awaitingSince[m.ChatJID] = m.Ts
 						}
 					}
 				}
