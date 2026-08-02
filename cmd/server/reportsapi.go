@@ -255,11 +255,35 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		summary.ClosureReasons = append(summary.ClosureReasons, reportLabelCount{Label: label, Count: count})
 	}
 	sort.Slice(summary.ClosureReasons, func(i, j int) bool { return summary.ClosureReasons[i].Count > summary.ClosureReasons[j].Count })
+
+	// Resolve e-mails dos agentes que só apareceram via mensagens (sem
+	// passar por closures, portanto ainda sem Email preenchido).
+	emailByID := map[string]string{}
+	if s.auth != nil {
+		if users, uerr := s.auth.ListUsers(r.Context()); uerr == nil {
+			for _, u := range users {
+				emailByID[u.ID] = u.Email
+			}
+		}
+	}
+
+	var totalFirstResponseMs int64
+	var totalFirstResponses int
 	for _, a := range agents {
+		if a.Email == "" {
+			a.Email = emailByID[a.UserID]
+		}
+		if a.FirstResponses > 0 {
+			a.AvgFirstResponseMs = a.totalFirstResponseMs / int64(a.FirstResponses)
+			totalFirstResponseMs += a.totalFirstResponseMs
+			totalFirstResponses += a.FirstResponses
+		}
 		summary.Agents = append(summary.Agents, *a)
 	}
+	if totalFirstResponses > 0 {
+		summary.AvgFirstResponseMs = totalFirstResponseMs / int64(totalFirstResponses)
+	}
 	sort.Slice(summary.Agents, func(i, j int) bool { return summary.Agents[i].Closed > summary.Agents[j].Closed })
-
 	writeJSON(w, http.StatusOK, summary)
 }
 
