@@ -430,11 +430,23 @@ export default function ReportsPage() {
   const topAgents = useMemo(
     () =>
       [...(report?.agents ?? [])]
-        .sort((a, b) => b.closed - a.closed)
+        .sort((a, b) => b.messagesSent - a.messagesSent)
         .slice(0, 8)
-        .map((a) => ({ name: (a.email || a.userId).split("@")[0], closed: a.closed })),
+        .map((a) => ({
+          name: (a.email || a.userId).split("@")[0],
+          closed: a.closed,
+          messagesSent: a.messagesSent,
+          avgFirstResponseMin: a.avgFirstResponseMs ? Math.round(a.avgFirstResponseMs / 60000) : null,
+        })),
     [report],
   );
+  const formatMinutes = (min: number | null | undefined) => {
+    if (min === null || min === undefined) return "—";
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  };
 
   const closureReasons = useMemo(
     () =>
@@ -595,8 +607,50 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-
-
+        {/* Charts row 3 - Agents */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ChartCard
+            title="Mensagens por agente"
+            subtitle="Enviadas no período (rastreio a partir desta versão)"
+            icon={MessageSquare}
+            className="lg:col-span-2"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
+                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+                <Bar dataKey="messagesSent" name="Mensagens enviadas" fill={C.emerald} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+          <ChartCard
+            title="Tempo médio de 1ª resposta"
+            subtitle="Geral e por agente"
+            icon={BarChart3}
+          >
+            <div className="flex h-full flex-col justify-center gap-3 px-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold tracking-tight">
+                  {formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)}
+                </div>
+                <div className="text-xs text-muted-foreground">Média geral</div>
+              </div>
+              <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
+                {topAgents.filter((a) => a.avgFirstResponseMin !== null).map((a) => (
+                  <div key={a.name} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{a.name}</span>
+                    <span className="font-medium">{formatMinutes(a.avgFirstResponseMin)}</span>
+                  </div>
+                ))}
+                {topAgents.every((a) => a.avgFirstResponseMin === null) && (
+                  <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
+                )}
+              </div>
+            </div>
+          </ChartCard>
+        </div>
         {loading && (
           <p className="text-center text-xs text-muted-foreground">Carregando...</p>
         )}
