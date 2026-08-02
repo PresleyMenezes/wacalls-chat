@@ -50,6 +50,7 @@ type reportLabelCount struct {
 type reportAgentCount struct {
 	UserID              string `json:"userId"`
 	Email               string `json:"email,omitempty"`
+	Name                string `json:"name,omitempty"`
 	Closed              int    `json:"closed"`
 	MessagesSent        int    `json:"messagesSent"`
 	FirstResponses      int    `json:"firstResponses"`
@@ -256,22 +257,33 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Slice(summary.ClosureReasons, func(i, j int) bool { return summary.ClosureReasons[i].Count > summary.ClosureReasons[j].Count })
 
-	// Resolve e-mails dos agentes que só apareceram via mensagens (sem
-	// passar por closures, portanto ainda sem Email preenchido).
+	// Resolve e-mail e nome dos agentes que só apareceram via mensagens (sem
+	// passar por closures, portanto ainda sem Email/Name preenchido).
 	emailByID := map[string]string{}
+	nameByID := map[string]string{}
 	if s.auth != nil {
 		if users, uerr := s.auth.ListUsers(r.Context()); uerr == nil {
 			for _, u := range users {
 				emailByID[u.ID] = u.Email
+				name := strings.TrimSpace(u.Name)
+				if name == "" {
+					name = strings.TrimSpace(u.CompanyName)
+				}
+				if name == "" && u.Email != "" {
+					name = strings.Split(u.Email, "@")[0]
+				}
+				nameByID[u.ID] = name
 			}
 		}
 	}
-
 	var totalFirstResponseMs int64
 	var totalFirstResponses int
 	for _, a := range agents {
 		if a.Email == "" {
 			a.Email = emailByID[a.UserID]
+		}
+		if a.Name == "" {
+			a.Name = nameByID[a.UserID]
 		}
 		if a.FirstResponses > 0 {
 			a.AvgFirstResponseMs = a.totalFirstResponseMs / int64(a.FirstResponses)
