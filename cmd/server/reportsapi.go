@@ -48,14 +48,16 @@ type reportLabelCount struct {
 }
 
 type reportAgentCount struct {
-	UserID              string `json:"userId"`
-	Email               string `json:"email,omitempty"`
-	Name                string `json:"name,omitempty"`
-	Closed              int    `json:"closed"`
-	MessagesSent        int    `json:"messagesSent"`
-	FirstResponses      int    `json:"firstResponses"`
-	AvgFirstResponseMs  int64  `json:"avgFirstResponseMs,omitempty"`
-	totalFirstResponseMs int64 `json:"-"`
+	UserID                string `json:"userId"`
+	Email                 string `json:"email,omitempty"`
+	Name                  string `json:"name,omitempty"`
+	Closed                int    `json:"closed"`
+	MessagesSent          int    `json:"messagesSent"`
+	RespondedChats        int    `json:"respondedChats"`
+	FirstResponses        int    `json:"firstResponses"`
+	AvgFirstResponseMs    int64  `json:"avgFirstResponseMs,omitempty"`
+	totalFirstResponseMs  int64  `json:"-"`
+	respondedChatSet      map[string]bool `json:"-"`
 }
 
 type reportRatings struct {
@@ -137,18 +139,25 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 							b.MessagesOut++
 						}
 						if m.SentByUserID != "" {
-							a := agents[m.SentByUserID]
-							if a == nil {
-								a = &reportAgentCount{UserID: m.SentByUserID}
-								agents[m.SentByUserID] = a
-							}
-							a.MessagesSent++
-							if waitStart, ok := awaitingSince[m.ChatJID]; ok {
-								a.FirstResponses++
-								a.totalFirstResponseMs += m.Ts - waitStart
-								delete(awaitingSince, m.ChatJID)
-							}
+						a := agents[m.SentByUserID]
+						if a == nil {
+							a = &reportAgentCount{UserID: m.SentByUserID, respondedChatSet: map[string]bool{}}
+							agents[m.SentByUserID] = a
 						}
+						if a.respondedChatSet == nil {
+							a.respondedChatSet = map[string]bool{}
+						}
+						a.MessagesSent++
+						if !a.respondedChatSet[m.ChatJID] {
+							a.respondedChatSet[m.ChatJID] = true
+							a.RespondedChats++
+						}
+						if waitStart, ok := awaitingSince[m.ChatJID]; ok {
+							a.FirstResponses++
+							a.totalFirstResponseMs += m.Ts - waitStart
+							delete(awaitingSince, m.ChatJID)
+						}
+					}
 					} else {
 						summary.Messages.Inbound++
 						if b != nil {
