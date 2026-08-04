@@ -433,13 +433,37 @@ export default function ReportsPage() {
         .sort((a, b) => b.messagesSent - a.messagesSent)
         .slice(0, 8)
         .map((a) => ({
+          userId: a.userId,
           name: a.name || (a.email || a.userId).split("@")[0],
           closed: a.closed,
           messagesSent: a.messagesSent,
+          respondedChats: a.respondedChats,
           avgFirstResponseMin: a.avgFirstResponseMs ? Math.round(a.avgFirstResponseMs / 60000) : null,
         })),
     [report],
   );
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
+  const selectedAgent = useMemo(
+    () => (selectedAgentId === "all" ? null : topAgents.find((a) => a.userId === selectedAgentId) ?? null),
+    [selectedAgentId, topAgents],
+  );
+  const agentTotals = useMemo(() => {
+    if (selectedAgent) {
+      return {
+        messagesSent: selectedAgent.messagesSent,
+        respondedChats: selectedAgent.respondedChats,
+        closed: selectedAgent.closed,
+      };
+    }
+    return topAgents.reduce(
+      (acc, a) => ({
+        messagesSent: acc.messagesSent + a.messagesSent,
+        respondedChats: acc.respondedChats + a.respondedChats,
+        closed: acc.closed + a.closed,
+      }),
+      { messagesSent: 0, respondedChats: 0, closed: 0 },
+    );
+  }, [selectedAgent, topAgents]);
   const formatMinutes = (min: number | null | undefined) => {
     if (min === null || min === undefined) return "—";
     if (min < 60) return `${min} min`;
