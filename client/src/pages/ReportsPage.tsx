@@ -631,7 +631,6 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-        {/* Charts row 3 - Agents */}
         {/* KPI ROW - Por agente */}
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -664,7 +663,7 @@ export default function ReportsPage() {
             className="lg:col-span-2"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
+              <BarChart data={selectedAgent ? [selectedAgent] : topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
@@ -676,13 +675,46 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
           <ChartCard
+            title="Tempo médio de 1ª resposta"
+            subtitle={selectedAgent ? selectedAgent.name : "Geral e por agente"}
+            icon={BarChart3}
+          >
+            <div className="flex h-full flex-col justify-center gap-3 px-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold tracking-tight">
+                  {selectedAgent
+                    ? formatMinutes(selectedAgent.avgFirstResponseMin)
+                    : formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {selectedAgent ? "Média do agente" : "Média geral"}
+                </div>
+              </div>
+              {!selectedAgent && (
+                <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
+                  {topAgents.filter((a) => a.avgFirstResponseMin !== null).map((a) => (
+                    <div key={a.name} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{a.name}</span>
+                      <span className="font-medium">{formatMinutes(a.avgFirstResponseMin)}</span>
+                    </div>
+                  ))}
+                  {topAgents.every((a) => a.avgFirstResponseMin === null) && (
+                    <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </ChartCard>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ChartCard
             title="Mensagens por agente"
             subtitle="Enviadas no período (rastreio a partir desta versão)"
             icon={MessageSquare}
-            className="lg:col-span-2"
+            className="lg:col-span-3"
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
+              <BarChart data={selectedAgent ? [selectedAgent] : topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
@@ -690,31 +722,6 @@ export default function ReportsPage() {
                 <Bar dataKey="messagesSent" name="Mensagens enviadas" fill={C.emerald} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard
-            title="Tempo médio de 1ª resposta"
-            subtitle="Geral e por agente"
-            icon={BarChart3}
-          >
-            <div className="flex h-full flex-col justify-center gap-3 px-2">
-              <div className="text-center">
-                <div className="text-3xl font-bold tracking-tight">
-                  {formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)}
-                </div>
-                <div className="text-xs text-muted-foreground">Média geral</div>
-              </div>
-              <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
-                {topAgents.filter((a) => a.avgFirstResponseMin !== null).map((a) => (
-                  <div key={a.name} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{a.name}</span>
-                    <span className="font-medium">{formatMinutes(a.avgFirstResponseMin)}</span>
-                  </div>
-                ))}
-                {topAgents.every((a) => a.avgFirstResponseMin === null) && (
-                  <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
-                )}
-              </div>
-            </div>
           </ChartCard>
         </div>
         {loading && (
