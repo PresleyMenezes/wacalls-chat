@@ -31,7 +31,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { closeChat } from "@/services/chats";
 import { NewChatDialog } from "@/components/domain/chat/NewChatDialog";
 
-type Tab = "open" | "waiting" | "group";
+type Tab = "open" | "waiting";
 
 const EMPTY_CHATS: ChatSummary[] = [];
 
@@ -123,31 +123,20 @@ export const ChatsPage = () => {
     [chats, activeJid],
   );
   const activeStatus = activeChat?.status;
-  const activeIsGroup = activeChat ? activeChat.isGroup || isGroupJid(activeChat.chatJid) : false;
   useEffect(() => {
     if (!activeChat) return;
-    if (activeIsGroup) {
-      if (tab !== "group") setTab("group");
-      return;
-    }
     if (activeStatus === "open" && tab !== "open") setTab("open");
     else if ((activeStatus === "waiting" || activeStatus === "closed") && tab !== "waiting") setTab("waiting");
     // tab intentionally omitted: we only react to status flips, not user tab clicks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStatus, activeIsGroup, activeChat?.chatJid]);
+  }, [activeStatus, activeChat?.chatJid]);
 
   const tabCounts = useMemo(() => {
-    const counts = { open: 0, waiting: 0, group: 0 };
+    const counts = { open: 0, waiting: 0 };
     for (const c of chats) {
-      const isGroup = c.isGroup || isGroupJid(c.chatJid);
       // Count tickets (conversations) per tab, not unread messages — the unread
-      // badge already lives inside each ticket card. Grupos "fechados" não
-      // devem contar no badge, senão o número persiste após "Finalizar".
-      if (isGroup) {
-        const status = c.status ?? "group";
-        if (status !== "closed") counts.group += 1;
-      }
-      else if ((c.status ?? "waiting") === "waiting") counts.waiting += 1;
+      // badge already lives inside each ticket card.
+      if ((c.status ?? "waiting") === "waiting") counts.waiting += 1;
       else if ((c.status ?? "") === "open" && (!me?.id || !c.assignedUserId || c.assignedUserId === me.id))
         counts.open += 1;
     }
@@ -165,7 +154,6 @@ export const ChatsPage = () => {
   const TAB_LABEL: Record<Tab, string> = {
     open: t("pages.chats.tabs.open"),
     waiting: t("pages.chats.tabs.waiting"),
-    group: t("pages.chats.tabs.group"),
   };
 
   const handleBulkClose = async () => {
@@ -234,9 +222,9 @@ export const ChatsPage = () => {
           <div className="flex items-stretch border-b text-xs font-medium">
             <div className="flex flex-1">
             {([
+              {([
               { id: "open", label: t("pages.chats.tabs.open") },
               { id: "waiting", label: t("pages.chats.tabs.waiting") },
-              { id: "group", label: t("pages.chats.tabs.group") },
             ] as { id: Tab; label: string }[]).map((t) => {
               const count = tabCounts[t.id];
               return (
