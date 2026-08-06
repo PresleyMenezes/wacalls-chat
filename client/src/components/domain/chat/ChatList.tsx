@@ -35,20 +35,14 @@ export const filterChats = (
   unreadOnly = false,
 ): ChatSummary[] =>
   chats.filter((c) => {
-    const isGroup = c.isGroup || isGroupJid(c.chatJid);
     const status = c.status ?? (c.lastFromMe ? "open" : "waiting");
     // Conversations that were closed in bulk must vanish from every tab
-    // (including Grupos) until a new message arrives and reopens them.
+    // until a new message arrives and reopens them.
     if (status === "closed") return false;
-    if (tab === "group") {
-      if (!isGroup) return false;
-    } else {
-      if (isGroup) return false;
-      if (tab === "waiting" && status !== "waiting") return false;
-      if (tab === "open") {
-        if (status !== "open") return false;
-        if (myId && c.assignedUserId && c.assignedUserId !== myId) return false;
-      }
+    if (tab === "waiting" && status !== "waiting") return false;
+    if (tab === "open") {
+      if (status !== "open") return false;
+      if (myId && c.assignedUserId && c.assignedUserId !== myId) return false;
     }
     if (unreadOnly && (c.unread ?? 0) <= 0) return false;
     return true;
@@ -290,7 +284,7 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
 
         {/* Side action column — buttons stack to the right of the content,
             matching the reference layout (Atendendo/Aguardando cards). */}
-        {!isGroup && (tab === "waiting" || tab === "open") && (
+        {(tab === "waiting" || tab === "open") && (
           <div className="ml-3 mr-1 flex shrink-0 items-center justify-center gap-1 self-center">
             {tab === "waiting" ? (
               <>
