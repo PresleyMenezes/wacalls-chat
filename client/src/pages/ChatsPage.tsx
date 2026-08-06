@@ -31,7 +31,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { closeChat } from "@/services/chats";
 import { NewChatDialog } from "@/components/domain/chat/NewChatDialog";
 
-type Tab = "waiting" | "open";
+type Tab = "open" | "waiting";
 
 const EMPTY_CHATS: ChatSummary[] = [];
 
