@@ -222,7 +222,6 @@ export const ChatsPage = () => {
           <div className="flex items-stretch border-b text-xs font-medium">
             <div className="flex flex-1">
             {([
-              {([
               { id: "open", label: t("pages.chats.tabs.open") },
               { id: "waiting", label: t("pages.chats.tabs.waiting") },
             ] as { id: Tab; label: string }[]).map((t) => {
