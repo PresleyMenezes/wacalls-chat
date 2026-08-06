@@ -91,6 +91,7 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
   const senderLabel = showSender ? senderDisplay(message) : "";
   const senderColor = senderLabel ? senderHue(message.senderJid) : "";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuDirection, setMenuDirection] = useState<"up" | "down">("up");
   const deleted = !!message.deleted || isDeletedPlaceholder(message);
   // When the contact (or operator) revokes a message we keep the previous
   // snapshot so the operator can still see the original content.
@@ -200,7 +201,15 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
           <button
             type="button"
             aria-label="Ações da mensagem"
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={(e) => {
+              // Se a mensagem estiver na parte superior da área visível do
+              // chat, abre o menu para baixo (há espaço); caso contrário
+              // (centro ou fim da tela), abre para cima, sobre o balão.
+              const rect = e.currentTarget.getBoundingClientRect();
+              const viewportTop = rect.top / window.innerHeight;
+              setMenuDirection(viewportTop < 0.33 ? "down" : "up");
+              setMenuOpen((v) => !v);
+            }}
             className={`absolute right-1 top-1 hidden rounded-full p-0.5 transition group-hover/msg:flex ${
               mine ? "text-primary-foreground/80 hover:bg-primary-foreground/15" : "text-muted-foreground hover:bg-muted"
             }`}
@@ -218,7 +227,9 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
               className="fixed inset-0 z-30 cursor-default bg-transparent"
             />
             <div
-              className={`absolute top-full z-40 mt-1 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
+              className={`absolute z-40 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
+                menuDirection === "down" ? "top-full mt-1" : "bottom-full mb-1"
+              } ${
                 mine ? "right-0" : "left-0"
               }`}
             >
