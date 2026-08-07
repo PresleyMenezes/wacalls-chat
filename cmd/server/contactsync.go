@@ -178,11 +178,9 @@ func (s *server) handleChatSync(w http.ResponseWriter, r *http.Request) {
 	if cur.SessionID == "" {
 		cur.SessionID = sess.id
 		cur.ChatJID = jid
+		cur.Status = ChatStatusWaiting
 		if strings.HasSuffix(jid, "@g.us") {
 			cur.IsGroup = true
-			cur.Status = ChatStatusGroup
-		} else {
-			cur.Status = ChatStatusWaiting
 		}
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
