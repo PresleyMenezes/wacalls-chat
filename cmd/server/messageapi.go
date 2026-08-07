@@ -1314,9 +1314,6 @@ func (s *server) handleChatAssignTo(w http.ResponseWriter, r *http.Request) {
 	if body.UserID != "" {
 		status = ChatStatusOpen
 	}
-	if isGroupChatJID(jid) {
-		status = ChatStatusGroup
-	}
 	now := time.Now().UnixMilli()
 	if err := s.chatMeta.SetAssignment(r.Context(), sess.id, jid, status, body.UserID, body.QueueID, now); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
