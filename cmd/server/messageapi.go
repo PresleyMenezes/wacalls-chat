@@ -231,13 +231,11 @@ func (s *Session) upsertChatMeta(row MessageRow, pushName string, isGroup bool) 
 	}
 	status := existing.Status
 	assigned := existing.AssignedUserID
-	if isGroup {
-		status = ChatStatusGroup
-	} else if status == "" || status == ChatStatusClosed {
-		// Brand-new or reopened conversations always land in the waiting
-		// queue — even when the very first message was sent from the
-		// operator's phone. An operator must explicitly "Atender" to move
-		// the ticket to "atendendo".
+	if status == "" || status == ChatStatusClosed || status == ChatStatusGroup {
+		// Brand-new or reopened conversations (incluindo grupos, que agora
+		// seguem o mesmo fluxo Aguardando → Atendendo → Finalizado que
+		// contatos) sempre entram na fila de espera. Um agente precisa
+		// explicitamente "Atender" para mover o ticket para "atendendo".
 		status = ChatStatusWaiting
 		assigned = ""
 	}
@@ -260,7 +258,7 @@ func (s *Session) upsertChatMeta(row MessageRow, pushName string, isGroup bool) 
 	// event so the timeline shows "Conversa criada por · HH:MM" inline.
 	if existing.Status == "" && s.mgr.chatMeta != nil {
 		s.mgr.logChatEvent(ctx, m.SessionID, m.ChatJID, "created", "", "", "", m.UpdatedAt)
-		if !isGroup && status == ChatStatusWaiting {
+		if status == ChatStatusWaiting {
 			s.mgr.logChatEvent(ctx, m.SessionID, m.ChatJID, "waiting", "", "", "", m.UpdatedAt)
 		}
 		// Pipeline: kick off "novo contato" automations the first time we
