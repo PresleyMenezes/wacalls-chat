@@ -92,8 +92,6 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 				}
 			case ChatStatusOpen:
 				targetCol = progressCol
-			case ChatStatusGroup:
-				continue
 			default:
 				targetCol = waitingCol
 			}
