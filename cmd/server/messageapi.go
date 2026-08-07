@@ -734,11 +734,11 @@ func (s *server) handleChatList(w http.ResponseWriter, r *http.Request) {
 				chats[i].AvatarURL = m.AvatarURL
 			}
 			chats[i].Unread = unread[chats[i].ChatJID]
+			if isGroupChatJID(chats[i].ChatJID) {
+				chats[i].IsGroup = true
+			}
 			if chats[i].Status == "" {
-				if isGroupChatJID(chats[i].ChatJID) {
-					chats[i].Status = ChatStatusGroup
-					chats[i].IsGroup = true
-				} else if chats[i].LastFromMe {
+				if chats[i].LastFromMe {
 					chats[i].Status = ChatStatusOpen
 				} else {
 					chats[i].Status = ChatStatusWaiting
