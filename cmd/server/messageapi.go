@@ -1215,10 +1215,6 @@ func (s *server) handleChatRequeue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jid := r.PathValue("jid")
-	if isGroupChatJID(jid) {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "groups cannot be requeued"})
-		return
-	}
 	now := time.Now().UnixMilli()
 	if err := s.chatMeta.SetStatus(r.Context(), sess.id, jid, ChatStatusWaiting, "", now); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -1246,10 +1242,6 @@ func (s *server) handleChatTransfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jid := r.PathValue("jid")
-	if isGroupChatJID(jid) {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "groups cannot be transferred"})
-		return
-	}
 	var body struct {
 		UserID string `json:"userId"`
 	}
