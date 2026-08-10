@@ -408,7 +408,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   }
   const displayName = chat?.name && chat.name.trim() !== "" ? chat.name : formatPeer(chatJid);
   const status = chat?.status ?? "open";
-  const canSend = isGroup || status === "open";
+  const canSend = status === "open";
 
   const handleSend = async () => {
     const value = text.trim();
@@ -907,7 +907,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
           >
             <KanbanSquare className="h-4 w-4" />
           </Button>
-          {!isGroup && status === "waiting" && (
+          {status === "waiting" && (
             <>
               <Button
                 size="sm"
