@@ -929,12 +929,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
               </Button>
             </>
           )}
-          {!isGroup && status === "open" && (
-            <Button size="sm" variant="outline" onClick={() => void confirmClose()} disabled={closing}>
-              <CheckCheck className="mr-1 h-3.5 w-3.5" /> Finalizar
-            </Button>
-          )}
-          {isGroup && status !== "closed" && (
+          {status === "open" && (
             <Button size="sm" variant="outline" onClick={() => void confirmClose()} disabled={closing}>
               <CheckCheck className="mr-1 h-3.5 w-3.5" /> Finalizar
             </Button>
