@@ -918,16 +918,14 @@ func (s *server) markChatOpen(ctx context.Context, sess *Session, jid string, u 
 		return
 	}
 	cur, _, _ := s.chatMeta.Get(ctx, sess.id, jid)
-	if cur.IsGroup || isGroupChatJID(jid) {
-		return
-	}
+	isGroup := cur.IsGroup || isGroupChatJID(jid)
 	now := time.Now().UnixMilli()
 	name := cur.Name
 	m := ChatMeta{
 		SessionID:      sess.id,
 		ChatJID:        jid,
 		Name:           name,
-		IsGroup:        false,
+		IsGroup:        isGroup,
 		Status:         ChatStatusOpen,
 		AssignedUserID: u.ID,
 		UpdatedAt:      now,
