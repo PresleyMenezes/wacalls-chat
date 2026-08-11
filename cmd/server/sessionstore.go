@@ -108,7 +108,7 @@ func newSessionID() string {
 
 func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, name, COALESCE(jid, ''), COALESCE(owner_id, ''),
-		COALESCE(color, '#57adf8'), COALESCE(is_default, 0), COALESCE(allow_groups, 0),
+		COALESCE(color, '#57adf8'), COALESCE(is_default, 0), COALESCE(allow_groups, 0), COALESCE(allow_broadcast, 0),
 		COALESCE(integration_token, ''), COALESCE(queue_id, ''), COALESCE(redirect_minutes, 0),
 		COALESCE(flow_id, ''), COALESCE(chat_flow_id, ''), COALESCE(greeting_message, ''), COALESCE(completion_message, ''),
 		COALESCE(out_of_hours_message, ''),
@@ -123,9 +123,9 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 	var out []sessionRow
 	for rows.Next() {
 		var r sessionRow
-		var isDefault, allowGroups, surveyEnabled int
+		var isDefault, allowGroups, allowBroadcast, surveyEnabled int
 		if err := rows.Scan(&r.ID, &r.Name, &r.JID, &r.OwnerID,
-			&r.Color, &isDefault, &allowGroups, &r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
+			&r.Color, &isDefault, &allowGroups, &allowBroadcast, &r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
 			&r.ChatFlowID, &r.GreetingMessage, &r.CompletionMessage, &r.OutOfHoursMessage,
 			&surveyEnabled, &r.SurveyPrompt,
 			&r.Mode, &r.CloudPhoneID, &r.CloudWABAID, &r.CloudTokenEnc, &r.CloudAppSecretEnc, &r.CloudVerifyToken); err != nil {
@@ -133,6 +133,7 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 		}
 		r.IsDefault = isDefault == 1
 		r.AllowGroups = allowGroups == 1
+		r.AllowBroadcast = allowBroadcast == 1
 		r.SurveyEnabled = surveyEnabled == 1
 		out = append(out, r)
 	}
