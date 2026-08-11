@@ -16,6 +16,7 @@ type sessionRow struct {
 	Color             string
 	IsDefault         bool
 	AllowGroups       bool
+	AllowBroadcast    bool
 	IntegrationToken  string
 	QueueID           string
 	RedirectMinutes   int
@@ -64,6 +65,9 @@ func newSessionStore(ctx context.Context, db *sql.DB) (*sessionStore, error) {
 		`ALTER TABLE sessions ADD COLUMN color TEXT NOT NULL DEFAULT '#57adf8'`,
 		`ALTER TABLE sessions ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE sessions ADD COLUMN allow_groups INTEGER NOT NULL DEFAULT 0`,
+		// Quando desligado (padrão), mensagens de status@broadcast, canais de
+		// newsletter e outros broadcasts de venda são ignoradas silenciosamente.
+		`ALTER TABLE sessions ADD COLUMN allow_broadcast INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE sessions ADD COLUMN integration_token TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN queue_id TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN redirect_minutes INTEGER NOT NULL DEFAULT 0`,
@@ -236,6 +240,7 @@ type sessionUpdate struct {
 	Color             string
 	IsDefault         bool
 	AllowGroups       bool
+	AllowBroadcast    bool
 	QueueID           string
 	RedirectMinutes   int
 	FlowID            string
