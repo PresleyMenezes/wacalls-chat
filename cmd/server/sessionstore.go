@@ -262,6 +262,10 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 	if u.AllowGroups {
 		grp = 1
 	}
+	bcast := 0
+	if u.AllowBroadcast {
+		bcast = 1
+	}
 	srv := 0
 	if u.SurveyEnabled {
 		srv = 1
@@ -271,11 +275,11 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 		_, _ = s.db.ExecContext(ctx, `UPDATE sessions SET is_default = 0 WHERE id != ? AND owner_id = (SELECT owner_id FROM sessions WHERE id = ?)`, id, id)
 	}
 	res, err := s.db.ExecContext(ctx, `UPDATE sessions
-		SET name = ?, color = ?, is_default = ?, allow_groups = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
+		SET name = ?, color = ?, is_default = ?, allow_groups = ?, allow_broadcast = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
 		    greeting_message = ?, completion_message = ?, out_of_hours_message = ?,
 		    survey_enabled = ?, survey_prompt = ?
 		WHERE id = ?`,
-		strings.TrimSpace(u.Name), u.Color, def, grp, u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
+		strings.TrimSpace(u.Name), u.Color, def, grp, bcast, u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
 		u.GreetingMessage, u.CompletionMessage, u.OutOfHoursMessage,
 		srv, strings.TrimSpace(u.SurveyPrompt), id)
 	if err != nil {
