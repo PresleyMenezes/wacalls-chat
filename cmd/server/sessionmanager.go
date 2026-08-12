@@ -248,6 +248,7 @@ func (m *SessionManager) Restore(ctx context.Context) error {
 		s.color = row.Color
 		s.isDefault = row.IsDefault
 		s.allowGroups = row.AllowGroups
+		s.allowBroadcast = row.AllowBroadcast
 		s.integrationToken = row.IntegrationToken
 		s.queueID = row.QueueID
 		s.redirectMinutes = row.RedirectMinutes
@@ -302,6 +303,7 @@ func newCloudSession(m *SessionManager, row sessionRow) *Session {
 	s.color = row.Color
 	s.isDefault = row.IsDefault
 	s.allowGroups = row.AllowGroups
+	s.allowBroadcast = row.AllowBroadcast
 	s.integrationToken = row.IntegrationToken
 	s.queueID = row.QueueID
 	s.redirectMinutes = row.RedirectMinutes
@@ -388,6 +390,7 @@ func (m *SessionManager) Create(name, ownerID string) (string, error) {
 	if row != nil {
 		s.color = row.Color
 		s.allowGroups = row.AllowGroups
+		s.allowBroadcast = row.AllowBroadcast
 		s.integrationToken = row.IntegrationToken
 	} else {
 		s.color = "#57adf8"
@@ -496,6 +499,7 @@ func (m *SessionManager) Update(ctx context.Context, id string, u sessionUpdate)
 	s.color = u.Color
 	s.isDefault = u.IsDefault
 	s.allowGroups = u.AllowGroups
+	s.allowBroadcast = u.AllowBroadcast
 	s.queueID = u.QueueID
 	s.redirectMinutes = u.RedirectMinutes
 	s.flowID = u.FlowID
