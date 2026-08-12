@@ -37,7 +37,6 @@ type Session struct {
 	color             string
 	isDefault         bool
 	allowGroups       bool
-	allowBroadcast    bool
 	integrationToken  string
 	queueID           string
 	redirectMinutes   int
