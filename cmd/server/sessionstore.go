@@ -15,8 +15,8 @@ type sessionRow struct {
 	OwnerID           string
 	Color             string
 	IsDefault         bool
-	allowGroups       bool
-	allowBroadcast    bool
+	AllowGroups       bool
+	AllowBroadcast    bool
 	IntegrationToken  string
 	QueueID           string
 	RedirectMinutes   int
