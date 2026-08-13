@@ -388,7 +388,7 @@ func (s *Session) info() SessionInfo {
 		State: a.State, Paired: a.Paired || jid != "",
 		Mode: s.mode, CloudPhoneID: s.cloudPhoneID, CloudWABAID: s.cloudWABAID, CloudConfigured: s.cloudConfigured,
 		AvatarURL: avatar,
-		Color:     s.color, IsDefault: s.isDefault, AllowGroups: s.allowGroups,
+		Color:     s.color, IsDefault: s.isDefault, AllowGroups: s.allowGroups, AllowBroadcast: s.allowBroadcast,
 		IntegrationToken: s.integrationToken, QueueID: s.queueID,
 		RedirectMinutes: s.redirectMinutes, FlowID: s.flowID, ChatFlowID: s.chatFlowID,
 		GreetingMessage: s.greetingMessage, CompletionMessage: s.completionMessage,
