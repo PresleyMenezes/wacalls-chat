@@ -50,6 +50,7 @@ type SessionInfo struct {
 	Color             string `json:"color,omitempty"`
 	IsDefault         bool   `json:"isDefault,omitempty"`
 	AllowGroups       bool   `json:"allowGroups,omitempty"`
+	AllowBroadcast    bool   `json:"allowBroadcast,omitempty"`
 	IntegrationToken  string `json:"integrationToken,omitempty"`
 	QueueID           string `json:"queueId,omitempty"`
 	RedirectMinutes   int    `json:"redirectMinutes,omitempty"`
