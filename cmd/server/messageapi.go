@@ -29,9 +29,15 @@ import (
 // rendered under the "Grupos" tab — classic groups, WhatsApp Channels
 // (newsletters) and Community broadcast lists.
 func isGroupChatJID(jid string) bool {
-	return strings.HasSuffix(jid, "@g.us") ||
-		strings.HasSuffix(jid, "@newsletter") ||
-		strings.HasSuffix(jid, "@broadcast")
+	return strings.HasSuffix(jid, "@g.us")
+}
+
+// isBroadcastChatJID identifies newsletters, channels and broadcast/status
+// lists — sales/marketing style channels, not real group conversations.
+func isBroadcastChatJID(jid string) bool {
+	return strings.HasSuffix(jid, "@newsletter") ||
+		strings.HasSuffix(jid, "@broadcast") ||
+		jid == "status@broadcast"
 }
 
 // handleWAMessage is called from Session.handleEvent for every *events.Message
@@ -46,14 +52,24 @@ func (s *Session) handleWAMessage(evt *events.Message) {
 		return
 	}
 	// Honor the per-connection "Receber mensagens de grupo" flag: when the
-	// operator disables groups on the connection, inbound group/community
-	// /channel messages are dropped entirely (not persisted, not broadcast)
-	// so the Grupos tab stays empty until the flag is turned on.
+	// operator disables groups on the connection, inbound group messages are
+	// dropped entirely (not persisted, not broadcast).
 	if isGroupChatJID(row.ChatJID) || evt.Info.IsGroup {
 		s.mu.Lock()
 		allow := s.allowGroups
 		s.mu.Unlock()
 		if !allow {
+			return
+		}
+	}
+	// Honor the per-connection "Receber canais/broadcast" flag: status,
+	// newsletters e listas de transmissão (canais de venda) são ignorados
+	// por padrão — não persistidos, não exibidos — a menos que habilitado.
+	if isBroadcastChatJID(row.ChatJID) {
+		s.mu.Lock()
+		allowB := s.allowBroadcast
+		s.mu.Unlock()
+		if !allowB {
 			return
 		}
 	}
