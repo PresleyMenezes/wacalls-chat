@@ -18,6 +18,7 @@ type Props = {
 
 export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Props) => {
   const [allowGroups, setAllowGroups] = useState(!!session.allowGroups);
+  const [allowBroadcast, setAllowBroadcast] = useState(!!session.allowBroadcast);
   const [queueId, setQueueId] = useState(session.queueId ?? "");
   const [queues, setQueues] = useState<Queue[]>([]);
   const [busy, setBusy] = useState(false);
@@ -25,6 +26,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
   useEffect(() => {
     if (!open) return;
     setAllowGroups(!!session.allowGroups);
+    setAllowBroadcast(!!session.allowBroadcast);
     setQueueId(session.queueId ?? "");
     void listQueues().then(setQueues).catch(() => {});
   }, [open, session]);
@@ -37,6 +39,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
         color: session.color ?? "#57adf8",
         isDefault: !!session.isDefault,
         allowGroups,
+        allowBroadcast,
         queueId,
         redirectMinutes: session.redirectMinutes ?? 0,
         flowId: session.flowId ?? "",
@@ -120,8 +123,35 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
               />
             </button>
           </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary">
+                <Users2 className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="text-sm font-medium">Receber canais e listas de transmissão</div>
+                <div className="text-xs text-muted-foreground">
+                  Quando desativado, mensagens de status, newsletters e canais de venda são ignoradas.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={allowBroadcast}
+              onClick={() => setAllowBroadcast((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                allowBroadcast ? "bg-primary" : "bg-muted"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                  allowBroadcast ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
         </div>
-
         <div className="flex justify-end gap-2 border-t bg-muted/20 px-6 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
