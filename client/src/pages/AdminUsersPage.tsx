@@ -521,6 +521,34 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
               )}
             </div>
             <div>
+              <div>
+              <Label>Tipo de conta</Label>
+              <div className="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, role: "admin" }))}
+                  className={`flex-1 rounded-md border px-3 py-2 text-sm transition ${
+                    form.role === "admin"
+                      ? "border-primary bg-primary/10 font-medium text-primary"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  Administrador
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, role: "user" }))}
+                  className={`flex-1 rounded-md border px-3 py-2 text-sm transition ${
+                    form.role === "user"
+                      ? "border-primary bg-primary/10 font-medium text-primary"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  Atendente
+                </button>
+              </div>
+            </div>
+            <div>
               <div className="flex items-center justify-between">
                 <Label>Perfil de acesso</Label>
                 {form.role !== "admin" && (
