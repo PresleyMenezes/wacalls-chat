@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Download,
@@ -23,6 +23,9 @@ interface Props {
 export const ImageLightbox = ({ src, alt, onClose }: Props) => {
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -38,6 +41,27 @@ export const ImageLightbox = ({ src, alt, onClose }: Props) => {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
+
+  // Reseta a posição sempre que o zoom volta para 100% ou menos — evita a
+  // imagem "sumir" fora da tela ao dar zoom out depois de arrastar.
+  useEffect(() => {
+    if (scale <= 1) setPos({ x: 0, y: 0 });
+  }, [scale]);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1) return;
+    e.preventDefault();
+    setDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
+  };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!dragging) return;
+    setPos({
+      x: dragStart.current.px + (e.clientX - dragStart.current.x),
+      y: dragStart.current.py + (e.clientY - dragStart.current.y),
+    });
+  };
+  const stopDragging = () => setDragging(false);
 
   const handleDownload = () => {
     const a = document.createElement("a");
@@ -95,17 +119,26 @@ export const ImageLightbox = ({ src, alt, onClose }: Props) => {
         </ToolBtn>
       </div>
       <div
-        className="flex flex-1 items-center justify-center overflow-auto p-4"
+        className="flex flex-1 items-center justify-center overflow-hidden p-4"
         onClick={onClose}
+        onMouseMove={onMouseMove}
+        onMouseUp={stopDragging}
+        onMouseLeave={stopDragging}
       >
         <img
           src={src}
           alt={alt || ""}
           draggable={false}
           onClick={(e) => e.stopPropagation()}
+          onMouseDown={onMouseDown}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            setScale((s) => (s > 1 ? 1 : 2.5));
+          }}
           style={{
-            transform: `scale(${scale}) rotate(${rotation}deg)`,
-            transition: "transform 0.15s ease-out",
+            transform: `translate(${pos.x}px, ${pos.y}px) scale(${scale}) rotate(${rotation}deg)`,
+            transition: dragging ? "none" : "transform 0.15s ease-out",
+            cursor: scale > 1 ? (dragging ? "grabbing" : "grab") : "default",
           }}
           className="max-h-full max-w-full select-none object-contain shadow-2xl"
         />
