@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Loader2,
   Plus,
@@ -12,6 +13,7 @@ import {
   Upload,
   X,
   Copy,
+  MessageSquare,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -44,7 +46,7 @@ import {
 } from "@/services/contacts";
 import { useSessions, ensureSessionsWired } from "@/stores/sessions";
 import { useChats } from "@/stores/chats";
-import { resolveLidPhone } from "@/services/chats";
+import { resolveLidPhone, assignChat } from "@/services/chats";
 import { startCall as apiStartCall } from "@/services/calls";
 import { openCall } from "@/lib/webrtc";
 import { registerOwnConnection } from "@/stores/calls";
@@ -54,14 +56,15 @@ import { formatPhone as fmtPhone } from "@/lib/phone-format";
 type KindFilter = "" | "user" | "group";
 
 export default function ContactsPage() {
+  const navigate = useNavigate();
   const sessions = useSessions((s) => s.sessions);
   const chatsBySession = useChats((s) => s.chatsBySession);
   const micId = useDevices((s) => s.micId);
   const outId = useDevices((s) => s.outId);
-
   // Cache of resolved real phones for @lid rows: key = `${sid}::${jid}`.
   const [lidPhones, setLidPhones] = useState<Record<string, string>>({});
   const [callingKey, setCallingKey] = useState<string | null>(null);
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   // Cross-reference chats to always resolve the best available contact name
   // (WhatsApp push name / saved name) regardless of which tab or filter the
@@ -206,6 +209,21 @@ export default function ContactsPage() {
     return d;
   };
 
+  const openAttendance = async (c: ContactRow) => {
+    const key = `${c.sessionId}::${c.chatJid}`;
+    if (openingKey) return;
+    setOpeningKey(key);
+    try {
+      await assignChat(c.sessionId, c.chatJid);
+    } catch (e) {
+      // Chat pode já estar em atendimento (ex.: já aberto por outro); segue
+      // mesmo assim para navegar até a conversa.
+      console.error("open attendance failed", e);
+    } finally {
+      setOpeningKey(null);
+    }
+    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${c.sessionId}`);
+  };
   const startDirectCall = async (c: ContactRow) => {
     const key = `${c.sessionId}::${c.chatJid}`;
     if (callingKey) return;
@@ -425,6 +443,19 @@ export default function ContactsPage() {
                       </td>
                       <td className="px-4 py-2 text-right">
                         <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Abrir atendimento"
+                            disabled={openingKey === `${c.sessionId}::${c.chatJid}`}
+                            onClick={() => openAttendance(c)}
+                          >
+                            {openingKey === `${c.sessionId}::${c.chatJid}` ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <MessageSquare className="h-4 w-4 text-sky-500" />
+                            )}
+                          </Button>
                           {!c.isGroup && (
                             <Button
                               size="sm"
