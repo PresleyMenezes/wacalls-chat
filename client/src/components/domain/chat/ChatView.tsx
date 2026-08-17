@@ -87,6 +87,25 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     };
   }, [sessionId, chatJid]);
   const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
+  // --- Seleção múltipla de mensagens (para encaminhar várias de uma vez) ---
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const startSelection = (m: ChatMessage) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([m.id]));
+  };
+  const cancelSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [editingText, setEditingText] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -954,28 +973,45 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                       {day}
                     </div>
                   )}
-                  <MessageBubble
-                    message={m}
-                    showSender={isGroup && !m.fromMe}
-                    reactions={reactionsByTarget.get(m.id)}
-                    mentionNames={mentionNames}
-                    onForward={(msg) => setForwardTarget(msg)}
-                    onReply={(msg) => setReplyTo(msg)}
-                    onEdit={(msg) => {
-                      setEditing(msg);
-                      setEditingText(msg.body);
-                    }}
-                    onDelete={async (msg) => {
-                      if (!chatJid) return;
-                      if (!window.confirm("Apagar esta mensagem para todos?")) return;
-                      try {
-                        await deleteMessage(sessionId, chatJid, msg.id);
-                      } catch (e) {
-                        console.error("delete failed", e);
-                        alert("Não foi possível apagar (mensagens antigas podem não permitir).");
-                      }
-                    }}
-                  />
+                  <div
+                    className={`flex items-center gap-1.5 ${m.fromMe ? "flex-row-reverse" : ""}`}
+                    onClick={() => { if (selectionMode) toggleSelected(m.id); }}
+                  >
+                    {selectionMode && (
+                      <span
+                        className={`grid h-4 w-4 shrink-0 cursor-pointer place-items-center rounded border text-[10px] ${
+                          selectedIds.has(m.id) ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                        }`}
+                      >
+                        {selectedIds.has(m.id) ? "✓" : ""}
+                      </span>
+                    )}
+                    <div className={`min-w-0 ${selectionMode ? "pointer-events-none flex-1" : "flex-1"}`}>
+                      <MessageBubble
+                        message={m}
+                        showSender={isGroup && !m.fromMe}
+                        reactions={reactionsByTarget.get(m.id)}
+                        mentionNames={mentionNames}
+                        onForward={(msg) => setForwardTarget(msg)}
+                        onSelect={startSelection}
+                        onReply={(msg) => setReplyTo(msg)}
+                        onEdit={(msg) => {
+                          setEditing(msg);
+                          setEditingText(msg.body);
+                        }}
+                        onDelete={async (msg) => {
+                          if (!chatJid) return;
+                          if (!window.confirm("Apagar esta mensagem para todos?")) return;
+                          try {
+                            await deleteMessage(sessionId, chatJid, msg.id);
+                          } catch (e) {
+                            console.error("delete failed", e);
+                            alert("Não foi possível apagar (mensagens antigas podem não permitir).");
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </li>
               );
             })}
