@@ -331,7 +331,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const imgInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
-  const messageInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Audio recording
   const recorderRef = useRef<MediaRecorder | null>(null);
