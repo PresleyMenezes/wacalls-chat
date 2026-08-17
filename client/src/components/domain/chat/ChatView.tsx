@@ -446,8 +446,19 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
         console.error("note failed", e);
       } finally {
         setSending(false);
-      // Mantém o foco no campo de digitação após enviar (Enter não deve sair do input).
-      requestAnimationFrame(() => messageInputRef.current?.focus());
+        // Mantém o foco no campo de digitação após enviar (Enter não deve
+        // sair do textarea). "disabled" durante o envio tira o foco do
+        // navegador; usamos rAF duplo para garantir que o campo já esteja
+        // habilitado de novo quando tentamos focar.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const el = messageInputRef.current;
+            if (el) {
+              el.style.height = "auto";
+              el.focus();
+            }
+          });
+        });
       }
       return;
     }
@@ -494,7 +505,15 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
       console.error("send failed", e);
     } finally {
       setSending(false);
-      requestAnimationFrame(() => messageInputRef.current?.focus());
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = messageInputRef.current;
+          if (el) {
+            el.style.height = "auto";
+            el.focus();
+          }
+        });
+      });
     }
   };
 
