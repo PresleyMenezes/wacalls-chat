@@ -491,13 +491,20 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     try {
       // O campo mostra o nome do contato (@Fulano), mas o WhatsApp só
       // reconhece a marcação quando o texto enviado contém o número
-      // (@<dígitos>). Convertemos aqui, na hora de enviar.
+      // (@<dígitos>). Convertemos aqui, na hora de enviar. "Todos" expande
+      // para os JIDs de todos os participantes do grupo, mantendo no texto
+      // apenas "@todos" (visual), mas marcando todo mundo de fato.
       let outgoingText = finalText;
       const mentionJidList: string[] = [];
       for (const m of mentions) {
         const marker = `@${m.name}`;
         const idx = outgoingText.indexOf(marker);
         if (idx === -1) continue;
+        if (m.jid === MENTION_ALL_JID) {
+          outgoingText = outgoingText.slice(0, idx) + `@todos` + outgoingText.slice(idx + marker.length);
+          for (const p of groupParticipants) mentionJidList.push(p.jid);
+          continue;
+        }
         const digits = m.jid.split("@")[0];
         outgoingText = outgoingText.slice(0, idx) + `@${digits}` + outgoingText.slice(idx + marker.length);
         mentionJidList.push(m.jid);
