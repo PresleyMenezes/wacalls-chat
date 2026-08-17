@@ -65,7 +65,7 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
     setLoading(true);
     const t = window.setTimeout(async () => {
       try {
-        const r = await listContacts({ q: q.trim(), kind: "user", limit: 30 });
+        const r = await listContacts({ q: q.trim(), limit: 30 });
         if (!cancel) setResults(r.contacts ?? []);
       } catch {
         if (!cancel) setResults([]);
