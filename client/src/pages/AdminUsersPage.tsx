@@ -521,7 +521,6 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
               )}
             </div>
             <div>
-              <div>
               <Label>Tipo de conta</Label>
               <div className="mt-1 flex gap-2">
                 <button
