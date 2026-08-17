@@ -30,6 +30,7 @@ export type SessionUpdate = {
   color: string;
   isDefault: boolean;
   allowGroups: boolean;
+  allowBroadcast: boolean;
   queueId: string;
   redirectMinutes: number;
   flowId: string;
