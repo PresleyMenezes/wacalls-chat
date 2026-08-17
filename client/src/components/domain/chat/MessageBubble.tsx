@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Ban,
+  CheckSquare,
   ChevronDown,
   Copy,
   CornerUpLeft,
@@ -52,6 +53,7 @@ interface BubbleProps {
   message: ChatMessage;
   showSender?: boolean;
   onForward?: (m: ChatMessage) => void;
+  onSelect?: (m: ChatMessage) => void;
   onEdit?: (m: ChatMessage) => void;
   onDelete?: (m: ChatMessage) => void;
   onReply?: (m: ChatMessage) => void;
@@ -73,7 +75,7 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
-export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete, onReply, reactions, mentionNames }: BubbleProps) => {
+export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
@@ -268,6 +270,9 @@ export const MessageBubble = ({ message, showSender, onForward, onEdit, onDelete
               )}
               {showForward && (
                 <MenuItem icon={<Forward className="h-3.5 w-3.5" />} label="Encaminhar" onClick={() => { closeAll(); onForward!(message); }} />
+              )}
+              {!!onSelect && !deleted && (
+                <MenuItem icon={<CheckSquare className="h-3.5 w-3.5" />} label="Selecionar" onClick={() => { closeAll(); onSelect(message); }} />
               )}
               {showDownload && (
                 <MenuItem
