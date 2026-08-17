@@ -142,7 +142,11 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   const mentionCandidates = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.toLowerCase();
-    return groupParticipants.filter((p) => p.name.toLowerCase().includes(q));
+    const filtered = groupParticipants.filter((p) => p.name.toLowerCase().includes(q));
+    if ("todos".startsWith(q) && groupParticipants.length > 0) {
+      return [{ jid: MENTION_ALL_JID, name: "Todos" }, ...filtered];
+    }
+    return filtered;
   }, [mentionQuery, groupParticipants]);
   useEffect(() => { setMentionIdx(0); }, [mentionQuery]);
 
@@ -173,23 +177,27 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   // Insere a menção selecionada no texto, na posição do "@" que disparou a
   // busca, substituindo o texto digitado após o "@" pelo número (formato que
   // o WhatsApp exige para o destaque funcionar) e mantendo o cursor logo após.
+  // JID sentinela usado para o pseudo-participante "Todos" — expandido para
+  // todos os JIDs reais do grupo somente na hora do envio (handleSend).
+  const MENTION_ALL_JID = "__ALL__";
   const insertMention = async (p: GroupParticipant) => {
     const input = messageInputRef.current;
     const cursor = input?.selectionStart ?? text.length;
     const before = text.slice(0, cursor);
     const at = before.lastIndexOf("@");
     if (at === -1) return;
-
     // Usamos sempre o JID original do participante (LID ou telefone) para
     // que os dígitos embutidos na mensagem batam exatamente com a chave
     // usada no mapa de nomes (mentionNames) — garantindo que o nome apareça
     // corretamente tanto no campo de digitação quanto no histórico de
     // mensagens. A marcação funciona no WhatsApp com LID ou telefone.
-    const jidToUse = p.jid;
-    const mentionText = `@${p.name} `;
+    // Exceção: "Todos" usa um marcador textual fixo ("todos"), já que não
+    // há um único JID — a expansão real acontece no envio.
+    const isAll = p.jid === MENTION_ALL_JID;
+    const mentionText = isAll ? "@todos " : `@${p.name} `;
     const newText = text.slice(0, at) + mentionText + text.slice(cursor);
     setText(newText);
-    setMentions((m) => [...m, { name: p.name, jid: jidToUse }]);
+    setMentions((m) => [...m, { name: isAll ? "todos" : p.name, jid: p.jid }]);
     setMentionQuery(null);
     requestAnimationFrame(() => {
       const pos = at + mentionText.length;
