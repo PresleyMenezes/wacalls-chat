@@ -106,6 +106,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     setSelectionMode(false);
     setSelectedIds(new Set());
   };
+  const [showForwardSelection, setShowForwardSelection] = useState(false);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [editingText, setEditingText] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -1528,18 +1529,31 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
           </div>
         </div>
       )}
-      {forwardTarget && (
+      {(forwardTarget || showForwardSelection) && (
         <ForwardDialog
           sessionId={sessionId}
           currentJid={chatJid}
-          message={forwardTarget}
+          message={forwardTarget ?? timeline.find((it) => it.kind !== "evt" && selectedIds.has(it.msg.id))?.msg as ChatMessage}
           chats={chats ?? []}
-          onClose={() => setForwardTarget(null)}
+          onClose={() => { setForwardTarget(null); setShowForwardSelection(false); }}
           onSubmit={async (targets) => {
-            if (!chatJid || !forwardTarget) return;
+            if (!chatJid) return;
             try {
-              await forwardMessage(sessionId, chatJid, forwardTarget.id, targets);
+              if (forwardTarget) {
+                await forwardMessage(sessionId, chatJid, forwardTarget.id, targets);
+              } else {
+                // Encaminha cada mensagem selecionada, na ordem em que aparecem
+                // na conversa, para todos os destinos escolhidos.
+                const ids = timeline
+                  .filter((it) => it.kind !== "evt" && selectedIds.has(it.msg.id))
+                  .map((it) => (it.msg as ChatMessage).id);
+                for (const mid of ids) {
+                  await forwardMessage(sessionId, chatJid, mid, targets);
+                }
+              }
               setForwardTarget(null);
+              setShowForwardSelection(false);
+              cancelSelection();
             } catch (e) {
               console.error("forward failed", e);
               alert("Não foi possível encaminhar.");
