@@ -11,6 +11,7 @@ export type SessionInfo = {
   color?: string;
   isDefault?: boolean;
   allowGroups?: boolean;
+  allowBroadcast?: boolean;
   integrationToken?: string;
   queueId?: string;
   redirectMinutes?: number;
