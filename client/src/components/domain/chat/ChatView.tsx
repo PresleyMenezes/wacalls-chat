@@ -1189,13 +1189,17 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
         ) : (
           <>
             <div className="relative flex-1">
-              <input
+              <textarea
                 ref={messageInputRef}
                 value={text}
+                rows={1}
                 onChange={(e) => {
                   const val = e.target.value;
                   setText(val);
                   setShowSuggest(true);
+                  // Auto-cresce até um limite, depois rola dentro do campo.
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
                   if (isGroup) {
                     const cursor = e.target.selectionStart ?? val.length;
                     const before = val.slice(0, cursor);
@@ -1298,9 +1302,13 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                       return;
                     }
                   }
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleSend();
+                  }
                 }}
-                placeholder={noteMode ? "Nota privada (visível só para a equipe)" : "Digite uma mensagem (Ctrl+V cola imagens/arquivos)"}
-                className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring ${
+                placeholder={noteMode ? "Nota privada (visível só para a equipe)" : "Digite uma mensagem (Enter envia, Shift+Enter quebra linha, Ctrl+V cola imagens/arquivos)"}
+                className={`w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring ${
                   noteMode ? "border-amber-400/50 bg-amber-100/40 dark:bg-amber-500/10" : "bg-background"
                 }`}
                 disabled={sending || (!noteMode && !canSend)}
