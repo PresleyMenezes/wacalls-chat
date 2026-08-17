@@ -37,6 +37,10 @@ import { cardsByChat, listBoards, getBoard } from "@/services/kanban";
 import type { KanbanBoard, KanbanCard, KanbanColumn } from "@/types/kanban";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
+// JID sentinela usado para o pseudo-participante "Todos" no dropdown de
+// menção — expandido para os JIDs reais de todos os participantes do grupo
+// somente na hora do envio (handleSend).
+const MENTION_ALL_JID = "__ALL__";
 
 interface Props {
   sessionId: string;
@@ -177,10 +181,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   // Insere a menção selecionada no texto, na posição do "@" que disparou a
   // busca, substituindo o texto digitado após o "@" pelo número (formato que
   // o WhatsApp exige para o destaque funcionar) e mantendo o cursor logo após.
-  // JID sentinela usado para o pseudo-participante "Todos" — expandido para
-  // todos os JIDs reais do grupo somente na hora do envio (handleSend).
-  const MENTION_ALL_JID = "__ALL__";
-  const insertMention = async (p: GroupParticipant) => {
+ const insertMention = async (p: GroupParticipant) => {
     const input = messageInputRef.current;
     const cursor = input?.selectionStart ?? text.length;
     const before = text.slice(0, cursor);
