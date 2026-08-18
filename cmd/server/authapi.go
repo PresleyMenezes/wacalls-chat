@@ -174,14 +174,26 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
-	u, token, err := s.auth.Login(r.Context(), body.Email, body.Password)
+		u, token, err := s.auth.Login(r.Context(), body.Email, body.Password)
 	if err != nil {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": err.Error()})
 		return
 	}
 	s.loginLimit.reset(clientIP(r))
 	setAuthCookie(w, r, token)
-	writeJSON(w, http.StatusOK, map[string]any{"user": u})
+	var queueIds []string
+	if ids, qerr := s.auth.QueuesFor(r.Context(), u.ID); qerr == nil {
+		queueIds = ids
+	}
+	userOut := map[string]any{
+		"id": u.ID, "email": u.Email, "name": u.Name, "roles": u.Roles,
+		"companyName": u.CompanyName, "cpf": u.CPF, "active": u.Active,
+		"createdAt": u.CreatedAt, "signatureEnabled": u.SignatureEnabled,
+		"signature": u.Signature, "avatarUrl": u.AvatarURL,
+		"permissions": u.Permissions, "parentId": u.ParentID,
+		"queueIds": queueIds,
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"user": userOut})
 }
 
 func (s *server) handleLogout(w http.ResponseWriter, r *http.Request) {
