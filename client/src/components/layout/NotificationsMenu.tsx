@@ -12,8 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useChats, markChatAsRead, setActiveChat } from "@/stores/chats";
 import { useCalls } from "@/stores/calls";
+import { useAuth } from "@/stores/auth";
 import { formatPhone } from "@/lib/phone-format";
-
 // NotificationsMenu surfaces a single bell with the combined unread/incoming
 // count and a popover listing the most recent unread chats plus any incoming
 // call. The data already lives in the chats/calls stores, so this component is
@@ -22,7 +22,12 @@ export const NotificationsMenu = () => {
   const chatsBySession = useChats((s) => s.chatsBySession);
   const incoming = useCalls((s) => s.incoming);
   const navigate = useNavigate();
-
+  const me = useAuth((s) => s.user);
+  // Admins (ou usuários sem filas vinculadas) continuam vendo tudo — a
+  // restrição só se aplica quando o usuário tem filas específicas
+  // atribuídas, para não notificar sobre conversas de filas alheias.
+  const isRestrictedByQueue = !me?.roles?.includes("admin") && !!me?.queueIds?.length;
+  const myQueueIds = useMemo(() => new Set(me?.queueIds ?? []), [me?.queueIds]);
   const { unreadChats, totalUnread } = useMemo(() => {
     const items: Array<{
       sessionId: string;
@@ -38,6 +43,7 @@ export const NotificationsMenu = () => {
       for (const c of chats) {
         const unread = c.unread ?? 0;
         if (unread <= 0) continue;
+        if (isRestrictedByQueue && c.queueId && !myQueueIds.has(c.queueId)) continue;
         total += 1;
         items.push({
           sessionId,
@@ -52,7 +58,7 @@ export const NotificationsMenu = () => {
     }
     items.sort((a, b) => b.unread - a.unread);
     return { unreadChats: items.slice(0, 8), totalUnread: total };
-  }, [chatsBySession]);
+  }, [chatsBySession, isRestrictedByQueue, myQueueIds]);
 
   const incomingCount = incoming ? 1 : 0;
   const badgeCount = totalUnread + incomingCount;
