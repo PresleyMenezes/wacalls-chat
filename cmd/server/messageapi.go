@@ -796,6 +796,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Text          string   `json:"text"`
 		MentionedJIDs []string `json:"mentionedJids"`
+		ReplyToID     string   `json:"replyToId"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
@@ -827,14 +828,37 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 		user = currentUserFromReq(r)
 	}
 	finalText := applySignature(user, body.Text)
-	var msg *waE2E.Message
+	// Citação real do WhatsApp: referencia a mensagem original via
+	// StanzaID/Participant/QuotedMessage, para que o app do celular exiba
+	// o balão de resposta nativo e clicável — não apenas texto embutido.
+	var quotedID string
+	var ctxInfo *waE2E.ContextInfo
+	if body.ReplyToID != "" {
+		if original, ok, gerr := s.messages.Get(ctx, sess.id, body.ReplyToID); gerr == nil && ok {
+			participant := original.SenderJID
+			if original.FromMe || participant == "" {
+				participant = jidOrEmpty(sess)
+			}
+			quotedID = original.ID
+			ctxInfo = &waE2E.ContextInfo{
+				StanzaID:      proto.String(original.ID),
+				Participant:   proto.String(participant),
+				QuotedMessage: &waE2E.Message{Conversation: proto.String(original.Body)},
+			}
+		}
+	}
 	if len(body.MentionedJIDs) > 0 {
+		if ctxInfo == nil {
+			ctxInfo = &waE2E.ContextInfo{}
+		}
+		ctxInfo.MentionedJID = body.MentionedJIDs
+	}
+	var msg *waE2E.Message
+	if ctxInfo != nil {
 		msg = &waE2E.Message{
 			ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-				Text: proto.String(finalText),
-				ContextInfo: &waE2E.ContextInfo{
-					MentionedJID: body.MentionedJIDs,
-				},
+				Text:        proto.String(finalText),
+				ContextInfo: ctxInfo,
 			},
 		}
 	} else {
@@ -848,7 +872,6 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		s.bumpWeeklyUsage(r.Context(), user.ID, "free_chats")
 	}
-
 	row := MessageRow{
 		ID:           resp.ID,
 		SessionID:    sess.id,
@@ -858,6 +881,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 		Ts:           resp.Timestamp.UnixMilli(),
 		Kind:         "text",
 		Body:         finalText,
+		QuotedID:     quotedID,
 		SentByUserID: userIDOrEmpty(user),
 	}
 	if row.Ts == 0 {
