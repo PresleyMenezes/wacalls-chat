@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Mic, Phone, PhoneOff, User, Video, X } from "lucide-react";
 import { useCalls, clearIncoming } from "@/stores/calls";
 import { useDevices } from "@/stores/devices";
 import { useAcceptCall } from "@/hooks/useAcceptCall";
 import { useRejectCall } from "@/hooks/useRejectCall";
+import { resolveLidPhone } from "@/services/chats";
 import { formatPhone } from "@/lib/phone-format";
 
 /**
@@ -64,10 +65,21 @@ export const IncomingCallModal = () => {
       try { ctx.close(); } catch { /* noop */ }
     };
   }, [ringing]);
-
+  // Alguns contatos só têm LID (identificador interno do WhatsApp) em vez
+  // do número de telefone real — resolvemos aqui para exibir o número
+  // verdadeiro de quem está ligando, quando possível.
+  const [resolvedPhone, setResolvedPhone] = useState<string | null>(null);
+  useEffect(() => {
+    setResolvedPhone(null);
+    if (!incoming || !incoming.peer.endsWith("@lid")) return;
+    let cancelled = false;
+    void resolveLidPhone(incoming.sessionId, incoming.peer)
+      .then((r) => { if (!cancelled && r?.phone) setResolvedPhone(r.phone); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [incoming?.sessionId, incoming?.peer]);
   if (!incoming) return null;
-
-  const phoneLabel = formatPhone(incoming.peer) || incoming.peer;
+  const phoneLabel = formatPhone(resolvedPhone || incoming.peer) || incoming.peer;
   const displayName = incoming.peerName?.trim() || "";
   const callTypeLabel = incoming.video ? "Video call" : "Voice call";
 
