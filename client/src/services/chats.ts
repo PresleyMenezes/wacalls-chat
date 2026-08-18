@@ -61,10 +61,20 @@ export const listGroupParticipants = (sessionId: string, jid: string) =>
     `/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/participants`,
   ).then((r) => r.participants ?? []);
 
-export const sendMessage = (sessionId: string, jid: string, text: string, mentionedJids?: string[]) =>
+export const sendMessage = (
+  sessionId: string,
+  jid: string,
+  text: string,
+  mentionedJids?: string[],
+  replyToId?: string,
+) =>
   http<{ message: ChatMessage }>(`/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/send`, {
     method: "POST",
-    body: JSON.stringify({ text, ...(mentionedJids && mentionedJids.length ? { mentionedJids } : {}) }),
+    body: JSON.stringify({
+      text,
+      ...(mentionedJids && mentionedJids.length ? { mentionedJids } : {}),
+      ...(replyToId ? { replyToId } : {}),
+    }),
   }).then((r) => r.message);
 
 export const assignChat = (sessionId: string, jid: string) =>
