@@ -121,14 +121,17 @@ func (m *SessionManager) infosFor(userID string, isAdmin bool) []SessionInfo {
 	if m.IsAdminRoleFn != nil {
 		isTenantAdmin = m.IsAdminRoleFn(userID)
 	}
-	// Sub-user -> intersect with explicit links.
+		// Vínculos explícitos de conexão (usado tanto para sub-usuários quanto
+	// para admins secundários que devem ficar restritos a suas conexões).
 	var linked map[string]struct{}
-	if !isTenantAdmin && m.UserSessionsFn != nil {
+	var hasExplicitLinks bool
+	if m.UserSessionsFn != nil {
 		ids := m.UserSessionsFn(userID)
 		linked = make(map[string]struct{}, len(ids))
 		for _, id := range ids {
 			linked[id] = struct{}{}
 		}
+		hasExplicitLinks = len(ids) > 0
 	}
 	out := make([]SessionInfo, 0, len(all))
 	for _, s := range all {
@@ -140,7 +143,16 @@ func (m *SessionManager) infosFor(userID string, isAdmin bool) []SessionInfo {
 		if !sameTenant {
 			continue
 		}
-		if isTenantAdmin || s.OwnerID == userID {
+		if s.OwnerID == userID {
+			out = append(out, s)
+			continue
+		}
+		// Admin do tenant sem vínculos explícitos definidos: mantém o
+		// comportamento legado de visão total da empresa (retrocompatível).
+		// Assim que conexões específicas forem vinculadas a este admin, ele
+		// passa a enxergar apenas aquelas — mesma regra que já vale para
+		// atendentes comuns.
+		if isTenantAdmin && !hasExplicitLinks {
 			out = append(out, s)
 			continue
 		}
