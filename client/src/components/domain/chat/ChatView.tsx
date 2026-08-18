@@ -1063,11 +1063,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                       </span>
                     )}
                     <div className={`min-w-0 ${selectionMode ? "pointer-events-none flex-1" : "flex-1"}`}>
-                      <MessageBubble
+                                            <MessageBubble
                         message={m}
                         showSender={isGroup && !m.fromMe}
                         reactions={reactionsByTarget.get(m.id)}
                         mentionNames={mentionNames}
+                        quotedPreview={resolveQuotedPreview(m)}
                         onForward={(msg) => setForwardTarget(msg)}
                         onSelect={startSelection}
                         onReply={(msg) => setReplyTo(msg)}
