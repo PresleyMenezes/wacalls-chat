@@ -336,6 +336,16 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   }, [sessionId, chatJid]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Destaque temporário ao navegar até uma mensagem citada (clique no
+  // balão de reply), imitando o comportamento do WhatsApp.
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const scrollToMessage = (id: string) => {
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightedId(id);
+    window.setTimeout(() => setHighlightedId((cur) => (cur === id ? null : cur)), 1500);
+  };
   const requireCloseReason = useOptionsStore((s) => !!s.options.requireCloseReason);
   const imgInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -1039,14 +1049,16 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
               lastDay = day;
               const m = item.msg;
               return (
-                <li key={item.key} className="flex flex-col">
+                <li key={item.key} id={`msg-${m.id}`} className="flex flex-col">
                   {showDay && (
                     <div className="my-2 self-center rounded-full bg-background px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
                       {day}
                     </div>
                   )}
                   <div
-                    className={`flex items-center gap-1.5 ${m.fromMe ? "flex-row-reverse" : ""}`}
+                    className={`flex items-center gap-1.5 rounded-md transition-colors duration-500 ${m.fromMe ? "flex-row-reverse" : ""} ${
+                      highlightedId === m.id ? "bg-amber-400/25" : ""
+                    }`}
                     onClick={() => { if (selectionMode) toggleSelected(m.id); }}
                   >
                     {selectionMode && (
@@ -1065,6 +1077,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
                         reactions={reactionsByTarget.get(m.id)}
                         mentionNames={mentionNames}
                         quotedPreview={resolveQuotedPreview(m)}
+                        onQuotedClick={() => {
+                          const targetId = resolveTargetId(m.quotedId);
+                          if (targetId) scrollToMessage(targetId);
+                        }}
                         onForward={(msg) => setForwardTarget(msg)}
                         onSelect={startSelection}
                         onReply={(msg) => setReplyTo(msg)}
