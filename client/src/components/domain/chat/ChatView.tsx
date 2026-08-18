@@ -22,7 +22,7 @@ import type { Tag } from "@/types/tag";
 import { listChatTags } from "@/services/tags";
 import { tagChipStyle } from "@/lib/tag-color";
 import { formatPhone } from "@/lib/phone-format";
-import { formatPeer, formatDayHeader, isGroupJid } from "./format";
+import { formatPeer, formatDayHeader, isGroupJid, previewBody } from "./format";
 import type { ChatClosure, ChatEvent, ChatMessage, ChatSummary } from "@/types/chat";
 import { eventStream } from "@/lib/event-stream";
 import { useDevices } from "@/stores/devices";
@@ -798,9 +798,11 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
   // visible bubble. If the referenced message isn't loaded (paginated out,
   // or id mismatch between backends) we fall back to the nearest prior
   // message so the emoji never floats alone in the timeline.
-  const normalizedIdToRealId = new Map<string, string>();
+    const normalizedIdToRealId = new Map<string, string>();
+  const messageById = new Map<string, ChatMessage>();
   for (const m of sortedForReactions) {
     for (const key of normalizeMessageIdCandidates(m.id)) normalizedIdToRealId.set(key, m.id);
+    messageById.set(m.id, m);
   }
   const resolveTargetId = (quotedId?: string): string | undefined => {
     if (!quotedId) return undefined;
@@ -809,6 +811,18 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
       if (found) return found;
     }
     return undefined;
+  };
+  // Resolve a citação (reply) de uma mensagem para um resumo curto — usado
+  // para renderizar o "balãozinho" de mensagem respondida, visível para
+  // todos os operadores da conversa (não só para quem respondeu).
+  const resolveQuotedPreview = (m: ChatMessage): { label: string; text: string } | null => {
+    const targetId = resolveTargetId(m.quotedId);
+    if (!targetId) return null;
+    const target = messageById.get(targetId);
+    if (!target) return null;
+    const label = target.fromMe ? "Você" : (target.senderName || "Contato");
+    const text = target.kind === "text" ? target.body : previewBody(target.kind, target.body);
+    return { label, text: text || "Mídia" };
   };
   const actorKeyFor = (m: ChatMessage): string => (m.fromMe ? "__me__" : (m.senderName || "__them__"));
   const reactionActorKey = (r: { fromMe: boolean; senderName?: string }): string => r.fromMe ? "__me__" : (r.senderName || "__them__");
