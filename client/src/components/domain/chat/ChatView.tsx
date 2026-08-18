@@ -483,11 +483,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
       return;
     }
     if (!canSend) return;
-    let composed = value;
-    if (replyTo) {
-      const quoted = quotePreview(replyTo);
-      composed = `${quoted}\n${value}`;
-    }
+    const composed = value;
     // Assinatura automática: o nome cadastrado do usuário tem precedência
     // sobre qualquer texto antigo salvo no perfil. Assim, sempre que o
     // atendente tiver um nome no cadastro, ele aparecerá como assinatura
@@ -521,7 +517,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
         outgoingText = outgoingText.slice(0, idx) + `@${digits}` + outgoingText.slice(idx + marker.length);
         mentionJidList.push(m.jid);
       }
-      await sendMessage(sessionId, chatJid, outgoingText, mentionJidList);
+      await sendMessage(sessionId, chatJid, outgoingText, mentionJidList, replyTo?.id);
       rememberMessage(value);
       setText("");
       setShowEmoji(false);
