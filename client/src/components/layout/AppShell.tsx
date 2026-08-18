@@ -142,7 +142,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
     { to: "/kanban", icon: KanbanSquare, label: t("nav.kanban", { defaultValue: "Kanban" }), perm: "chats" },
     { to: "/quick-replies", icon: MessageSquareText, label: "Respostas rápidas", perm: "chats" },
     { to: "/connections", icon: Wifi, label: t("nav.connections", { defaultValue: "Conexões" }), perm: "connections" },
-    { to: "/reports", icon: BarChart3, label: t("nav.reports", { defaultValue: "Relatórios" }), perm: "chats" },
+        { to: "/reports", icon: BarChart3, label: t("nav.reports", { defaultValue: "Relatórios" }), perm: "reports" },
   ];
   const aplicacoes: (NavItem & { perm: Permission; feat?: string })[] = [];
   if (isAdmin) {
