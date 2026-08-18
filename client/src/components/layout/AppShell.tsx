@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
+import { GlobalSearch } from "./GlobalSearch";
 import { UserMenu } from "./UserMenu";
 import { IncomingCallModal } from "./IncomingCallModal";
 import { ActiveCallBar } from "./ActiveCallBar";
@@ -291,6 +292,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
           </h1>
           <div className="ml-auto flex items-center gap-1.5">
             <LanguageSwitcher />
+            {user && <GlobalSearch />}
             {user && <NotificationsMenu />}
             <Button variant="ghost" size="icon" aria-label="Tela cheia" className="hidden sm:inline-flex" onClick={toggleFullscreen}>
               {isFs ? <Minimize2 className="h-4.5 w-4.5" /> : <Maximize2 className="h-4.5 w-4.5" />}
