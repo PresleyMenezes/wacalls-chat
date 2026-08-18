@@ -67,6 +67,7 @@ interface BubbleProps {
   // Renderizado como um pequeno balão acima do conteúdo, visível para
   // qualquer operador — não só para quem enviou a resposta.
   quotedPreview?: { label: string; text: string } | null;
+  onQuotedClick?: () => void;
 }
 // Substitui ocorrências de "@<dígitos>" pelo nome do contato correspondente,
 // usando o mapa de participantes do grupo. Dígitos sem correspondência
@@ -78,7 +79,7 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
-export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview }: BubbleProps) => {
+export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview, onQuotedClick }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
@@ -300,7 +301,9 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
         )}
         {quotedPreview && (
           <div
-            className={`mb-1 rounded-md border-l-4 px-2 py-1 text-xs ${
+            role={onQuotedClick ? "button" : undefined}
+            onClick={(e) => { if (onQuotedClick) { e.stopPropagation(); onQuotedClick(); } }}
+            className={`mb-1 rounded-md border-l-4 px-2 py-1 text-xs ${onQuotedClick ? "cursor-pointer hover:brightness-95" : ""} ${
               mine ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary/50 bg-muted"
             }`}
           >
