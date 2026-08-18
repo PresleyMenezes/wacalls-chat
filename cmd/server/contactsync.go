@@ -201,6 +201,30 @@ func (s *server) handleChatSync(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"meta": cur})
 }
 
+// resolveLidDigitsToPhone resolves a raw digit string that might actually be
+// a WhatsApp LID (internal identifier, not a real phone number) into the
+// real E.164 phone digits. Falls back to the original digits when resolution
+// fails or the input doesn't look like a LID — safe to call unconditionally.
+func resolveLidDigitsToPhone(ctx context.Context, sess *Session, digits string) string {
+	// Telefones BR reais têm no máximo 13 dígitos (55 + DDD + 9 dígitos).
+	// Qualquer coisa maior é quase certamente um LID interno do WhatsApp.
+	if len(digits) < 14 || sess.client == nil || sess.client.Store == nil || sess.client.Store.LIDs == nil {
+		return digits
+	}
+	lid, err := types.ParseJID(digits + "@lid")
+	if err != nil {
+		return digits
+	}
+	if pn, perr := sess.client.Store.LIDs.GetPNForLID(ctx, lid); perr == nil && !pn.IsEmpty() {
+		return pn.User
+	}
+	_, _ = sess.client.GetUserDevices(ctx, []types.JID{lid})
+	if pn, perr := sess.client.Store.LIDs.GetPNForLID(ctx, lid); perr == nil && !pn.IsEmpty() {
+		return pn.User
+	}
+	return digits
+}
+
 // handleLidToPN resolves a WhatsApp LID (e.g. "199347350294740@lid") to the
 // real phone-number JID, using whatsmeow's local LID↔PN store. Triggers a
 // best-effort USync when the mapping is missing so the next call hits the
