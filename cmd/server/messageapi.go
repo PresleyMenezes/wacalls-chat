@@ -1624,6 +1624,12 @@ func (s *server) handleChatContact(w http.ResponseWriter, r *http.Request) {
 			list = append(list, cc{n, p})
 		}
 	}
+	// Resolve LIDs para o número de telefone real antes de montar o vCard —
+	// caso contrário, o contato compartilhado chega ilegível no celular do
+	// destinatário (WhatsApp não reconhece o LID como um contato válido).
+	for i := range list {
+		list[i].Phone = resolveLidDigitsToPhone(r.Context(), sess, sanitizePhone(list[i].Phone))
+	}
 	if len(list) == 0 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name and phone required"})
 		return
