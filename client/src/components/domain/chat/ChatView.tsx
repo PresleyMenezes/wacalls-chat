@@ -398,8 +398,19 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     void saveSignature(next.enabled, next.text).catch(() => undefined);
   };
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+    useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight });
+    // Rola de novo após um curto atraso: imagens/mídias carregam de forma
+    // assíncrona e podem aumentar a altura da lista depois do primeiro
+    // scroll, deixando o usuário "preso" no meio da conversa.
+    const t1 = window.setTimeout(() => { el.scrollTo({ top: el.scrollHeight }); }, 250);
+    const t2 = window.setTimeout(() => { el.scrollTo({ top: el.scrollHeight }); }, 800);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [messages.length, chatJid]);
 
   useEffect(() => () => {
