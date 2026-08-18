@@ -192,7 +192,7 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
     }
   };
 
-  const submitEdit = async () => {
+    const submitEdit = async () => {
     if (!editing) return;
     setSaving(true);
     try {
@@ -203,8 +203,23 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
         cpf: form.cpf.trim(),
         newPassword: form.password || undefined,
       });
+      const wasAdmin = editing.roles.includes("admin");
+      const wantsAdmin = form.role === "admin";
+      if (wasAdmin !== wantsAdmin) {
+        // Mesma trava de segurança usada no fluxo de promover/rebaixar pela
+        // listagem: nunca remover o próprio admin, nem ficar sem nenhum.
+        if (!wantsAdmin && me?.id === editing.id) {
+          toast.error("Você não pode remover seu próprio papel de administrador.");
+        } else if (!wantsAdmin && wasAdmin && adminCount <= 1) {
+          toast.error("É necessário pelo menos um administrador ativo.");
+        } else {
+          await authApi.setRole(editing.id, "admin", wantsAdmin);
+        }
+      }
       await authApi.setUserQueues(editing.id, form.queueIds);
-      await authApi.setUserPermissions(editing.id, form.permissions);
+      if (form.role !== "admin") {
+        await authApi.setUserPermissions(editing.id, form.permissions);
+      }
       await authApi.setUserSessions(editing.id, form.sessionIds);
       toast.success("Usuário atualizado");
       setEditing(null);
