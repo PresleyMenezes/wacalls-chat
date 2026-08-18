@@ -298,6 +298,20 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
             </div>
           </>
         )}
+        {quotedPreview && (
+          <div
+            className={`mb-1 rounded-md border-l-4 px-2 py-1 text-xs ${
+              mine ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary/50 bg-muted"
+            }`}
+          >
+            <div className={`font-semibold ${mine ? "text-primary-foreground/90" : "text-primary"}`}>
+              {quotedPreview.label}
+            </div>
+            <div className={`truncate ${mine ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+              {quotedPreview.text}
+            </div>
+          </div>
+        )}
         {senderLabel && (
           <div className="mb-0.5 text-[11px] font-semibold leading-tight" style={{ color: senderColor }}>
             {senderLabel}
