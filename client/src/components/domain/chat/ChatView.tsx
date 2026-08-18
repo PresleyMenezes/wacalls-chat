@@ -46,9 +46,10 @@ interface Props {
   sessionId: string;
   chatJid: string | null;
   onStatusChange?: (status: "open" | "waiting" | "closed") => void;
+  jumpToMessageId?: string | null;
+  onJumpHandled?: () => void;
 }
-
-export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
+export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, onJumpHandled }: Props) => {
   const myId = useAuth((s) => s.user?.id ?? null);
   const myUser = useAuth((s) => s.user);
   const messages = useChats((s) =>
@@ -408,9 +409,23 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
     void saveSignature(next.enabled, next.text).catch(() => undefined);
   };
 
-    useEffect(() => {
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Se veio de um resultado de busca global, tenta ir direto para a
+    // mensagem em vez do fim da conversa.
+    if (jumpToMessageId) {
+      const target = document.getElementById(`msg-${jumpToMessageId}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedId(jumpToMessageId);
+        window.setTimeout(() => setHighlightedId((cur) => (cur === jumpToMessageId ? null : cur)), 1500);
+        onJumpHandled?.();
+        return;
+      }
+      // Mensagem ainda não carregada nesta passada — tenta de novo quando
+      // mais mensagens chegarem (efeito roda de novo com messages.length).
+    }
     el.scrollTo({ top: el.scrollHeight });
     // Rola de novo após um curto atraso: imagens/mídias carregam de forma
     // assíncrona e podem aumentar a altura da lista depois do primeiro
@@ -421,7 +436,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange }: Props) => {
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [messages.length, chatJid]);
+  }, [messages.length, chatJid, jumpToMessageId]);
 
   useEffect(() => () => {
     // Ensure no MediaRecorder / mic stream leaks across navigation.
