@@ -198,6 +198,12 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"user": nil, "needsSignup": s.needsSignup(r)})
 		return
 	}
+	var queueIds []string
+	if s.auth != nil {
+		if ids, err := s.auth.QueuesFor(r.Context(), u.ID); err == nil {
+			queueIds = ids
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": map[string]any{
 		"id": u.ID, "email": u.Email, "name": u.Name, "roles": u.Roles,
 		"companyName": u.CompanyName, "cpf": u.CPF, "active": u.Active,
@@ -205,6 +211,7 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 		"avatarUrl":   u.AvatarURL,
 		"permissions": u.Permissions,
 		"parentId":    u.ParentID,
+		"queueIds":    queueIds,
 	}})
 }
 
