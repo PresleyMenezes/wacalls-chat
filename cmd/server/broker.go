@@ -119,24 +119,32 @@ func (b *Broker) deliverScoped(sessionID string, ev any) {
 		return
 	}
 	owner := ""
-	tenant := ""
 	scoped := sessionID != ""
 	if scoped && b.SessionOwner != nil {
 		owner = b.SessionOwner(sessionID)
 	}
-	if scoped && b.SessionTenant != nil {
-		tenant = b.SessionTenant(sessionID)
-	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+	// Cache por chamada: evita recalcular a lista de sessões visíveis do
+	// mesmo usuário várias vezes quando ele tem múltiplas abas/conexões SSE.
+	visibleCache := map[string]map[string]bool{}
 	for s := range b.subs {
 		// Eventos com escopo por sessão NUNCA podem vazar para outros tenants.
-		// Se o dono não foi resolvido (sessão antiga sem owner_id), só admins
-		// recebem — clientes não-admin ficam sem aquele evento por segurança.
+		// Super-admin sempre recebe. Demais usuários só recebem eventos de
+		// sessões que estão efetivamente vinculadas a eles — mesma regra
+		// aplicada em SessionManager.infosFor (conexões vinculadas).
 		if scoped && !s.isAdmin {
 			allowed := owner != "" && s.userID == owner
-			if !allowed && tenant != "" && s.tenantID != "" {
-				allowed = s.tenantID == tenant
+			if !allowed && b.SessionsForFn != nil {
+				visible, ok := visibleCache[s.userID]
+				if !ok {
+					visible = map[string]bool{}
+					for _, si := range b.SessionsForFn(s.userID, false) {
+						visible[si.ID] = true
+					}
+					visibleCache[s.userID] = visible
+				}
+				allowed = visible[sessionID]
 			}
 			if !allowed {
 				continue
