@@ -61,15 +61,19 @@ export const ChatsPage = () => {
   // Deep-link entry point: /chats?sid=...&jid=... opens that conversation
   // directly (used by the dedicated /contacts page). The params are consumed
   // once and then cleared so refreshes don't re-fire the navigation.
+  const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null);
   useEffect(() => {
     const sid = searchParams.get("sid");
     const jid = searchParams.get("jid");
+    const mid = searchParams.get("mid");
     if (!sid && !jid) return;
     if (sid) setPickedSession(sid);
     if (sid && jid) setActiveChat(sid, jid);
+    if (mid) setJumpToMessageId(mid);
     const next = new URLSearchParams(searchParams);
     next.delete("sid");
     next.delete("jid");
+    next.delete("mid");
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -332,6 +336,8 @@ export const ChatsPage = () => {
           <ChatView
             sessionId={sessionId}
             chatJid={activeJid}
+            jumpToMessageId={jumpToMessageId}
+            onJumpHandled={() => setJumpToMessageId(null)}
             onStatusChange={(status) => {
               if (status === "open") setTab("open");
               else if (status === "closed" || status === "waiting") setTab("waiting");
