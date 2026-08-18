@@ -230,7 +230,17 @@ func (s *server) handleListUsers(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"users": users})
+	// A conta de super-admin nunca aparece na listagem para ninguém além
+	// dela mesma — evita que outro admin da empresa a edite, rebaixe ou
+	// remova por engano (ou de propósito).
+	filtered := users[:0]
+	for _, row := range users {
+		if strings.EqualFold(row.Email, SuperAdminEmail) && (u == nil || !strings.EqualFold(u.Email, SuperAdminEmail)) {
+			continue
+		}
+		filtered = append(filtered, row)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"users": filtered})
 }
 
 // handleListCompanies returns ALL tenant roots (companies) across the SaaS.
