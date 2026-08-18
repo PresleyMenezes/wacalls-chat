@@ -9,7 +9,7 @@ import (
 // SuperAdminEmail identifies the SaaS owner account that has access to
 // global Settings (plans, whitelabel, options, companies management).
 // Regular admin users from other companies do NOT have this access.
-const SuperAdminEmail = "presleymenezes@gmail.com"
+const SuperAdminEmail = "presleymenezes+superadm@gmail.com"
 
 type ctxKey int
 
