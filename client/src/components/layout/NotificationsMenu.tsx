@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useChats, markChatAsRead, setActiveChat } from "@/stores/chats";
 import { useCalls } from "@/stores/calls";
 import { useAuth } from "@/stores/auth";
+import { useSessions } from "@/stores/sessions";
 import { formatPhone } from "@/lib/phone-format";
 // NotificationsMenu surfaces a single bell with the combined unread/incoming
 // count and a popover listing the most recent unread chats plus any incoming
@@ -23,11 +24,19 @@ export const NotificationsMenu = () => {
   const incoming = useCalls((s) => s.incoming);
   const navigate = useNavigate();
   const me = useAuth((s) => s.user);
+  const sessions = useSessions((s) => s.sessions);
   // Admins (ou usuários sem filas vinculadas) continuam vendo tudo — a
   // restrição só se aplica quando o usuário tem filas específicas
   // atribuídas, para não notificar sobre conversas de filas alheias.
   const isRestrictedByQueue = !me?.roles?.includes("admin") && !!me?.queueIds?.length;
   const myQueueIds = useMemo(() => new Set(me?.queueIds ?? []), [me?.queueIds]);
+  // Fila padrão de cada conexão — usada como fallback quando a conversa em
+  // si não tem fila própria atribuída (caso mais comum).
+  const sessionQueueId = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const s of sessions) map[s.id] = s.queueId;
+    return map;
+  }, [sessions]);
   const { unreadChats, totalUnread } = useMemo(() => {
     const items: Array<{
       sessionId: string;
@@ -43,7 +52,10 @@ export const NotificationsMenu = () => {
       for (const c of chats) {
         const unread = c.unread ?? 0;
         if (unread <= 0) continue;
-        if (isRestrictedByQueue && c.queueId && !myQueueIds.has(c.queueId)) continue;
+        if (isRestrictedByQueue) {
+          const effectiveQueueId = c.queueId || sessionQueueId[sessionId];
+          if (effectiveQueueId && !myQueueIds.has(effectiveQueueId)) continue;
+        }
         total += 1;
         items.push({
           sessionId,
@@ -58,7 +70,7 @@ export const NotificationsMenu = () => {
     }
     items.sort((a, b) => b.unread - a.unread);
     return { unreadChats: items.slice(0, 8), totalUnread: total };
-  }, [chatsBySession, isRestrictedByQueue, myQueueIds]);
+  }, [chatsBySession, isRestrictedByQueue, myQueueIds, sessionQueueId]);
 
   const incomingCount = incoming ? 1 : 0;
   const badgeCount = totalUnread + incomingCount;
