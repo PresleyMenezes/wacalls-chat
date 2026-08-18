@@ -506,7 +506,9 @@ const ContactCard = ({ body, mine, sessionId }: { body: string; mine: boolean; s
     let cancelled = false;
     const digits = (parsed.phone || "").replace(/\D/g, "");
     if (!digits) return;
-    const looksLikeLid = digits.length >= 15 && !digits.startsWith("55");
+    // Telefones BR reais têm no máximo 13 dígitos (55 + DDD + 9 dígitos).
+    // Qualquer coisa maior é quase certamente um LID interno do WhatsApp.
+    const looksLikeLid = digits.length >= 14;
 
     const enrich = async () => {
       // 1) Try LID → PN resolution when the number looks like a LID.
