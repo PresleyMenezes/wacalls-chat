@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 // MessageRow mirrors a row in the `messages` table. Times are unix
@@ -227,6 +228,59 @@ func (s *messageStore) ListMessages(ctx context.Context, sessionID, chatJID stri
 		out[i], out[j] = out[j], out[i]
 	}
 	return out, nil
+}
+
+// SearchResult is a single match returned by the global message search,
+// enriched with enough context to jump straight to it in the UI.
+type SearchResult struct {
+	SessionID string `json:"sessionId"`
+	ChatJID   string `json:"chatJid"`
+	MessageID string `json:"messageId"`
+	Body      string `json:"body"`
+	Kind      string `json:"kind"`
+	Ts        int64  `json:"ts"`
+	FromMe    bool   `json:"fromMe"`
+}
+
+// Search looks up `query` (case-insensitive substring) across every message
+// in the given sessions, most recent first. Used by the global search bar —
+// callers must pre-filter `sessionIDs` to those the requesting user is
+// allowed to see (see SessionManager.infosFor).
+func (s *messageStore) Search(ctx context.Context, sessionIDs []string, query string, limit int) ([]SearchResult, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	query = strings.TrimSpace(query)
+	if query == "" || len(sessionIDs) == 0 {
+		return []SearchResult{}, nil
+	}
+	placeholders := make([]string, len(sessionIDs))
+	args := make([]any, 0, len(sessionIDs)+2)
+	for i, id := range sessionIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	args = append(args, "%"+query+"%", limit)
+	q := `SELECT session_id, chat_jid, id, body, kind, ts, from_me FROM messages
+		WHERE session_id IN (` + strings.Join(placeholders, ",") + `)
+		AND deleted = 0 AND body LIKE ? ESCAPE '\' COLLATE NOCASE
+		ORDER BY ts DESC LIMIT ?`
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []SearchResult{}
+	for rows.Next() {
+		var r SearchResult
+		var fromMe int
+		if err := rows.Scan(&r.SessionID, &r.ChatJID, &r.MessageID, &r.Body, &r.Kind, &r.Ts, &fromMe); err != nil {
+			return nil, err
+		}
+		r.FromMe = fromMe == 1
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // DeleteForSession is used when a session is deleted.
