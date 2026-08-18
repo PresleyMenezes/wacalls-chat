@@ -49,8 +49,8 @@ export interface ChatSummary {
   unread?: number;
   lastReadTs?: number;
   avatarUrl?: string;
+  queueId?: string;
 }
-
 export interface ChatMeta {
   sessionId: string;
   chatJid: string;
