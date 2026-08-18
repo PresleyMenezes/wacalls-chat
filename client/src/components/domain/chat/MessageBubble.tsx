@@ -60,10 +60,13 @@ interface BubbleProps {
   // Reactions that target this message (already resolved via quotedId
   // by the parent ChatView). Rendered as a small chip under the bubble
   // so it's clear which message was reacted to.
-  reactions?: Array<{ emoji: string; fromMe: boolean; senderName?: string }>;
   // Participantes do grupo (jid -> nome), usados para trocar "@<dígitos>"
   // pelo nome legível do contato mencionado ao renderizar o texto.
   mentionNames?: Record<string, string>;
+  // Preview da mensagem citada (resolvido pelo ChatView via quotedId).
+  // Renderizado como um pequeno balão acima do conteúdo, visível para
+  // qualquer operador — não só para quem enviou a resposta.
+  quotedPreview?: { label: string; text: string } | null;
 }
 // Substitui ocorrências de "@<dígitos>" pelo nome do contato correspondente,
 // usando o mapa de participantes do grupo. Dígitos sem correspondência
@@ -75,7 +78,7 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
-export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames }: BubbleProps) => {
+export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
