@@ -296,6 +296,7 @@ export default function ReportsPage() {
   const sessions = useSessions((s) => s.sessions);
   const [range, setRange] = useState<string>("30d");
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -442,7 +443,6 @@ export default function ReportsPage() {
         })),
     [report],
   );
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const selectedAgent = useMemo(
     () => (selectedAgentId === "all" ? null : topAgents.find((a) => a.userId === selectedAgentId) ?? null),
     [selectedAgentId, topAgents],
