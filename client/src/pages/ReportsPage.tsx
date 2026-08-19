@@ -257,7 +257,11 @@ const mergeChatsIntoSummary = (
   };
 };
 
-const mergeReportSources = (remote: ReportSummary | null, local: ReportSummary): ReportSummary => {
+const mergeReportSources = (
+  remote: ReportSummary | null,
+  local: ReportSummary,
+  agentFilterActive = false,
+): ReportSummary => {
   if (!remote) return local;
   const hasMessageBreakdown = (r: ReportSummary) => (r.messages?.inbound ?? 0) + (r.messages?.outbound ?? 0) > 0;
   const callScore = (r: ReportSummary) => r.calls?.total ?? 0;
@@ -282,7 +286,11 @@ const mergeReportSources = (remote: ReportSummary | null, local: ReportSummary):
     ...local,
     ...remote,
     messages: hasMessageBreakdown(remote) ? remote.messages : local.messages,
-    calls: callScore(remote) >= callScore(local) ? remote.calls : local.calls,
+    // Com filtro de agente ativo, o total filtrado do servidor é sempre
+    // menor (ou igual) que o total geral local — a heurística "quem tem
+    // mais dados" removeria o filtro sem querer, então nesse caso o
+    // resultado remoto (já filtrado corretamente) é sempre priorizado.
+    calls: agentFilterActive || callScore(remote) >= callScore(local) ? remote.calls : local.calls,
     tickets: ticketScore(remote) >= ticketScore(local) ? remote.tickets : local.tickets,
     daily: Array.from(dailyByDay.values()).sort((a, b) => a.day.localeCompare(b.day)),
     closureReasons: remote.closureReasons?.length ? remote.closureReasons : local.closureReasons,
@@ -382,7 +390,7 @@ export default function ReportsPage() {
           fetchReport({ from, to, sessionId: sid, agentId: callsAgentId === "all" ? undefined : callsAgentId }).catch(() => null),
           buildFallback(),
         ]);
-        setReport(mergeReportSources(remote, local));
+        setReport(mergeReportSources(remote, local, callsAgentId !== "all"));
       } finally {
         setLoading(false);
       }
