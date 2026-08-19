@@ -514,6 +514,17 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={callsAgentId} onValueChange={setCallsAgentId}>
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="Agente" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os agentes</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name?.trim() || u.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={range} onValueChange={setRange}>
               <SelectTrigger className="h-9 w-[140px]">
                 <SelectValue />
