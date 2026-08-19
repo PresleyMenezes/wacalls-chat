@@ -31,11 +31,12 @@ export type ReportSummary = {
   ratings: { total: number; good: number; bad: number; awful: number; average: number };
 };
 
-export const fetchReport = (params: { from?: number; to?: number; sessionId?: string }) => {
+export const fetchReport = (params: { from?: number; to?: number; sessionId?: string; agentId?: string }) => {
   const q = new URLSearchParams();
   if (params.from) q.set("from", String(params.from));
   if (params.to) q.set("to", String(params.to));
   if (params.sessionId) q.set("sessionId", params.sessionId);
+  if (params.agentId) q.set("agentId", params.agentId);
   const qs = q.toString();
   return apiGet<ReportSummary>(`/api/reports/summary${qs ? `?${qs}` : ""}`);
 };
