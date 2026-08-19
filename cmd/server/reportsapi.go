@@ -99,7 +99,7 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		from = to - int64(30*24*time.Hour/time.Millisecond)
 	}
 	requested := strings.TrimSpace(q.Get("sessionId"))
-
+	agentFilter := strings.TrimSpace(q.Get("agentId"))
 	visible := s.sessions.infosFor(u.ID, u.IsSuperAdmin())
 	sessionIDs := make([]string, 0, len(visible))
 	visibleSet := map[string]bool{}
@@ -175,6 +175,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 			calls, err := s.calls.ListBetween(r.Context(), sid, from, to)
 			if err == nil {
 				for _, c := range calls {
+					if agentFilter != "" && c.OwnerUser != agentFilter {
+						continue
+					}
 					summary.Calls.Total++
 					b := daily[reportDayKey(c.StartedAt)]
 					if strings.EqualFold(c.Direction, "outbound") {
