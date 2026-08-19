@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import { searchMessages } from "@/services/search";
@@ -102,7 +103,7 @@ export const GlobalSearch = () => {
     );
   }
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 p-4 pt-[10vh]" onClick={() => setOpen(false)}>
       <div
         className="flex w-full max-w-lg flex-col rounded-lg border bg-card shadow-2xl"
@@ -167,6 +168,7 @@ export const GlobalSearch = () => {
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
