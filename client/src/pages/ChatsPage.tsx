@@ -76,7 +76,7 @@ export const ChatsPage = () => {
     next.delete("mid");
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [searchParams]);
 
   const sessionId =
     pickedSession ?? activeId ?? sessions.find((s) => s.paired)?.id ?? null;
