@@ -409,6 +409,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
     void saveSignature(next.enabled, next.text).catch(() => undefined);
   };
 
+  // Evita que o scroll automático "para o fim" sobrescreva o salto até uma
+  // mensagem específica logo depois de tratá-lo (onJumpHandled limpa a prop
+  // no componente pai, o que por si só já dispara este efeito de novo).
+  const justJumpedRef = useRef(false);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -420,11 +424,16 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
         target.scrollIntoView({ behavior: "smooth", block: "center" });
         setHighlightedId(jumpToMessageId);
         window.setTimeout(() => setHighlightedId((cur) => (cur === jumpToMessageId ? null : cur)), 1500);
+        justJumpedRef.current = true;
         onJumpHandled?.();
         return;
       }
       // Mensagem ainda não carregada nesta passada — tenta de novo quando
       // mais mensagens chegarem (efeito roda de novo com messages.length).
+    }
+    if (justJumpedRef.current) {
+      justJumpedRef.current = false;
+      return;
     }
     el.scrollTo({ top: el.scrollHeight });
     // Rola de novo após um curto atraso: imagens/mídias carregam de forma
