@@ -372,7 +372,7 @@ export default function ReportsPage() {
     (async () => {
       try {
         const [remote, local] = await Promise.all([
-          fetchReport({ from, to, sessionId: sid }).catch(() => null),
+          fetchReport({ from, to, sessionId: sid, agentId: selectedAgentId === "all" ? undefined : selectedAgentId }).catch(() => null),
           buildFallback(),
         ]);
         setReport(mergeReportSources(remote, local));
@@ -380,7 +380,7 @@ export default function ReportsPage() {
         setLoading(false);
       }
     })();
-  }, [range, sessionId, sessions]);
+  }, [range, sessionId, sessions, selectedAgentId]);
 
 
 
