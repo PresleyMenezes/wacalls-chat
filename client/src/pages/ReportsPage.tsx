@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { listUsers } from "@/services/auth";
+import type { AuthUser } from "@/types/auth";
 import {
   BarChart3,
   Calendar,
@@ -297,8 +299,13 @@ export default function ReportsPage() {
   const [range, setRange] = useState<string>("30d");
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
+  const [callsAgentId, setCallsAgentId] = useState<string>("all");
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  useEffect(() => {
+    void listUsers().then(setUsers).catch(() => setUsers([]));
+  }, []);
 
   useEffect(() => {
     ensureSessionsWired();
