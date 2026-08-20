@@ -271,6 +271,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 			closures, err := s.chatMeta.listClosuresInRange(r.Context(), sid, from, to)
 			if err == nil {
 				for _, c := range closures {
+					if agentFilter != "" && c.UserID != agentFilter {
+						continue
+					}
 					label := strings.TrimSpace(c.Reason)
 					if label == "" {
 						label = "Sem descrição"
