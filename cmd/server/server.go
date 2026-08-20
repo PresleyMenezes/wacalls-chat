@@ -180,8 +180,8 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 
 	broker.PersistCall = func(rec CallRecord) {
 		owner := ""
-		if rec.Owner != nil {
-			owner = *rec.Owner
+		if rec.OwnerUserID != nil {
+			owner = *rec.OwnerUserID
 		}
 		started := rec.StartedAt
 		ended := int64(0)
