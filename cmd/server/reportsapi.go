@@ -161,9 +161,10 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 				// por ts ASC (listForReport), então basta percorrer em sequência.
 				awaitingSince := map[string]int64{}
 				for _, m := range rows {
-					if isGroupChatJID(m.ChatJID) {
-						continue
-					}
+					// Mensagens de grupo entram nos contadores desta seção do
+					// mesmo jeito que conversas de contato — grupos seguem o
+					// mesmo fluxo Aguardando → Atendendo → Finalizado (mesma
+					// decisão já aplicada aos fechamentos "com/sem mensagem").
 					// Deduplica mensagens de saída vistas por mais de uma conexão
 					// cadastrada no mesmo grupo (ver comentário acima) — cada ID
 					// de mensagem só é contado uma vez nos totais.
@@ -278,9 +279,6 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 			metas, err := s.chatMeta.ListBySession(r.Context(), sid)
 			if err == nil {
 				for jid, m := range metas {
-					if m.IsGroup || isGroupChatJID(jid) {
-						continue
-					}
 					if agentFilter != "" {
 						// "Em aberto" só faz sentido por agente quando a conversa
 						// está atribuída a ele. "Aguardando" nunca tem dono (por
