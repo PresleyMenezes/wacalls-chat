@@ -184,10 +184,12 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 							delete(awaitingSince, m.ChatJID)
 						}
 					}
-					} else {
-						summary.Messages.Inbound++
-						if b != nil {
-							b.MessagesIn++
+										} else {
+						if countsForAgent {
+							summary.Messages.Inbound++
+							if b != nil {
+								b.MessagesIn++
+							}
 						}
 						if _, ok := awaitingSince[m.ChatJID]; !ok {
 							awaitingSince[m.ChatJID] = m.Ts
@@ -242,6 +244,18 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 				for jid, m := range metas {
 					if m.IsGroup || isGroupChatJID(jid) {
 						continue
+					}
+					if agentFilter != "" {
+						// "Em aberto" só faz sentido por agente quando a conversa
+						// está atribuída a ele. "Aguardando" nunca tem dono (por
+						// definição), então não é filtrado — mesma lógica já
+						// aplicada às chamadas perdidas.
+						if m.Status == ChatStatusOpen && m.AssignedUserID != agentFilter {
+							continue
+						}
+						if m.Status != ChatStatusOpen && m.Status != ChatStatusClosed {
+							continue
+						}
 					}
 					switch m.Status {
 					case ChatStatusClosed:
