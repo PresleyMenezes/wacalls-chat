@@ -26,9 +26,12 @@ type reportCalls struct {
 }
 
 type reportTickets struct {
-	Closed  int `json:"closed"`
-	Waiting int `json:"waiting"`
-	Open    int `json:"open"`
+	Closed          int `json:"closed"`
+	Waiting         int `json:"waiting"`
+	Open            int `json:"open"`
+	ClosedWithMsg   int `json:"closedWithMsg"`
+	ClosedNoMsg     int `json:"closedNoMsg"`
+	AvgResolutionMs int64 `json:"avgResolutionMs,omitempty"`
 }
 
 type reportDaily struct {
@@ -254,6 +257,18 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					a.Closed++
 					if b := daily[reportDayKey(c.ClosedAt)]; b != nil {
 						b.TicketsClosed++
+					}
+					// Distingue conversas encerradas em que o agente chegou a
+					// responder de vez daquelas fechadas sem nenhuma mensagem
+					// enviada (ex.: spam, engano, fechamento em lote).
+					if s.messages != nil && !isGroupChatJID(c.ChatJID) {
+						if hasMsg, herr := s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, c.ClosedAt+1); herr == nil {
+							if hasMsg {
+								summary.Tickets.ClosedWithMsg++
+							} else {
+								summary.Tickets.ClosedNoMsg++
+							}
+						}
 					}
 				}
 			}
