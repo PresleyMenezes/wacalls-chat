@@ -164,6 +164,19 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					if isGroupChatJID(m.ChatJID) {
 						continue
 					}
+					// Deduplica mensagens de saída vistas por mais de uma conexão
+					// cadastrada no mesmo grupo (ver comentário acima) — cada ID
+					// de mensagem só é contado uma vez nos totais.
+					effectiveSentByUserID := m.SentByUserID
+					if m.FromMe {
+						if best, ok := bestSentByUserID[m.ID]; ok {
+							effectiveSentByUserID = best
+						}
+						if countedMsgIDs[m.ID] {
+							continue
+						}
+						countedMsgIDs[m.ID] = true
+					}
 					// Com filtro de agente ativo: mensagens enviadas contam se
 					// foram digitadas por ele; mensagens recebidas contam se a
 					// conversa está (ou estava) atribuída a ele. Sem filtro,
@@ -171,7 +184,7 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					countsForAgent := true
 					if agentFilter != "" {
 						if m.FromMe {
-							countsForAgent = m.SentByUserID == agentFilter
+							countsForAgent = effectiveSentByUserID == agentFilter
 						} else {
 							countsForAgent = metasForAgent[m.ChatJID].AssignedUserID == agentFilter
 						}
@@ -187,11 +200,11 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 								b.MessagesOut++
 							}
 						}
-						if m.SentByUserID != "" {
-						a := agents[m.SentByUserID]
+						if effectiveSentByUserID != "" {
+						a := agents[effectiveSentByUserID]
 						if a == nil {
-							a = &reportAgentCount{UserID: m.SentByUserID, respondedChatSet: map[string]bool{}}
-							agents[m.SentByUserID] = a
+							a = &reportAgentCount{UserID: effectiveSentByUserID, respondedChatSet: map[string]bool{}}
+							agents[effectiveSentByUserID] = a
 						}
 						if a.respondedChatSet == nil {
 							a.respondedChatSet = map[string]bool{}
