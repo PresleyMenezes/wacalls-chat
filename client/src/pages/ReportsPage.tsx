@@ -80,6 +80,7 @@ const KpiCard = ({
   delta,
   icon: Icon,
   tone,
+  subStats,
 }: {
   label: string;
   value: string;
@@ -87,6 +88,7 @@ const KpiCard = ({
   delta?: { value: number; positive?: boolean };
   icon: typeof Phone;
   tone: string;
+  subStats?: { label: string; value: string }[];
 }) => (
   <div className="rounded-xl border bg-card p-4 transition hover:shadow-md">
     <div className="flex items-start justify-between">
@@ -98,6 +100,16 @@ const KpiCard = ({
       </span>
     </div>
     <div className="mt-3 text-2xl font-semibold tabular-nums">{value}</div>
+    {subStats && subStats.length > 0 && (
+      <div className="mt-1.5 space-y-0.5">
+        {subStats.map((s) => (
+          <div key={s.label} className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{s.label}</span>
+            <span className="font-medium tabular-nums text-foreground/80">{s.value}</span>
+          </div>
+        ))}
+      </div>
+    )}
     <div className="mt-1 flex items-center gap-2">
       {hint ? <span className="text-[11px] text-muted-foreground">{hint}</span> : null}
       {delta ? (
