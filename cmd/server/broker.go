@@ -20,13 +20,17 @@ type CallRecord struct {
 	SessionID string     `json:"sessionId"`
 	CallID    string     `json:"callId"`
 	Owner     *string    `json:"owner"`
-	Direction string     `json:"direction"`
-	Peer      string     `json:"peer"`
-	StartedAt int64      `json:"startedAt"`
-	Status    CallStatus `json:"status"`
-	EndedAt   *int64     `json:"endedAt,omitempty"`
-	EndReason string     `json:"endReason,omitempty"`
-	Answered  bool       `json:"answered,omitempty"`
+	// OwnerUserID is the authenticated user's account ID (distinct from
+	// Owner, which is a per-browser-tab client ID used for claim/exclusivity
+	// logic). Used exclusively for per-agent reporting.
+	OwnerUserID *string    `json:"-"`
+	Direction   string     `json:"direction"`
+	Peer        string     `json:"peer"`
+	StartedAt   int64      `json:"startedAt"`
+	Status      CallStatus `json:"status"`
+	EndedAt     *int64     `json:"endedAt,omitempty"`
+	EndReason   string     `json:"endReason,omitempty"`
+	Answered    bool       `json:"answered,omitempty"`
 }
 
 type AuthSnapshot struct {
@@ -267,6 +271,19 @@ func (b *Broker) setOwner(id, owner string) bool {
 	}
 	c.Owner = &owner
 	return true
+}
+// setOwnerUserID records the authenticated user's ID on the call, separate
+// from the client-tab-based Owner used for claim exclusivity. Best-effort:
+// used only for per-agent reporting, so it's fine if this fails silently.
+func (b *Broker) setOwnerUserID(id, userID string) {
+	if userID == "" {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if c, ok := b.calls[id]; ok {
+		c.OwnerUserID = &userID
+	}
 }
 
 func (b *Broker) ownerActiveCall(owner string) string {
