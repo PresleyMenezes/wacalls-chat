@@ -316,6 +316,13 @@ const mergeReportSources = (
 
 export default function ReportsPage() {
   const sessions = useSessions((s) => s.sessions);
+  // A store de sessões recebe um array NOVO a cada evento em tempo real
+  // (session-list, auth-state), mesmo sem mudança real de conteúdo. Usar
+  // `sessions` direto como dependência do efeito abaixo faria o relatório
+  // ser buscado de novo a cada evento, criando corridas entre requisições
+  // (a mais lenta podia "vencer" e sobrescrever a tela com dados velhos/
+  // incompletos). Uma chave estável, derivada só dos IDs, evita isso.
+  const sessionsKey = useMemo(() => sessions.map((s) => s.id).sort().join(","), [sessions]);
   const [range, setRange] = useState<string>("30d");
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
@@ -332,6 +339,11 @@ export default function ReportsPage() {
   }, []);
 
   useEffect(() => {
+    // Ignora a resposta desta busca se uma busca mais nova já tiver sido
+    // disparada enquanto esta ainda estava em andamento (corrida entre
+    // requisições — buildFallback faz várias chamadas sequenciais e pode
+    // demorar mais que a busca seguinte, chegando "atrasada").
+    let cancelled = false;
     const days = RANGES[range] ?? 30;
     const to = Date.now();
     const from = to - days * 24 * 60 * 60 * 1000;
@@ -402,12 +414,16 @@ export default function ReportsPage() {
           fetchReport({ from, to, sessionId: sid, agentId: callsAgentId === "all" ? undefined : callsAgentId }).catch(() => null),
           buildFallback(),
         ]);
+        if (cancelled) return;
         setReport(mergeReportSources(remote, local, callsAgentId !== "all"));
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
-  }, [range, sessionId, sessions, callsAgentId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [range, sessionId, sessionsKey, callsAgentId]);
 
 
 
