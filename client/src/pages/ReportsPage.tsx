@@ -638,7 +638,16 @@ export default function ReportsPage() {
             <KpiCard label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
             <KpiCard label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
             <KpiCard label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
-            <KpiCard label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" />
+            <KpiCard
+              label="Finalizados"
+              value={String(tickets?.closed ?? 0)}
+              icon={TrendingUp}
+              tone="bg-emerald-500/15 text-emerald-400"
+              subStats={[
+                { label: "Sem mensagem", value: String(tickets?.closedNoMsg ?? 0) },
+                { label: "Com mensagem", value: String(tickets?.closedWithMsg ?? 0) },
+              ]}
+            />
           </div>
         </section>
 
