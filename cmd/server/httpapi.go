@@ -641,6 +641,9 @@ func (s *server) doAccept(sess *Session, w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "claimed by another client"})
 		return
 	}
+	if u := currentUserFromReq(r); u != nil {
+		s.broker.setOwnerUserID(id, u.ID)
+	}
 	s.broker.emitIncomingClaimed(sess.id, id, owner)
 	if err := ac.cm.AcceptCall(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
