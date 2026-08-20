@@ -303,7 +303,7 @@ const mergeReportSources = (
     // mais dados" removeria o filtro sem querer, então nesse caso o
     // resultado remoto (já filtrado corretamente) é sempre priorizado.
     calls: agentFilterActive || callScore(remote) >= callScore(local) ? remote.calls : local.calls,
-    tickets: ticketScore(remote) >= ticketScore(local) ? remote.tickets : local.tickets,
+    tickets: agentFilterActive || ticketScore(remote) >= ticketScore(local) ? remote.tickets : local.tickets,
     daily: Array.from(dailyByDay.values()).sort((a, b) => a.day.localeCompare(b.day)),
     closureReasons: remote.closureReasons?.length ? remote.closureReasons : local.closureReasons,
     agents: remote.agents?.length ? remote.agents : local.agents,
