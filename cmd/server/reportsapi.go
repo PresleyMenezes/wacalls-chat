@@ -260,7 +260,11 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					}
 					// Distingue conversas encerradas em que o agente chegou a
 					// responder de vez daquelas fechadas sem nenhuma mensagem
-					// enviada (ex.: spam, engano, fechamento em lote).
+					// enviada (ex.: spam, engano, fechamento em lote). Contamos
+					// a partir dos EVENTOS de fechamento no período (não do
+					// status atual) para não perder fechamentos de conversas
+					// que foram reabertas depois — por isso o total exibido
+					// ("Finalizados") também deriva dessa mesma contagem.
 					if s.messages != nil && !isGroupChatJID(c.ChatJID) {
 						if hasMsg, herr := s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, c.ClosedAt+1); herr == nil {
 							if hasMsg {
@@ -322,6 +326,11 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	if totalFirstResponses > 0 {
 		summary.AvgFirstResponseMs = totalFirstResponseMs / int64(totalFirstResponses)
 	}
+	// O card "Finalizados" exibido reflete os fechamentos ocorridos NO
+	// PERÍODO (mesma base dos sub-totais com/sem mensagem), não o status
+	// atual das conversas — evitando o número de cima divergir da soma dos
+	// dois valores pequenos abaixo dele.
+	summary.Tickets.Closed = summary.Tickets.ClosedWithMsg + summary.Tickets.ClosedNoMsg
 	sort.Slice(summary.Agents, func(i, j int) bool { return summary.Agents[i].Closed > summary.Agents[j].Closed })
 	writeJSON(w, http.StatusOK, summary)
 }
