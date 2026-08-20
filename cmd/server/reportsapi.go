@@ -123,6 +123,13 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	agents := map[string]*reportAgentCount{}
 
 	for _, sid := range sessionIDs {
+		// Pré-carrega a atribuição atual de cada conversa uma única vez por
+		// sessão, reaproveitada para filtrar mensagens/tickets por agente
+		// sem disparar uma consulta por mensagem.
+		var metasForAgent map[string]ChatMeta
+		if agentFilter != "" && s.chatMeta != nil {
+			metasForAgent, _ = s.chatMeta.ListBySession(r.Context(), sid)
+		}
 		if s.messages != nil {
 			rows, err := s.messages.listForReport(r.Context(), sid, from, to)
 			if err == nil {
@@ -134,12 +141,28 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					if isGroupChatJID(m.ChatJID) {
 						continue
 					}
-					summary.Messages.Total++
+					// Com filtro de agente ativo: mensagens enviadas contam se
+					// foram digitadas por ele; mensagens recebidas contam se a
+					// conversa está (ou estava) atribuída a ele. Sem filtro,
+					// tudo é contado normalmente (comportamento geral).
+					countsForAgent := true
+					if agentFilter != "" {
+						if m.FromMe {
+							countsForAgent = m.SentByUserID == agentFilter
+						} else {
+							countsForAgent = metasForAgent[m.ChatJID].AssignedUserID == agentFilter
+						}
+					}
+					if countsForAgent {
+						summary.Messages.Total++
+					}
 					b := daily[reportDayKey(m.Ts)]
 					if m.FromMe {
-						summary.Messages.Outbound++
-						if b != nil {
-							b.MessagesOut++
+						if countsForAgent {
+							summary.Messages.Outbound++
+							if b != nil {
+								b.MessagesOut++
+							}
 						}
 						if m.SentByUserID != "" {
 						a := agents[m.SentByUserID]
