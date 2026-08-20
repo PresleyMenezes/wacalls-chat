@@ -278,7 +278,7 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		if s.chatMeta != nil {
 			metas, err := s.chatMeta.ListBySession(r.Context(), sid)
 			if err == nil {
-				for jid, m := range metas {
+				for _, m := range metas {
 					if agentFilter != "" {
 						// "Em aberto" só faz sentido por agente quando a conversa
 						// está atribuída a ele. "Aguardando" nunca tem dono (por
