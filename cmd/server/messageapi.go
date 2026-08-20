@@ -872,6 +872,7 @@ func (s *server) handleChatSend(w http.ResponseWriter, r *http.Request) {
 	if user != nil {
 		s.bumpWeeklyUsage(r.Context(), user.ID, "free_chats")
 	}
+	s.log.Warn("handleChatSend: diag", "chatJid", jid.String(), "isGroup", isGroupChatJID(jid.String()), "user_nil", user == nil, "userID", userIDOrEmpty(user))
 	row := MessageRow{
 		ID:           resp.ID,
 		SessionID:    sess.id,
