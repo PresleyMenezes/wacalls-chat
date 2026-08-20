@@ -641,7 +641,10 @@ func (s *server) doAccept(sess *Session, w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "claimed by another client"})
 		return
 	}
-	if u := currentUserFromReq(r); u != nil {
+	u := currentUserFromReq(r)
+	s.log.Warn("doAccept: resolving owner user", "callId", id, "user_nil", u == nil)
+	if u != nil {
+		s.log.Warn("doAccept: setting owner user id", "callId", id, "userID", u.ID)
 		s.broker.setOwnerUserID(id, u.ID)
 	}
 	s.broker.emitIncomingClaimed(sess.id, id, owner)
