@@ -121,7 +121,30 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	daily := makeDailyBuckets(from, to)
 	reasonCounts := map[string]int{}
 	agents := map[string]*reportAgentCount{}
-
+	// Quando duas conexões cadastradas participam do mesmo grupo, a mesma
+	// mensagem de grupo pode ser registrada em ambas as sessões — uma com
+	// a atribuição correta do agente, outra "espectadora" sem atribuição
+	// (a conexão só viu o eco da mensagem circulando no grupo, sem saber
+	// quem digitou). Pré-carregamos a melhor atribuição conhecida por ID de
+	// mensagem, e mais adiante contamos cada ID de mensagem no máximo uma
+	// vez, para não inflar os totais nem perder a atribuição do agente.
+	bestSentByUserID := map[string]string{}
+	if s.messages != nil {
+		for _, sid := range sessionIDs {
+			rows, err := s.messages.listForReport(r.Context(), sid, from, to)
+			if err != nil {
+				continue
+			}
+			for _, m := range rows {
+				if m.FromMe && m.SentByUserID != "" {
+					if _, ok := bestSentByUserID[m.ID]; !ok {
+						bestSentByUserID[m.ID] = m.SentByUserID
+					}
+				}
+			}
+		}
+	}
+	countedMsgIDs := map[string]bool{}
 	for _, sid := range sessionIDs {
 		// Pré-carrega a atribuição atual de cada conversa uma única vez por
 		// sessão, reaproveitada para filtrar mensagens/tickets por agente
