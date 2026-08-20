@@ -554,9 +554,17 @@ export default function ReportsPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <KpiCard label="Total" value={String(calls?.total ?? 0)} icon={Phone} tone="bg-sky-500/15 text-sky-400" />
             <KpiCard label="Realizadas" value={String(calls?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
-            <KpiCard label="Recebidas" value={String(calls?.inbound ?? 0)} hint={`${missedPct}% perdidas`} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
+            <KpiCard
+              label="Recebidas"
+              value={String(calls?.inbound ?? 0)}
+              hint={callsAgentId === "all" ? `${missedPct}% perdidas` : undefined}
+              icon={PhoneIncoming}
+              tone="bg-primary/15 text-primary"
+            />
             <KpiCard label="Atendidas" value={String(calls?.answered ?? 0)} hint={`${answeredPct}% do total`} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" />
-            <KpiCard label="Perdidas" value={String(calls?.missed ?? 0)} icon={Calendar} tone="bg-rose-500/15 text-rose-400" />
+            {callsAgentId === "all" && (
+              <KpiCard label="Perdidas" value={String(calls?.missed ?? 0)} icon={Calendar} tone="bg-rose-500/15 text-rose-400" />
+            )}
             <KpiCard label="Duração média" value={formatDuration(calls?.avgDurationMs ?? 0)} hint="por ligação" icon={Clock} tone="bg-violet-500/15 text-violet-400" />
           </div>
         </section>
