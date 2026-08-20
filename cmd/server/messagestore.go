@@ -355,7 +355,7 @@ func (s *messageStore) HasPriorOutbound(ctx context.Context, sessionID, chatJID 
 
 // listForReport returns minimal rows (chat_jid + from_me + ts) for the reporting window.
 func (s *messageStore) listForReport(ctx context.Context, sessionID string, from, to int64) ([]MessageRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT chat_jid, from_me, ts, COALESCE(sent_by_user_id, '') FROM messages
+	rows, err := s.db.QueryContext(ctx, `SELECT id, chat_jid, from_me, ts, COALESCE(sent_by_user_id, '') FROM messages
 		WHERE session_id = ? AND ts >= ? AND ts <= ? ORDER BY ts ASC`, sessionID, from, to)
 	if err != nil {
 		return nil, err
@@ -363,14 +363,15 @@ func (s *messageStore) listForReport(ctx context.Context, sessionID string, from
 	defer rows.Close()
 	out := []MessageRow{}
 	for rows.Next() {
+		var id string
 		var chatJID string
 		var fromMe int
 		var ts int64
 		var sentBy string
-		if err := rows.Scan(&chatJID, &fromMe, &ts, &sentBy); err != nil {
+		if err := rows.Scan(&id, &chatJID, &fromMe, &ts, &sentBy); err != nil {
 			return nil, err
 		}
-		out = append(out, MessageRow{ChatJID: chatJID, FromMe: fromMe == 1, Ts: ts, SentByUserID: sentBy})
+		out = append(out, MessageRow{ID: id, ChatJID: chatJID, FromMe: fromMe == 1, Ts: ts, SentByUserID: sentBy})
 	}
 	return out, rows.Err()
 }
