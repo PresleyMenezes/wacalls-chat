@@ -265,7 +265,7 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					// status atual) para não perder fechamentos de conversas
 					// que foram reabertas depois — por isso o total exibido
 					// ("Finalizados") também deriva dessa mesma contagem.
-					if s.messages != nil && !isGroupChatJID(c.ChatJID) {
+					if s.messages != nil {
 						if hasMsg, herr := s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, c.ClosedAt+1); herr == nil {
 							if hasMsg {
 								summary.Tickets.ClosedWithMsg++
