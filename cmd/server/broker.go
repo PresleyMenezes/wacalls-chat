@@ -233,8 +233,20 @@ func (b *Broker) emitBilling(userID, status, planID string, currentPeriodEnd int
 func (b *Broker) upsertCall(r CallRecord) {
 	b.mu.Lock()
 	cp := r
-	if prev, ok := b.calls[r.CallID]; ok && prev.Answered {
-		cp.Answered = true
+	if prev, ok := b.calls[r.CallID]; ok {
+		if prev.Answered {
+			cp.Answered = true
+		}
+		// Preserva quem reivindicou/atendeu a chamada — updates de status
+		// vindos de eventos do WhatsApp não sabem quem é o operador, e sem
+		// isso o dado gravado em setOwner/setOwnerUserID seria apagado
+		// silenciosamente na próxima atualização de status.
+		if cp.Owner == nil && prev.Owner != nil {
+			cp.Owner = prev.Owner
+		}
+		if cp.OwnerUserID == nil && prev.OwnerUserID != nil {
+			cp.OwnerUserID = prev.OwnerUserID
+		}
 	}
 	if cp.Status == StatusConnected {
 		cp.Answered = true
