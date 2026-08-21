@@ -81,6 +81,7 @@ const KpiCard = ({
   icon: Icon,
   tone,
   subStats,
+  className,
 }: {
   label: string;
   value: string;
@@ -89,8 +90,9 @@ const KpiCard = ({
   icon: typeof Phone;
   tone: string;
   subStats?: { label: string; value: string }[];
+  className?: string;
 }) => (
-  <div className="rounded-xl border bg-card p-4 transition hover:shadow-md">
+  <div className={`rounded-xl border bg-card p-4 transition hover:shadow-md ${className ?? ""}`}>
     <div className="flex items-start justify-between">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
@@ -669,38 +671,43 @@ export default function ReportsPage() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5" /> Atendimentos no chat
           </h3>
-          <div className="grid grid-cols-8 gap-2">
-            {callsAgentId === "all" && (
-              <>
-                <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
-                <KpiCard label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
-              </>
-            )}
-            <KpiCard label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
-            <KpiCard
-              label="Respondidas"
-              value={String(
-                callsSelectedAgent
-                  ? callsSelectedAgent.respondedChats
-                  : topAgents.reduce((sum, a) => sum + a.respondedChats, 0),
+          <div className="flex flex-wrap gap-3">
+            {/* Bloco 1: interações gerais */}
+            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
+              {callsAgentId === "all" && (
+                <>
+                  <KpiCard className="flex-1" label="Interações" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
+                  <KpiCard className="flex-1" label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
+                </>
               )}
-              icon={UsersIcon}
-              tone="bg-sky-500/15 text-sky-400"
-            />
-            <KpiCard label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
-            {callsAgentId === "all" && (
-              <KpiCard label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
-            )}
-            <KpiCard
-              label="Finalizados"
-              value={String(tickets?.closed ?? 0)}
-              icon={TrendingUp}
-              tone="bg-emerald-500/15 text-emerald-400"
-              subStats={[
-                { label: "Sem mensagem", value: String(tickets?.closedNoMsg ?? 0) },
-                { label: "Com mensagem", value: String(tickets?.closedWithMsg ?? 0) },
-              ]}
-            />
+              <KpiCard className="flex-1" label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
+            </div>
+            {/* Bloco 2: finalizados e sua composição */}
+            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
+              <KpiCard className="flex-1" label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" />
+              <KpiCard className="flex-1" label="Com mensagem" value={String(tickets?.closedWithMsg ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
+              <KpiCard className="flex-1" label="Sem mensagem" value={String(tickets?.closedNoMsg ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+            </div>
+            {/* Bloco 3: fila de trabalho */}
+            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
+              <KpiCard
+                className="flex-1"
+                label="Respondidas"
+                value={String(
+                  callsSelectedAgent
+                    ? callsSelectedAgent.respondedChats
+                    : topAgents.reduce((sum, a) => sum + a.respondedChats, 0),
+                )}
+                icon={UsersIcon}
+                tone="bg-sky-500/15 text-sky-400"
+              />
+              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
+              {callsAgentId === "all" && (
+                <KpiCard className="flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+              )}
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             <KpiCard
               label="Tempo médio 1ª resposta"
               value={
@@ -710,6 +717,12 @@ export default function ReportsPage() {
               }
               icon={Clock}
               tone="bg-violet-500/15 text-violet-400"
+            />
+            <KpiCard
+              label="Tempo médio de conversa finalizada"
+              value={formatMinutes(tickets?.avgResolutionMs ? Math.round(tickets.avgResolutionMs / 60000) : null)}
+              icon={TrendingUp}
+              tone="bg-emerald-500/15 text-emerald-400"
             />
           </div>
         </section>
