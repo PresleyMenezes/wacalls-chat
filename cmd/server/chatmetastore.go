@@ -403,6 +403,31 @@ func (s *chatMetaStore) listOpenedEventsInRange(ctx context.Context, sessionID s
 	return out, rows.Err()
 }
 
+// createdTimestampsBySession returns, for every chat in the session, the
+// timestamp of its "created" lifecycle event (fired once, the first time
+// the chat is ever seen) — used to compute "tempo médio de finalização"
+// (from conversation start to close), so it's not time-bounded by the
+// report's [from, to] window: a chat closed inside the window may have
+// been created before it.
+func (s *chatMetaStore) createdTimestampsBySession(ctx context.Context, sessionID string) (map[string]int64, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT chat_jid, MIN(ts) FROM chat_events
+		WHERE session_id=? AND kind='created' GROUP BY chat_jid`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int64{}
+	for rows.Next() {
+		var jid string
+		var ts int64
+		if err := rows.Scan(&jid, &ts); err != nil {
+			return nil, err
+		}
+		out[jid] = ts
+	}
+	return out, rows.Err()
+}
+
 // InsertEvent appends a lifecycle event for a chat. Returns the row ID.
 func (s *chatMetaStore) InsertEvent(ctx context.Context, e ChatEvent) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `INSERT INTO chat_events (session_id, chat_jid, kind, user_id, user_email, detail, ts)
