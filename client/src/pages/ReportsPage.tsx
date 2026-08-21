@@ -712,10 +712,10 @@ export default function ReportsPage() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="messagesOut" name="Enviadas" fill={C.emerald} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="respondedChats" name="Respondidas" fill={C.sky} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="opened" name="Abertas" fill={C.amber} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" fill={C.violet} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="messagesOut" name="Enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.sky} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="opened" name="Abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.violet} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
