@@ -194,7 +194,7 @@ function ColumnView({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-3 transition",
+        "flex w-72 shrink-0 flex-col rounded-lg bg-muted/40 p-3 transition max-h-[calc(100vh-220px)] overflow-y-auto",
         isOver && "ring-2 ring-primary/40",
       )}
     >
@@ -657,7 +657,7 @@ export default function KanbanPage() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-4 pb-4">
+            <div className="flex items-start gap-4 pb-4">
               {columns.map((col) => (
                 <ColumnView
                   key={col.id}
