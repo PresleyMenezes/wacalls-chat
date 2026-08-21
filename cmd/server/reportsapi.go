@@ -73,6 +73,14 @@ type reportRatings struct {
 	Average int `json:"average"`
 }
 
+type reportHourly struct {
+	Hour           int `json:"hour"`
+	MessagesOut    int `json:"messagesOut"`
+	RespondedChats int `json:"respondedChats"`
+	Opened         int `json:"opened"`
+	TicketsClosed  int `json:"ticketsClosed"`
+}
+
 type reportSummary struct {
 	From                 int64              `json:"from"`
 	To                   int64              `json:"to"`
@@ -81,6 +89,7 @@ type reportSummary struct {
 	Calls                reportCalls        `json:"calls"`
 	Tickets              reportTickets      `json:"tickets"`
 	Daily                []reportDaily      `json:"daily"`
+	Hourly               []reportHourly     `json:"hourly"`
 	ClosureReasons       []reportLabelCount `json:"closureReasons"`
 	Agents               []reportAgentCount `json:"agents"`
 	Ratings              reportRatings      `json:"ratings"`
@@ -121,6 +130,7 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 
 	summary := reportSummary{From: from, To: to, SessionID: requested}
 	daily := makeDailyBuckets(from, to)
+	hourly := makeHourlyBuckets()
 	reasonCounts := map[string]int{}
 	agents := map[string]*reportAgentCount{}
 	// Quando duas conexões cadastradas participam do mesmo grupo, a mesma
@@ -196,11 +206,15 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 						summary.Messages.Total++
 					}
 					b := daily[reportDayKey(m.Ts)]
+					hb := hourly[reportHourKey(m.Ts)]
 					if m.FromMe {
 						if countsForAgent {
 							summary.Messages.Outbound++
 							if b != nil {
 								b.MessagesOut++
+							}
+							if hb != nil {
+								hb.MessagesOut++
 							}
 						}
 						if effectiveSentByUserID != "" {
@@ -218,6 +232,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 							a.RespondedChats++
 							if b != nil && countsForAgent {
 								b.RespondedChats++
+							}
+							if hb != nil && countsForAgent {
+								hb.RespondedChats++
 							}
 						}
 						if waitStart, ok := awaitingSince[m.ChatJID]; ok {
@@ -337,6 +354,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					if b := daily[reportDayKey(c.ClosedAt)]; b != nil {
 						b.TicketsClosed++
 					}
+					if hb := hourly[reportHourKey(c.ClosedAt)]; hb != nil {
+						hb.TicketsClosed++
+					}
 					// Distingue conversas encerradas em que o agente chegou a
 					// responder de vez daquelas fechadas sem nenhuma mensagem
 					// enviada (ex.: spam, engano, fechamento em lote). Contamos
@@ -368,6 +388,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					}
 					if b := daily[reportDayKey(e.Ts)]; b != nil {
 						b.Opened++
+					}
+					if hb := hourly[reportHourKey(e.Ts)]; hb != nil {
+						hb.Opened++
 					}
 				}
 			}
@@ -427,11 +450,29 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	// dois valores pequenos abaixo dele.
 	summary.Tickets.Closed = summary.Tickets.ClosedWithMsg + summary.Tickets.ClosedNoMsg
 	sort.Slice(summary.Agents, func(i, j int) bool { return summary.Agents[i].Closed > summary.Agents[j].Closed })
+	for _, h := range hourly {
+		summary.Hourly = append(summary.Hourly, *h)
+	}
 	writeJSON(w, http.StatusOK, summary)
 }
 
 func reportDayKey(ts int64) string {
 	return time.UnixMilli(ts).Format("2006-01-02")
+}
+
+// reportHourKey buckets a timestamp into a 0-23 hour-of-day slot, ignoring
+// the specific date — used for the "Atendimentos por hora" chart, which
+// aggregates activity patterns across the whole period into 24 columns.
+func reportHourKey(ts int64) int {
+	return time.UnixMilli(ts).Hour()
+}
+
+func makeHourlyBuckets() []*reportHourly {
+	out := make([]*reportHourly, 24)
+	for h := 0; h < 24; h++ {
+		out[h] = &reportHourly{Hour: h}
+	}
+	return out
 }
 
 func makeDailyBuckets(from, to int64) map[string]*reportDaily {
