@@ -35,14 +35,16 @@ type reportTickets struct {
 }
 
 type reportDaily struct {
-	Day           string `json:"day"`
-	MessagesIn    int    `json:"messagesIn"`
-	MessagesOut   int    `json:"messagesOut"`
-	CallsIn       int    `json:"callsIn"`
-	CallsOut      int    `json:"callsOut"`
-	CallsAnswered int    `json:"callsAnswered"`
-	CallsMissed   int    `json:"callsMissed"`
-	TicketsClosed int    `json:"ticketsClosed"`
+	Day            string `json:"day"`
+	MessagesIn     int    `json:"messagesIn"`
+	MessagesOut    int    `json:"messagesOut"`
+	CallsIn        int    `json:"callsIn"`
+	CallsOut       int    `json:"callsOut"`
+	CallsAnswered  int    `json:"callsAnswered"`
+	CallsMissed    int    `json:"callsMissed"`
+	TicketsClosed  int    `json:"ticketsClosed"`
+	RespondedChats int    `json:"respondedChats"`
+	Opened         int    `json:"opened"`
 }
 
 type reportLabelCount struct {
@@ -214,6 +216,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 						if !a.respondedChatSet[m.ChatJID] {
 							a.respondedChatSet[m.ChatJID] = true
 							a.RespondedChats++
+							if b != nil && countsForAgent {
+								b.RespondedChats++
+							}
 						}
 						if waitStart, ok := awaitingSince[m.ChatJID]; ok {
 							a.FirstResponses++
@@ -347,6 +352,22 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 								summary.Tickets.ClosedNoMsg++
 							}
 						}
+					}
+				}
+			}
+
+			// "Abertas por dia": quantas conversas o(s) agente(s) começaram a
+			// atender (clicaram em "Atender") em cada dia do período — usado
+			// pelo gráfico de barras, com o mesmo recorte de agente já
+			// aplicado ao restante da seção.
+			opened, oerr := s.chatMeta.listOpenedEventsInRange(r.Context(), sid, from, to)
+			if oerr == nil {
+				for _, e := range opened {
+					if agentFilter != "" && e.UserID != agentFilter {
+						continue
+					}
+					if b := daily[reportDayKey(e.Ts)]; b != nil {
+						b.Opened++
 					}
 				}
 			}
