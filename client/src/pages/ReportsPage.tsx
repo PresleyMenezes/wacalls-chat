@@ -284,20 +284,23 @@ const mergeReportSources = (
     const ld = dailyByDay.get(rd.day);
     dailyByDay.set(rd.day, {
       day: rd.day,
-      messagesIn: rd.messagesIn || ld?.messagesIn || 0,
-      messagesOut: rd.messagesOut || ld?.messagesOut || 0,
+      // Com filtro de agente ativo, os valores filtrados do servidor
+      // valem mesmo quando são zero — misturar com o total local (sem
+      // filtro) faria o gráfico "ignorar" o agente selecionado.
+      messagesIn: agentFilterActive ? rd.messagesIn : (rd.messagesIn || ld?.messagesIn || 0),
+      messagesOut: agentFilterActive ? rd.messagesOut : (rd.messagesOut || ld?.messagesOut || 0),
       callsIn: rd.callsIn || ld?.callsIn || 0,
       callsOut: rd.callsOut || ld?.callsOut || 0,
       callsAnswered: rd.callsAnswered || ld?.callsAnswered || 0,
       callsMissed: rd.callsMissed || ld?.callsMissed || 0,
-      ticketsClosed: rd.ticketsClosed || ld?.ticketsClosed || 0,
+      ticketsClosed: agentFilterActive ? rd.ticketsClosed : (rd.ticketsClosed || ld?.ticketsClosed || 0),
     });
   }
 
   return {
     ...local,
     ...remote,
-    messages: hasMessageBreakdown(remote) ? remote.messages : local.messages,
+    messages: agentFilterActive || hasMessageBreakdown(remote) ? remote.messages : local.messages,
     // Com filtro de agente ativo, o total filtrado do servidor é sempre
     // menor (ou igual) que o total geral local — a heurística "quem tem
     // mais dados" removeria o filtro sem querer, então nesse caso o
@@ -490,6 +493,13 @@ export default function ReportsPage() {
     () => (selectedAgentId === "all" ? null : topAgents.find((a) => a.userId === selectedAgentId) ?? null),
     [selectedAgentId, topAgents],
   );
+  // Mesma lógica de `selectedAgent`, só que ligada ao dropdown "Agente" do
+  // topo da página (callsAgentId) — usado pela seção "Atendimentos no chat"
+  // e pela seção "Chamadas", que compartilham esse mesmo filtro.
+  const callsSelectedAgent = useMemo(
+    () => (callsAgentId === "all" ? null : topAgents.find((a) => a.userId === callsAgentId) ?? null),
+    [callsAgentId, topAgents],
+  );
   const agentTotals = useMemo(() => {
     if (selectedAgent) {
       return {
@@ -649,11 +659,17 @@ export default function ReportsPage() {
             <MessageSquare className="h-3.5 w-3.5" /> Atendimentos no chat
           </h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
-            <KpiCard label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
+            {callsAgentId === "all" && (
+              <>
+                <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
+                <KpiCard label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
+              </>
+            )}
             <KpiCard label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
             <KpiCard label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
-            <KpiCard label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+            {callsAgentId === "all" && (
+              <KpiCard label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+            )}
             <KpiCard
               label="Finalizados"
               value={String(tickets?.closed ?? 0)}
@@ -663,6 +679,16 @@ export default function ReportsPage() {
                 { label: "Sem mensagem", value: String(tickets?.closedNoMsg ?? 0) },
                 { label: "Com mensagem", value: String(tickets?.closedWithMsg ?? 0) },
               ]}
+            />
+            <KpiCard
+              label="Tempo médio 1ª resposta"
+              value={
+                callsSelectedAgent
+                  ? formatMinutes(callsSelectedAgent.avgFirstResponseMin)
+                  : formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)
+              }
+              icon={Clock}
+              tone="bg-violet-500/15 text-violet-400"
             />
           </div>
         </section>
