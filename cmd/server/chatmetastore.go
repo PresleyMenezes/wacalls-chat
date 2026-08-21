@@ -381,6 +381,28 @@ func (s *chatMetaStore) listClosuresInRange(ctx context.Context, sessionID strin
 	return out, rows.Err()
 }
 
+// listOpenedEventsInRange returns "opened" lifecycle events (chat assigned
+// to an agent / moved to "atendendo") within a time window — used by the
+// reports endpoint to build the daily "Abertas" bar and filter it by agent.
+func (s *chatMetaStore) listOpenedEventsInRange(ctx context.Context, sessionID string, from, to int64) ([]ChatEvent, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, session_id, chat_jid, kind, user_id, user_email, detail, ts
+		FROM chat_events WHERE session_id=? AND kind='opened' AND ts >= ? AND ts <= ?
+		ORDER BY ts ASC`, sessionID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ChatEvent{}
+	for rows.Next() {
+		var e ChatEvent
+		if err := rows.Scan(&e.ID, &e.SessionID, &e.ChatJID, &e.Kind, &e.UserID, &e.UserEmail, &e.Detail, &e.Ts); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
+}
+
 // InsertEvent appends a lifecycle event for a chat. Returns the row ID.
 func (s *chatMetaStore) InsertEvent(ctx context.Context, e ChatEvent) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `INSERT INTO chat_events (session_id, chat_jid, kind, user_id, user_email, detail, ts)
