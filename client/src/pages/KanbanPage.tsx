@@ -213,7 +213,7 @@ function ColumnView({
         </button>
       </div>
       <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-1 flex-col gap-2 min-h-[60px]">
+        <div className="flex flex-1 flex-col gap-2 min-h-[200px]">
           {cards.map((c) => {
             const meta = cardMeta(c);
             return (
@@ -227,6 +227,11 @@ function ColumnView({
               />
             );
           })}
+          {cards.length === 0 && (
+            <div className="grid flex-1 min-h-[160px] place-items-center rounded-md border-2 border-dashed border-border/60 text-center text-xs text-muted-foreground">
+              Arraste um cartão aqui
+            </div>
+          )}
         </div>
       </SortableContext>
       <Button
