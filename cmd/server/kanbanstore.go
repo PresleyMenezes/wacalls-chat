@@ -294,8 +294,15 @@ func normalizeStageType(s string) string {
 		return "won"
 	case "lost":
 		return "lost"
-	default:
+	case "open":
 		return "open"
+	default:
+		// Colunas criadas manualmente pelo operador (fora do template padrão
+		// A fazer/Em andamento/Concluído) usam um tipo neutro: o backfill
+		// automático (kanban_backfill.go) só reconcilia colunas "open"/"won",
+		// então "custom" garante que arrastes manuais para essas colunas
+		// nunca sejam desfeitos pela sincronização.
+		return "custom"
 	}
 }
 
