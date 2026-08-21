@@ -15,7 +15,7 @@ export type ReportSummary = {
     totalDurationMs: number;
     avgDurationMs: number;
   };
-  tickets: { closed: number; waiting: number; open: number };
+  tickets: { closed: number; waiting: number; open: number; closedWithMsg?: number; closedNoMsg?: number; avgResolutionMs?: number };
   daily: Array<{
     day: string;
     messagesIn: number;
