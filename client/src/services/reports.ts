@@ -25,6 +25,8 @@ export type ReportSummary = {
     callsAnswered: number;
     callsMissed: number;
     ticketsClosed: number;
+    respondedChats: number;
+    opened: number;
   }>;
   closureReasons: Array<{ label: string; count: number }>;
   agents: Array<{ userId: string; email?: string; closed: number }>;
