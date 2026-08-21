@@ -669,7 +669,7 @@ export default function ReportsPage() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5" /> Atendimentos no chat
           </h3>
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-8 gap-2">
             {callsAgentId === "all" && (
               <>
                 <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
@@ -736,29 +736,6 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-        {/* KPI ROW - Por agente */}
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <UsersIcon className="h-3.5 w-3.5" /> Atendimento por agente
-            </h3>
-            <select
-              value={selectedAgentId}
-              onChange={(e) => setSelectedAgentId(e.target.value)}
-              className="rounded-md border bg-background px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="all">Todos os agentes</option>
-              {topAgents.map((a) => (
-                <option key={a.userId} value={a.userId}>{a.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <KpiCard label="Mensagens enviadas" value={String(agentTotals.messagesSent)} icon={MessageSquare} tone="bg-emerald-500/15 text-emerald-400" />
-            <KpiCard label="Conversas respondidas" value={String(agentTotals.respondedChats)} icon={UsersIcon} tone="bg-sky-500/15 text-sky-400" />
-            <KpiCard label="Conversas finalizadas" value={String(agentTotals.closed)} icon={TrendingUp} tone="bg-primary/15 text-primary" />
-          </div>
-        </section>
         {/* Charts row 2b - Atendimentos por hora */}
         <div className="grid gap-4">
           <ChartCard
@@ -779,40 +756,6 @@ export default function ReportsPage() {
                 <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
-        </div>
-        {/* Charts row 3 - Agents */}
-        <div className="grid gap-4">
-          <ChartCard
-            title="Tempo médio de 1ª resposta"
-            subtitle={selectedAgent ? selectedAgent.name : "Geral e por agente"}
-            icon={BarChart3}
-          >
-            <div className="flex h-full flex-col justify-center gap-3 px-2">
-              <div className="text-center">
-                <div className="text-3xl font-bold tracking-tight">
-                  {selectedAgent
-                    ? formatMinutes(selectedAgent.avgFirstResponseMin)
-                    : formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {selectedAgent ? "Média do agente" : "Média geral"}
-                </div>
-              </div>
-              {!selectedAgent && (
-                <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
-                  {topAgents.filter((a) => a.avgFirstResponseMin !== null).map((a) => (
-                    <div key={a.name} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">{a.name}</span>
-                      <span className="font-medium">{formatMinutes(a.avgFirstResponseMin)}</span>
-                    </div>
-                  ))}
-                  {topAgents.every((a) => a.avgFirstResponseMin === null) && (
-                    <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
-                  )}
-                </div>
-              )}
-            </div>
           </ChartCard>
         </div>
         {loading && (
