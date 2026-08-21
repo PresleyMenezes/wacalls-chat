@@ -660,7 +660,7 @@ export default function ReportsPage() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5" /> Atendimentos no chat
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
             {callsAgentId === "all" && (
               <>
                 <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
@@ -713,9 +713,9 @@ export default function ReportsPage() {
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="messagesOut" name="Enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.sky} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.violet} radius={[0, 0, 0, 0]} />
                 <Bar dataKey="opened" name="Abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.violet} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.sky} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
