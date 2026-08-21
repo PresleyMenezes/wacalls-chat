@@ -294,6 +294,8 @@ const mergeReportSources = (
       callsAnswered: rd.callsAnswered || ld?.callsAnswered || 0,
       callsMissed: rd.callsMissed || ld?.callsMissed || 0,
       ticketsClosed: agentFilterActive ? rd.ticketsClosed : (rd.ticketsClosed || ld?.ticketsClosed || 0),
+      respondedChats: agentFilterActive ? rd.respondedChats : (rd.respondedChats || ld?.respondedChats || 0),
+      opened: agentFilterActive ? rd.opened : (rd.opened || ld?.opened || 0),
     });
   }
 
@@ -696,13 +698,12 @@ export default function ReportsPage() {
           </div>
         </section>
 
-        {/* Charts row 2 - Messages stacked + tickets donut */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* Charts row 2 - Atendimentos por dia */}
+        <div className="grid gap-4">
           <ChartCard
-            title="Mensagens por dia"
-            subtitle="Recebidas e enviadas"
+            title="Atendimentos por dia"
+            subtitle="Enviadas, respondidas, abertas e finalizadas"
             icon={MessageSquare}
-            className="lg:col-span-2"
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={daily} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
@@ -711,23 +712,11 @@ export default function ReportsPage() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="messagesIn" name="Recebidas" stackId="m" fill={C.sky} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="messagesOut" name="Enviadas" stackId="m" fill={C.emerald} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="messagesOut" name="Enviadas" fill={C.emerald} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="respondedChats" name="Respondidas" fill={C.sky} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="opened" name="Abertas" fill={C.amber} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" fill={C.violet} radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Tickets por status" subtitle="Snapshot atual" icon={UsersIcon}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Pie data={ticketsDonut} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                  {ticketsDonut.map((_, i) => (
-                    <Cell key={i} fill={[C.amber, C.violet, C.emerald][i % 3]} />
-                  ))}
-                </Pie>
-                <Legend wrapperStyle={{ fontSize: 12 }} verticalAlign="bottom" iconType="circle" />
-              </PieChart>
             </ResponsiveContainer>
           </ChartCard>
         </div>
