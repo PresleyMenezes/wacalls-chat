@@ -750,56 +750,24 @@ export default function ReportsPage() {
             tone="bg-emerald-500/15 text-emerald-400"
           />
         </div>
-        {/* Charts row 2c - Respondidas x Finalizadas por agente + resolução */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* Charts row 2c - Tempo médio 1ª resposta x conversa finalizada */}
+        <div className="grid gap-4">
           <ChartCard
-            title="Respondidas x Finalizadas por agente"
-            subtitle="Conversas distintas no período"
-            icon={UsersIcon}
-            className="lg:col-span-2"
+            title="Tempo médio 1ª resposta x conversa finalizada"
+            subtitle={callsSelectedAgent ? callsSelectedAgent.name : "Por agente, em minutos"}
+            icon={Clock}
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={callsSelectedAgent ? [callsSelectedAgent] : topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} formatter={(value: number) => formatMinutes(value)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="respondedChats" name="Respondidas" fill={C.emerald} radius={[0, 4, 4, 0]} />
-                <Bar dataKey="closed" name="Finalizadas" fill={C.sky} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="avgFirstResponseMin" name="1ª resposta" fill={C.violet} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="avgResolutionMin" name="Conversa finalizada" fill={C.emerald} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </ChartCard>
-          <ChartCard
-            title="Tempo médio de conversa finalizada"
-            subtitle={callsSelectedAgent ? callsSelectedAgent.name : "Por agente"}
-            icon={Clock}
-          >
-            <div className="flex h-full flex-col justify-center gap-3 px-2">
-              <div className="text-center">
-                <div className="text-3xl font-bold tracking-tight">
-                  {callsSelectedAgent
-                    ? formatMinutes(callsSelectedAgent.avgResolutionMin)
-                    : formatMinutes(tickets?.avgResolutionMs ? Math.round(tickets.avgResolutionMs / 60000) : null)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {callsSelectedAgent ? "Média do agente" : "Média geral"}
-                </div>
-              </div>
-              {!callsSelectedAgent && (
-                <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
-                  {topAgents.filter((a) => a.avgResolutionMin !== null).map((a) => (
-                    <div key={a.name} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">{a.name}</span>
-                      <span className="font-medium">{formatMinutes(a.avgResolutionMin)}</span>
-                    </div>
-                  ))}
-                  {topAgents.every((a) => a.avgResolutionMin === null) && (
-                    <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
-                  )}
-                </div>
-              )}
-            </div>
           </ChartCard>
         </div>
         {/* Charts row 2b - Atendimentos por hora */}
