@@ -7,7 +7,7 @@ export type KanbanBoard = {
   createdAt: number;
 };
 
-export type StageType = "open" | "won" | "lost";
+export type StageType = "open" | "won" | "lost" | "custom";
 
 export type KanbanColumn = {
   id: string;
