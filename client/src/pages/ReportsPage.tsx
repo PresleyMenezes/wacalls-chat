@@ -666,6 +666,9 @@ export default function ReportsPage() {
               </>
             )}
             <KpiCard label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
+            {callsSelectedAgent && (
+              <KpiCard label="Respondidas" value={String(callsSelectedAgent.respondedChats)} icon={UsersIcon} tone="bg-sky-500/15 text-sky-400" />
+            )}
             <KpiCard label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
             {callsAgentId === "all" && (
               <KpiCard label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
