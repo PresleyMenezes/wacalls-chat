@@ -457,6 +457,15 @@ export default function ReportsPage() {
     [report],
   );
 
+  const hourly = useMemo(
+    () =>
+      (report?.hourly ?? []).map((h) => ({
+        ...h,
+        label: `${String(h.hour).padStart(2, "0")}h`,
+      })),
+    [report],
+  );
+
   const callsDonut = useMemo(() => {
     if (!calls) return [];
     return [
@@ -660,7 +669,7 @@ export default function ReportsPage() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <MessageSquare className="h-3.5 w-3.5" /> Atendimentos no chat
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <div className="grid grid-cols-7 gap-2">
             {callsAgentId === "all" && (
               <>
                 <KpiCard label="Mensagens" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
@@ -750,26 +759,30 @@ export default function ReportsPage() {
             <KpiCard label="Conversas finalizadas" value={String(agentTotals.closed)} icon={TrendingUp} tone="bg-primary/15 text-primary" />
           </div>
         </section>
-        {/* Charts row 3 - Agents */}
-        <div className="grid gap-4 lg:grid-cols-3">
+        {/* Charts row 2b - Atendimentos por hora */}
+        <div className="grid gap-4">
           <ChartCard
-            title="Respondidas x Finalizadas por agente"
-            subtitle="Conversas distintas no período"
-            icon={UsersIcon}
-            className="lg:col-span-2"
+            title="Atendimentos por hora"
+            subtitle={callsSelectedAgent ? `${callsSelectedAgent.name} · horários mais movimentados` : "Todos os agentes · horários mais movimentados"}
+            icon={Clock}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={selectedAgent ? [selectedAgent] : topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
+              <BarChart data={hourly} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
+                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval={0} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="respondedChats" name="Respondidas" fill={C.emerald} radius={[0, 4, 4, 0]} />
-                <Bar dataKey="closed" name="Finalizadas" fill={C.sky} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="messagesOut" name="Enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="respondedChats" name="Respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="opened" name="Abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
+        </div>
+        {/* Charts row 3 - Agents */}
+        <div className="grid gap-4">
           <ChartCard
             title="Tempo médio de 1ª resposta"
             subtitle={selectedAgent ? selectedAgent.name : "Geral e por agente"}
@@ -800,24 +813,6 @@ export default function ReportsPage() {
                 </div>
               )}
             </div>
-          </ChartCard>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <ChartCard
-            title="Mensagens por agente"
-            subtitle="Enviadas no período (rastreio a partir desta versão)"
-            icon={MessageSquare}
-            className="lg:col-span-3"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={selectedAgent ? [selectedAgent] : topAgents} layout="vertical" margin={{ top: 10, right: 12, left: 8, bottom: 0 }}>
-                <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
-                <Bar dataKey="messagesSent" name="Mensagens enviadas" fill={C.emerald} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
           </ChartCard>
         </div>
         {loading && (
