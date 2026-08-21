@@ -11,6 +11,7 @@ import {
   useDroppable,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -471,6 +472,48 @@ export default function KanbanPage() {
     setDragCard(card ?? null);
   };
 
+  // Necessário para arrastar cartões ENTRE colunas: cada coluna tem seu
+  // próprio SortableContext isolado, então o dnd-kit só consegue "trocar de
+  // container" durante o arrasto se atualizarmos o estado local aqui — sem
+  // isso, o cartão só reordena dentro da coluna de origem (bug clássico do
+  // dnd-kit em Kanbans multi-coluna).
+  const handleDragOver = (e: DragOverEvent) => {
+    if (!snapshot) return;
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    // Ignora drops sobre a aba de outro board — tratado só no dragEnd.
+    if (typeof over.id === "string" && over.id.startsWith("board:")) return;
+
+    const activeCard = snapshot.cards.find((c) => c.id === active.id);
+    if (!activeCard) return;
+
+    // Descobre a coluna sob o cursor: pode ser outro cartão (usa a coluna
+    // dele) ou a área vazia da própria coluna (droppable com o id da
+    // coluna).
+    const overCard = snapshot.cards.find((c) => c.id === over.id);
+    const overColumnId = overCard
+      ? overCard.columnId
+      : typeof over.id === "string" && snapshot.columns.some((c) => c.id === over.id)
+        ? over.id
+        : null;
+    if (!overColumnId || overColumnId === activeCard.columnId) return;
+
+    setSnapshot((prev) => {
+      if (!prev) return prev;
+      const nextCards = prev.cards.map((c) => ({ ...c }));
+      const moving = nextCards.find((c) => c.id === activeCard.id);
+      if (!moving) return prev;
+      moving.columnId = overColumnId;
+      const inTarget = nextCards
+        .filter((c) => c.columnId === overColumnId && c.id !== moving.id)
+        .sort((a, b) => a.position - b.position);
+      const insertAt = overCard ? inTarget.findIndex((c) => c.id === overCard.id) : inTarget.length;
+      inTarget.splice(insertAt < 0 ? inTarget.length : insertAt, 0, moving);
+      inTarget.forEach((c, i) => (c.position = i));
+      return { ...prev, cards: nextCards };
+    });
+  };
+
   const handleDragEnd = async (e: DragEndEvent) => {
     setDragCard(null);
     if (!snapshot) return;
@@ -606,6 +649,7 @@ export default function KanbanPage() {
             sensors={sensors}
             collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="flex gap-4 pb-4">
