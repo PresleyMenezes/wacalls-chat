@@ -28,9 +28,13 @@ export const updateBoard = (id: string, name: string, color: string, description
 export const deleteBoard = (id: string) => apiDelete(`/api/kanban/boards/${id}`);
 
 // Columns
-export const createColumn = (boardId: string, name: string, color: string, stageType: StageType = "open") =>
+// Novas colunas criadas manualmente (fora dos templates de board) usam
+// stageType "custom" por padrão — nunca são reconciliadas pela sincronização
+// automática (kanban_backfill.go), então cartões movidos manualmente para
+// elas nunca "voltam sozinhos" para A fazer/Em andamento/Concluído.
+export const createColumn = (boardId: string, name: string, color: string, stageType: StageType = "custom") =>
   apiPost<KanbanColumn>(`/api/kanban/boards/${boardId}/columns`, { name, color, stageType });
-export const updateColumn = (id: string, name: string, color: string, stageType: StageType = "open") =>
+export const updateColumn = (id: string, name: string, color: string, stageType: StageType = "custom") =>
   put(`/api/kanban/columns/${id}`, { name, color, stageType });
 export const deleteColumn = (id: string) => apiDelete(`/api/kanban/columns/${id}`);
 
