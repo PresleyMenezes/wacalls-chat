@@ -157,6 +157,8 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	countedMsgIDs := map[string]bool{}
+	var totalResolutionMs int64
+	var totalResolutions int
 	for _, sid := range sessionIDs {
 		// Pré-carrega a atribuição atual de cada conversa uma única vez por
 		// sessão, reaproveitada para filtrar mensagens/tickets por agente
@@ -324,8 +326,12 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			var createdTs map[string]int64
 			closures, err := s.chatMeta.listClosuresInRange(r.Context(), sid, from, to)
 			if err == nil {
+				if len(closures) > 0 {
+					createdTs, _ = s.chatMeta.createdTimestampsBySession(r.Context(), sid)
+				}
 				for _, c := range closures {
 					if agentFilter != "" && c.UserID != agentFilter {
 						continue
@@ -372,6 +378,15 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 								summary.Tickets.ClosedNoMsg++
 							}
 						}
+					}
+					// Tempo médio de finalização: do momento em que a conversa foi
+					// criada (primeira vez que o chat apareceu) até este
+					// fechamento. Aproximação — em conversas reabertas várias
+					// vezes, mede desde a criação original, não desde a última
+					// reabertura.
+					if createdAt, ok := createdTs[c.ChatJID]; ok && c.ClosedAt > createdAt {
+						totalResolutionMs += c.ClosedAt - createdAt
+						totalResolutions++
 					}
 				}
 			}
@@ -449,6 +464,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	// atual das conversas — evitando o número de cima divergir da soma dos
 	// dois valores pequenos abaixo dele.
 	summary.Tickets.Closed = summary.Tickets.ClosedWithMsg + summary.Tickets.ClosedNoMsg
+	if totalResolutions > 0 {
+		summary.Tickets.AvgResolutionMs = totalResolutionMs / int64(totalResolutions)
+	}
 	sort.Slice(summary.Agents, func(i, j int) bool { return summary.Agents[i].Closed > summary.Agents[j].Closed })
 	for _, h := range hourly {
 		summary.Hourly = append(summary.Hourly, *h)
