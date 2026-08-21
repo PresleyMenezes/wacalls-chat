@@ -53,15 +53,18 @@ type reportLabelCount struct {
 }
 
 type reportAgentCount struct {
-	UserID                string `json:"userId"`
-	Email                 string `json:"email,omitempty"`
-	Name                  string `json:"name,omitempty"`
-	Closed                int    `json:"closed"`
-	MessagesSent          int    `json:"messagesSent"`
-	RespondedChats        int    `json:"respondedChats"`
-	FirstResponses        int    `json:"firstResponses"`
-	AvgFirstResponseMs    int64  `json:"avgFirstResponseMs,omitempty"`
-	totalFirstResponseMs  int64  `json:"-"`
+	UserID                string          `json:"userId"`
+	Email                 string          `json:"email,omitempty"`
+	Name                  string          `json:"name,omitempty"`
+	Closed                int             `json:"closed"`
+	MessagesSent          int             `json:"messagesSent"`
+	RespondedChats        int             `json:"respondedChats"`
+	FirstResponses        int             `json:"firstResponses"`
+	AvgFirstResponseMs    int64           `json:"avgFirstResponseMs,omitempty"`
+	AvgResolutionMs       int64           `json:"avgResolutionMs,omitempty"`
+	totalFirstResponseMs  int64           `json:"-"`
+	totalResolutionMs     int64           `json:"-"`
+	resolvedCount         int             `json:"-"`
 	respondedChatSet      map[string]bool `json:"-"`
 }
 
@@ -385,8 +388,11 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 					// vezes, mede desde a criação original, não desde a última
 					// reabertura.
 					if createdAt, ok := createdTs[c.ChatJID]; ok && c.ClosedAt > createdAt {
-						totalResolutionMs += c.ClosedAt - createdAt
+						dur := c.ClosedAt - createdAt
+						totalResolutionMs += dur
 						totalResolutions++
+						a.totalResolutionMs += dur
+						a.resolvedCount++
 					}
 				}
 			}
@@ -453,6 +459,9 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 			a.AvgFirstResponseMs = a.totalFirstResponseMs / int64(a.FirstResponses)
 			totalFirstResponseMs += a.totalFirstResponseMs
 			totalFirstResponses += a.FirstResponses
+		}
+		if a.resolvedCount > 0 {
+			a.AvgResolutionMs = a.totalResolutionMs / int64(a.resolvedCount)
 		}
 		summary.Agents = append(summary.Agents, *a)
 	}
