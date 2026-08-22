@@ -95,6 +95,13 @@ export const UserMenu = () => {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
+          className="gap-2"
+          onSelect={() => nav("/profile")}
+        >
+          <UserIcon className="h-4 w-4" /> Meu perfil
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
           className="gap-2 text-destructive focus:text-destructive"
           onSelect={async () => {
             await doLogout();
