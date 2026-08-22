@@ -129,13 +129,17 @@ func newKanbanStore(ctx context.Context, db *sql.DB) (*kanbanStore, error) {
 
 // ------- Boards -------
 
-func (s *kanbanStore) ListBoards(ctx context.Context, ownerID string, isAdmin bool) ([]kanbanBoard, error) {
+func (s *kanbanStore) ListBoards(ctx context.Context, tenantID string, isSuperAdmin bool) ([]kanbanBoard, error) {
 	var rows *sql.Rows
 	var err error
-	if isAdmin {
+	if isSuperAdmin {
 		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards ORDER BY created_at ASC`)
 	} else {
-		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards WHERE owner_id = ? OR owner_id = '' ORDER BY created_at ASC`, ownerID)
+		// Isolamento por empresa: boards são persistidos contra a raiz do
+		// tenant (ver CreateBoard), então todo admin/operador da mesma
+		// empresa enxerga os mesmos boards, e nenhuma outra empresa vê os
+		// seus — mesma lógica já usada em Filas.
+		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards WHERE owner_id = ? OR owner_id = '' ORDER BY created_at ASC`, tenantID)
 	}
 	if err != nil {
 		return nil, err
