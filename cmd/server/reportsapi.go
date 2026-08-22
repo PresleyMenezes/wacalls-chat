@@ -429,10 +429,11 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve e-mail e nome dos agentes que só apareceram via mensagens (sem
 	// passar por closures, portanto ainda sem Email/Name preenchido).
+	// Restrito ao próprio tenant — nunca busca usuários de outras empresas.
 	emailByID := map[string]string{}
 	nameByID := map[string]string{}
 	if s.auth != nil {
-		if users, uerr := s.auth.ListUsers(r.Context()); uerr == nil {
+		if users, uerr := s.auth.ListUsersByTenant(r.Context(), u.TenantID()); uerr == nil {
 			for _, u := range users {
 				emailByID[u.ID] = u.Email
 				name := strings.TrimSpace(u.Name)
