@@ -551,6 +551,17 @@ func (s *kanbanStore) DeleteAutomation(ctx context.Context, id string) error {
 	return err
 }
 
+// GetAutomationBoardID resolves which board an automation belongs to, so a
+// mutating endpoint can check tenant ownership before deleting it.
+func (s *kanbanStore) GetAutomationBoardID(ctx context.Context, id string) (string, error) {
+	var boardID string
+	err := s.db.QueryRowContext(ctx, `SELECT board_id FROM kanban_automations WHERE id = ?`, id).Scan(&boardID)
+	if err != nil {
+		return "", err
+	}
+	return boardID, nil
+}
+
 // listAutomationsByKind returns every enabled automation of the given kind
 // across all boards. Used by the trigger helpers below.
 func (s *kanbanStore) listAutomationsByKind(ctx context.Context, kind string) ([]kanbanAutomation, error) {
