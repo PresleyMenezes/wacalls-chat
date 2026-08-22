@@ -230,6 +230,13 @@ func (s *server) handleKBCardCreate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
+	// A coluna informada precisa pertencer a ESTE board — senão o cartão
+	// nasceria com board_id de uma empresa e column_id de outra.
+	col, err := s.kanban.GetColumn(r.Context(), body.ColumnID)
+	if err != nil || col.BoardID != boardID {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "coluna inválida para este board"})
+		return
+	}
 	c, err := s.kanban.CreateCard(r.Context(), cardCreate{
 		BoardID: boardID, ColumnID: body.ColumnID, Title: body.Title,
 		Description: body.Description, Color: body.Color,
@@ -291,6 +298,14 @@ func (s *server) handleKBCardMove(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+	// A coluna de destino precisa pertencer ao MESMO board do cartão — sem
+	// isso, um cartão poderia ser movido para a coluna de um board de outra
+	// empresa (vazamento/corrupção entre empresas).
+	col, err := s.kanban.GetColumn(r.Context(), body.ColumnID)
+	if err != nil || col.BoardID != card.BoardID {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "coluna inválida para este board"})
 		return
 	}
 	if err := s.kanban.MoveCard(r.Context(), id, body.ColumnID, body.Position); err != nil {
@@ -371,6 +386,15 @@ func (s *server) handleKBAutomUpsert(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleKBAutomDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	boardID, err := s.kanban.GetAutomationBoardID(r.Context(), id)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+		return
+	}
+	if !s.canManageBoard(r, boardID) {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
 	if err := s.kanban.DeleteAutomation(r.Context(), id); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
