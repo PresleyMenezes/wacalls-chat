@@ -462,19 +462,32 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
                 />
               </div>
               <div>
-                <Label htmlFor="u-company">Empresa</Label>
+              <div>
+                <Label htmlFor="u-company">
+                  Empresa{" "}
+                  {!me?.isSuperAdmin && (
+                    <span className="font-normal text-muted-foreground">(somente leitura)</span>
+                  )}
+                </Label>
                 <Input
                   id="u-company"
                   value={form.companyName}
                   onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+                  disabled={!me?.isSuperAdmin}
                 />
               </div>
               <div>
-                <Label htmlFor="u-cpf">CPF</Label>
+                <Label htmlFor="u-cpf">
+                  CPF{" "}
+                  {!me?.isSuperAdmin && (
+                    <span className="font-normal text-muted-foreground">(somente leitura)</span>
+                  )}
+                </Label>
                 <Input
                   id="u-cpf"
                   value={form.cpf}
                   onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  disabled={!me?.isSuperAdmin}
                 />
               </div>
             </div>
