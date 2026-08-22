@@ -185,13 +185,24 @@ func (s *server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if ids, qerr := s.auth.QueuesFor(r.Context(), u.ID); qerr == nil {
 		queueIds = ids
 	}
+	isSuperAdmin := strings.EqualFold(u.Email, SuperAdminEmail)
+	if isSuperAdmin {
+		isSuperAdmin = false
+		for _, role := range u.Roles {
+			if role == RoleAdmin {
+				isSuperAdmin = true
+				break
+			}
+		}
+	}
 	userOut := map[string]any{
 		"id": u.ID, "email": u.Email, "name": u.Name, "roles": u.Roles,
 		"companyName": u.CompanyName, "cpf": u.CPF, "active": u.Active,
 		"createdAt": u.CreatedAt, "signatureEnabled": u.SignatureEnabled,
 		"signature": u.Signature, "avatarUrl": u.AvatarURL,
 		"permissions": u.Permissions, "parentId": u.ParentID,
-		"queueIds": queueIds,
+		"queueIds":     queueIds,
+		"isSuperAdmin": isSuperAdmin,
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": userOut})
 }
@@ -220,10 +231,11 @@ func (s *server) handleMe(w http.ResponseWriter, r *http.Request) {
 		"id": u.ID, "email": u.Email, "name": u.Name, "roles": u.Roles,
 		"companyName": u.CompanyName, "cpf": u.CPF, "active": u.Active,
 		"signatureEnabled": u.SignatureEnabled, "signature": u.Signature,
-		"avatarUrl":   u.AvatarURL,
-		"permissions": u.Permissions,
-		"parentId":    u.ParentID,
-		"queueIds":    queueIds,
+		"avatarUrl":     u.AvatarURL,
+		"permissions":   u.Permissions,
+		"parentId":      u.ParentID,
+		"queueIds":      queueIds,
+		"isSuperAdmin":  u.IsSuperAdmin(),
 	}})
 }
 
