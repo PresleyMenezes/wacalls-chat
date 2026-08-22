@@ -462,7 +462,6 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
                 />
               </div>
               <div>
-              <div>
                 <Label htmlFor="u-company">
                   Empresa{" "}
                   {!me?.isSuperAdmin && (
