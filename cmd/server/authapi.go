@@ -483,14 +483,21 @@ func (s *server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
-	// Sub-usuários herdam empresa/CPF do tenant root. Só o próprio tenant
-	// root (ou super-admin editando um tenant root) pode alterar esses campos.
+	// Empresa e CPF são um dado de identidade do tenant, não uma preferência
+	// pessoal — só o super-admin da plataforma pode alterá-los (inclusive
+	// para o próprio tenant root). Qualquer outro ator, admin ou não, tem
+	// esses campos ignorados e o valor atual do alvo é preservado.
+	actor := currentUserFromReq(r)
 	companyName := body.CompanyName
 	cpf := body.CPF
-	if pid, _ := s.auth.ParentOf(r.Context(), id); pid != "" {
-		if rows, e := s.auth.ListUsersByTenant(r.Context(), pid); e == nil {
+	if actor == nil || !actor.IsSuperAdmin() {
+		tenantID := id
+		if pid, _ := s.auth.ParentOf(r.Context(), id); pid != "" {
+			tenantID = pid
+		}
+		if rows, e := s.auth.ListUsersByTenant(r.Context(), tenantID); e == nil {
 			for _, ur := range rows {
-				if ur.ID == pid {
+				if ur.ID == id {
 					companyName = ur.CompanyName
 					cpf = ur.CPF
 					break
