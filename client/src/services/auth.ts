@@ -196,6 +196,12 @@ export const uploadAvatar = async (file: File): Promise<{ avatarUrl: string }> =
 export const deleteAvatar = () =>
   req<void>("/api/me/avatar", { method: "DELETE" });
 
+export const updateProfile = (email: string, name: string, newPassword?: string) =>
+  req<void>("/api/auth/profile", {
+    method: "PUT",
+    body: JSON.stringify({ email, name, newPassword: newPassword || "" }),
+  });
+
 export type RoleAuditEntry = {
   id: string;
   targetId: string;
