@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from "react";
-import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, Palette, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { GlobalSearch } from "./GlobalSearch";
@@ -148,6 +148,9 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
   const aplicacoes: (NavItem & { perm: Permission; feat?: string })[] = [];
   if (isAdmin) {
     aplicacoes.push({ to: "/admin/users", icon: Contact2, label: t("nav.users", { defaultValue: "Usuários" }), perm: "chats" });
+  }
+  if (user?.isSuperAdmin) {
+    aplicacoes.push({ to: "/admin/whitelabel", icon: Palette, label: "Marca do sistema", perm: "chats" });
   }
   const filterAllowed = (arr: (NavItem & { perm: Permission; feat?: string })[]): NavItem[] =>
     arr.filter((it) => hasPermission(user, it.perm));
