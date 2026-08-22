@@ -13,6 +13,7 @@ export type AuthUser = {
   permissions?: string[];
   parentId?: string;
   queueIds?: string[];
+  isSuperAdmin?: boolean;
 };
 
 export type MeResponse = {
