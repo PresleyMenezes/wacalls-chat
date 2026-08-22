@@ -41,21 +41,24 @@ func (s *server) canManageBoard(r *http.Request, boardID string) bool {
 	if u == nil {
 		return false
 	}
-	if u.IsAdmin() {
+	if u.IsSuperAdmin() {
 		return true
 	}
 	b, err := s.kanban.GetBoard(r.Context(), boardID)
 	if err != nil {
 		return false
 	}
-	return b.OwnerID == "" || b.OwnerID == u.ID
+	// Isolamento por empresa: um admin só gerencia boards da própria
+	// empresa (persistidos contra a raiz do tenant) — nunca de outra
+	// empresa, mesmo sabendo o ID do board.
+	return b.OwnerID == "" || b.OwnerID == u.TenantID()
 }
 
 // ----- boards -----
 
 func (s *server) handleKBBoardList(w http.ResponseWriter, r *http.Request) {
 	u := currentUserFromReq(r)
-	rows, err := s.kanban.ListBoards(r.Context(), u.ID, u.IsAdmin())
+	rows, err := s.kanban.ListBoards(r.Context(), u.TenantID(), u.IsSuperAdmin())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -72,7 +75,10 @@ func (s *server) handleKBBoardCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := currentUserFromReq(r)
-	b, err := s.kanban.CreateBoard(r.Context(), body.Name, body.Color, body.Description, u.ID)
+	// Persistido contra a raiz do tenant (não o usuário individual), para
+	// que todo admin/operador da mesma empresa veja o board, independente
+	// de quem o criou — mesmo padrão já usado em Filas.
+	b, err := s.kanban.CreateBoard(r.Context(), body.Name, body.Color, body.Description, u.TenantID())
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
