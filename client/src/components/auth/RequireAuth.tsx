@@ -4,7 +4,7 @@ import { clearAuthClientState, useAuth } from "@/stores/auth";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const RequireAuth = ({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) => {
+export const RequireAuth = ({ children, adminOnly = false, superAdminOnly = false }: { children: ReactNode; adminOnly?: boolean; superAdminOnly?: boolean }) => {
   const user = useAuth((s) => s.user);
   const loading = useAuth((s) => s.loading);
   const refresh = useAuth((s) => s.refresh);
@@ -54,6 +54,9 @@ export const RequireAuth = ({ children, adminOnly = false }: { children: ReactNo
     return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
   }
   if (adminOnly && !user.roles.includes("admin")) {
+    return <Navigate to="/" replace />;
+  }
+  if (superAdminOnly && !user.isSuperAdmin) {
     return <Navigate to="/" replace />;
   }
   return <>{children}</>;
