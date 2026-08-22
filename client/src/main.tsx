@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ChatsPage } from "@/pages/ChatsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminUsersPage } from "@/pages/AdminUsersPage";
+import WhitelabelSettingsPage from "@/pages/WhitelabelSettingsPage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import ReportsPage from "@/pages/ReportsPage";
 import ContactsPage from "@/pages/ContactsPage";
@@ -47,6 +48,7 @@ const Root = () => {
               <Route path="/kanban" element={<RequireAuth><KanbanPage /></RequireAuth>} />
               <Route path="/quick-replies" element={<RequireAuth><QuickRepliesPage /></RequireAuth>} />
               <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsersPage /></RequireAuth>} />
+              <Route path="/admin/whitelabel" element={<RequireAuth superAdminOnly><WhitelabelSettingsPage /></RequireAuth>} />
               <Route path="*" element={<Navigate to="/chats" replace />} />
             </Routes>
           </Suspense>
