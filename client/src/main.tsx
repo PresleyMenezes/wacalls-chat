@@ -6,6 +6,7 @@ import { ChatsPage } from "@/pages/ChatsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminUsersPage } from "@/pages/AdminUsersPage";
 import WhitelabelSettingsPage from "@/pages/WhitelabelSettingsPage";
+import ProfilePage from "@/pages/ProfilePage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import ReportsPage from "@/pages/ReportsPage";
 import ContactsPage from "@/pages/ContactsPage";
@@ -49,6 +50,7 @@ const Root = () => {
               <Route path="/quick-replies" element={<RequireAuth><QuickRepliesPage /></RequireAuth>} />
               <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsersPage /></RequireAuth>} />
               <Route path="/admin/whitelabel" element={<RequireAuth superAdminOnly><WhitelabelSettingsPage /></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
               <Route path="*" element={<Navigate to="/chats" replace />} />
             </Routes>
           </Suspense>
