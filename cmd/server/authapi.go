@@ -72,6 +72,7 @@ func (s *server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
 	mux.HandleFunc("GET /api/auth/me", s.handleMe)
+	mux.HandleFunc("PUT /api/auth/profile", s.requireAuth(s.handleUpdateProfile))
 	mux.HandleFunc("GET /api/auth/stream", s.handleAuthStream)
 	mux.HandleFunc("GET /api/me/signature", s.requireAuth(s.handleGetSignature))
 	mux.HandleFunc("PUT /api/me/signature", s.requireAuth(s.handleSetSignature))
@@ -428,6 +429,42 @@ func (s *server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 		u.Name = strings.TrimSpace(body.Name)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"user": u})
+}
+
+// handleUpdateProfile permite que QUALQUER usuário autenticado (comum ou
+// admin) edite os próprios dados de acesso — email, nome e senha. Diferente
+// de handleUpdateUser (admin editando outra pessoa), aqui não existe
+// parâmetro de ID: sempre opera sobre o usuário do cookie de sessão, e
+// empresa/CPF continuam intocados (herdados do tenant root, só um admin
+// pode alterá-los).
+func (s *server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	u := currentUserFromReq(r)
+	if u == nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	var body struct {
+		Email       string `json:"email"`
+		Name        string `json:"name"`
+		NewPassword string `json:"newPassword"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+	if err := s.auth.AdminUpdateUser(r.Context(), u.ID, body.Email, u.CompanyName, u.CPF, body.NewPassword); err != nil {
+		code := http.StatusBadRequest
+		if errors.Is(err, ErrEmailTaken) {
+			code = http.StatusConflict
+		}
+		writeJSON(w, code, map[string]string{"error": err.Error()})
+		return
+	}
+	if err := s.auth.SetDisplayName(r.Context(), u.ID, body.Name); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *server) handleUpdateUser(w http.ResponseWriter, r *http.Request) {
