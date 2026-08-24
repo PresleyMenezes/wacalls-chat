@@ -204,7 +204,7 @@ export const ChatsPage = () => {
   return (
     <AppShell>
       <div className="flex h-full min-h-0 gap-3">
-        <div className="flex w-96 shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm 2xl:w-96">
           {pairedSessions.length > 1 && (
             <div className="border-b p-2">
               <select
