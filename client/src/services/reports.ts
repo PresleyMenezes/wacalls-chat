@@ -30,7 +30,7 @@ export type ReportSummary = {
   }>;
   closureReasons: Array<{ label: string; count: number }>;
   agents: Array<{ userId: string; email?: string; closed: number }>;
-  hourly?: Array<{ hour: number; messagesOut: number; respondedChats: number; opened: number; ticketsClosed: number }>;
+  hourly?: Array<{ hour: number; messagesOut: number; messagesIn: number; receivedChats: number; respondedChats: number; opened: number; ticketsClosed: number }>;
   ratings: { total: number; good: number; bad: number; awful: number; average: number };
 };
 
