@@ -364,6 +364,22 @@ export default function ReportsPage() {
   const [report, setReport] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<AuthUser[]>([]);
+  // Séries ocultas por gráfico (clique na legenda alterna) — um Set por
+  // gráfico, já que o mesmo dataKey pode existir em mais de um.
+  const [hiddenCalls, setHiddenCalls] = useState<Set<string>>(new Set());
+  const [hiddenDaily, setHiddenDaily] = useState<Set<string>>(new Set());
+  const [hiddenTimes, setHiddenTimes] = useState<Set<string>>(new Set());
+  const [hiddenHourly, setHiddenHourly] = useState<Set<string>>(new Set());
+  const makeLegendToggle = (setHidden: (fn: (prev: Set<string>) => Set<string>) => void) => (e: { dataKey?: unknown }) => {
+    const key = String(e.dataKey ?? "");
+    if (!key) return;
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
   useEffect(() => {
     void listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
@@ -729,9 +745,9 @@ export default function ReportsPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "hsl(var(--foreground))" }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="callsOut" name="Saídas" stroke={C.emerald} strokeWidth={2} fill="url(#gOut)" />
-                <Area type="monotone" dataKey="callsIn" name="Entradas" stroke={C.blue} strokeWidth={2} fill="url(#gIn)" />
+                <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenCalls)} />
+                <Area type="monotone" dataKey="callsOut" name="Saídas" stroke={C.emerald} strokeWidth={2} fill="url(#gOut)" hide={hiddenCalls.has("callsOut")} />
+                <Area type="monotone" dataKey="callsIn" name="Entradas" stroke={C.blue} strokeWidth={2} fill="url(#gIn)" hide={hiddenCalls.has("callsIn")} />
               </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -807,11 +823,11 @@ export default function ReportsPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="messagesOut" name="Enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.violet} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="opened" name="Abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.sky} radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenDaily)} />
+                <Bar dataKey="messagesOut" name="Enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("messagesOut")} />
+                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("respondedChats")} />
+                <Bar dataKey="opened" name="Abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("opened")} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenDaily.has("ticketsClosed")} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -860,9 +876,9 @@ export default function ReportsPage() {
                 <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={90} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} formatter={(value: number) => formatMinutes(value)} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="avgFirstResponseMin" name="1ª resposta" fill={C.violet} radius={[0, 4, 4, 0]} />
-                <Bar dataKey="avgResolutionMin" name="Conversa finalizada" fill={C.emerald} radius={[0, 4, 4, 0]} />
+                <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenTimes)} />
+                <Bar dataKey="avgFirstResponseMin" name="1ª resposta" fill={C.violet} radius={[0, 4, 4, 0]} hide={hiddenTimes.has("avgFirstResponseMin")} />
+                <Bar dataKey="avgResolutionMin" name="Conversa finalizada" fill={C.emerald} radius={[0, 4, 4, 0]} hide={hiddenTimes.has("avgResolutionMin")} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -911,11 +927,11 @@ export default function ReportsPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="messagesOut" name="Enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="respondedChats" name="Respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="opened" name="Abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenHourly)} />
+                <Bar dataKey="messagesOut" name="Enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} />
+                <Bar dataKey="respondedChats" name="Respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} />
+                <Bar dataKey="opened" name="Abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} />
+                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
