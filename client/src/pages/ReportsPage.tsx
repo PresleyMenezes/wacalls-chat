@@ -331,6 +331,10 @@ export default function ReportsPage() {
   // incompletos). Uma chave estável, derivada só dos IDs, evita isso.
   const sessionsKey = useMemo(() => sessions.map((s) => s.id).sort().join(","), [sessions]);
   const [range, setRange] = useState<string>("30d");
+  // Período personalizado: strings "YYYY-MM-DD" vindas de <input type="date">.
+  // Só têm efeito quando range === "custom".
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>("");
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const [callsAgentId, setCallsAgentId] = useState<string>("all");
@@ -351,12 +355,19 @@ export default function ReportsPage() {
     // requisições — buildFallback faz várias chamadas sequenciais e pode
     // demorar mais que a busca seguinte, chegando "atrasada").
     let cancelled = false;
-    const days = RANGES[range] ?? 30;
-    const to = Date.now();
-    const from = to - days * 24 * 60 * 60 * 1000;
+    let from: number;
+    let to: number;
+    if (range === "custom" && customFrom && customTo) {
+      // Início do dia inicial até o fim do dia final, no fuso do navegador.
+      from = new Date(`${customFrom}T00:00:00`).getTime();
+      to = new Date(`${customTo}T23:59:59.999`).getTime();
+    } else {
+      const days = RANGES[range] ?? 30;
+      to = Date.now();
+      from = to - days * 24 * 60 * 60 * 1000;
+    }
     const sid = sessionId === ALL_SESSIONS ? undefined : sessionId;
     setLoading(true);
-
     const targetSessions = sid ? [sid] : sessions.map((s) => s.id);
 
     const buildFallback = async (): Promise<ReportSummary> => {
@@ -430,7 +441,7 @@ export default function ReportsPage() {
     return () => {
       cancelled = true;
     };
-  }, [range, sessionId, sessionsKey, callsAgentId]);
+  }, [range, sessionId, sessionsKey, callsAgentId, customFrom, customTo]);
 
 
 
@@ -593,8 +604,28 @@ export default function ReportsPage() {
                 <SelectItem value="7d">Últimos 7 dias</SelectItem>
                 <SelectItem value="30d">Últimos 30 dias</SelectItem>
                 <SelectItem value="90d">Últimos 90 dias</SelectItem>
+                <SelectItem value="custom">Personalizado...</SelectItem>
               </SelectContent>
             </Select>
+            {range === "custom" && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo || undefined}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="h-9 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                />
+                <span className="text-xs text-muted-foreground">até</span>
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom || undefined}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="h-9 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            )}
           </div>
         </div>
 
