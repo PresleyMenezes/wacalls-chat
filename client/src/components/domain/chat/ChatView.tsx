@@ -1205,7 +1205,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           type="button"
           title={noteMode ? "Mensagem privada ATIVA (clique para desativar)" : "Mensagem privada (nota interna)"}
           onClick={() => setNoteMode((v) => !v)}
-          className={`rounded-md p-2 ${noteMode ? "bg-amber-400/20 text-amber-600 dark:text-amber-300" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+          className={`shrink-0 rounded-md p-2 ${noteMode ? "bg-amber-400/20 text-amber-600 dark:text-amber-300" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
         >
           <StickyNote className="h-4 w-4" />
         </button>
@@ -1214,7 +1214,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           title="Emojis"
           onClick={() => setShowEmoji((v) => !v)}
           disabled={!canSend}
-          className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+          className="shrink-0 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
         >
           <Smile className="h-4 w-4" />
         </button>
@@ -1223,12 +1223,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           title="Enviar contato"
           onClick={() => { setShowAttach(false); setShowContact((v) => !v); }}
           disabled={!canSend}
-          className={`rounded-md p-2 disabled:cursor-not-allowed disabled:opacity-40 ${showContact ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+          className={`shrink-0 rounded-md p-2 disabled:cursor-not-allowed disabled:opacity-40 ${showContact ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
         >
           <Contact2 className="h-4 w-4" />
         </button>
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             type="button"
             title="Anexar"
@@ -1263,7 +1263,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           }}
           onContextMenu={(e) => { e.preventDefault(); setShowSignatureEditor((v) => !v); }}
           disabled={!canSend}
-          className={`rounded-md p-2 disabled:cursor-not-allowed disabled:opacity-40 ${signature.enabled ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+          className={`shrink-0 rounded-md p-2 disabled:cursor-not-allowed disabled:opacity-40 ${signature.enabled ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
         >
           <Signature className="h-4 w-4" />
         </button>
@@ -1285,7 +1285,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           </div>
         ) : (
           <>
-            <div className="relative flex-1">
+            <div className="relative min-w-0 flex-1">
               <textarea
                 ref={messageInputRef}
                 value={text}
@@ -1467,11 +1467,11 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
               )}
             </div>
             {text.trim() ? (
-              <Button type="submit" size="icon" disabled={sending} aria-label="Enviar">
+              <Button type="submit" size="icon" disabled={sending} aria-label="Enviar" className="shrink-0">
                 <Send className="h-4 w-4" />
               </Button>
             ) : (
-              <Button type="button" size="icon" onClick={startRecording} aria-label="Gravar áudio" disabled={sending || !canSend}>
+              <Button type="button" size="icon" onClick={startRecording} aria-label="Gravar áudio" disabled={sending || !canSend} className="shrink-0">
                 <Mic className="h-4 w-4" />
               </Button>
             )}
