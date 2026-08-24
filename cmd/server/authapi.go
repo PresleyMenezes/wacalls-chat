@@ -581,6 +581,9 @@ func (s *server) handleSetUserSessions(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+	if s.scopeCache != nil {
+		s.scopeCache.invalidate(id)
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -659,6 +662,9 @@ func (s *server) handleSetRole(w http.ResponseWriter, r *http.Request) {
 		if err := logRoleChange(r.Context(), s.db, entry); err != nil {
 			s.log.Warn("audit log write failed", "err", err)
 		}
+	}
+	if s.scopeCache != nil {
+		s.scopeCache.invalidate(id)
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"ok": "1"})
 }
