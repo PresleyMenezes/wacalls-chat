@@ -662,7 +662,7 @@ export default function ReportsPage() {
                         setCustomFrom(e.target.value);
                         setRange("custom");
                       }}
-                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring dark:[color-scheme:dark]"
                     />
                     <span className="text-xs text-muted-foreground">–</span>
                     <input
@@ -673,7 +673,7 @@ export default function ReportsPage() {
                         setCustomTo(e.target.value);
                         setRange("custom");
                       }}
-                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring dark:[color-scheme:dark]"
                     />
                   </div>
                 </div>
