@@ -831,10 +831,10 @@ export default function ReportsPage() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenDaily)} />
-                <Bar dataKey="messagesOut" name="Enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("messagesOut")} />
-                <Bar dataKey="respondedChats" name="Respondidas" stackId="d" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("respondedChats")} />
-                <Bar dataKey="opened" name="Abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("opened")} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="d" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenDaily.has("ticketsClosed")} />
+                <Bar dataKey="messagesOut" name="Mensagens enviadas" stackId="d" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("messagesOut")} />
+                <Bar dataKey="respondedChats" name="Conversas respondidas" stackId="d" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("respondedChats")} />
+                <Bar dataKey="opened" name="Conversas abertas" stackId="d" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenDaily.has("opened")} />
+                <Bar dataKey="ticketsClosed" name="Conversas finalizadas" stackId="d" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenDaily.has("ticketsClosed")} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -935,12 +935,12 @@ export default function ReportsPage() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenHourly)} />
-                <Bar dataKey="messagesIn" name="Recebidas" stackId="h" fill={C.blue} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesIn")} />
-                <Bar dataKey="messagesOut" name="Enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} />
+                <Bar dataKey="messagesIn" name="Mensagens recebidas" stackId="h" fill={C.blue} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesIn")} />
+                <Bar dataKey="messagesOut" name="Mensagens enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} />
                 <Bar dataKey="receivedChats" name="Conversas recebidas" stackId="h" fill={C.rose} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("receivedChats")} />
-                <Bar dataKey="respondedChats" name="Respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} />
-                <Bar dataKey="opened" name="Abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} />
-                <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} />
+                <Bar dataKey="respondedChats" name="Conversas respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} />
+                <Bar dataKey="opened" name="Conversas abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} />
+                <Bar dataKey="ticketsClosed" name="Conversas finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
