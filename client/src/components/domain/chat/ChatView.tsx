@@ -931,7 +931,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
     ...chatEvents.map<TimelineItem>((e) => ({ kind: "evt", ts: e.ts, key: `e:${e.id}`, evt: e })),
   ].sort((a, b) => a.ts - b.ts);
   return (
-    <div className="relative flex flex-1 flex-col">
+    <div className="relative flex min-w-0 flex-1 flex-col">
       <header className="flex items-center gap-3 border-b px-4 py-3">
         <button
           type="button"
@@ -959,8 +959,8 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           className="min-w-0 flex-1 text-left transition hover:opacity-80"
           title="Ver dados do contato"
         >
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold">{displayName}</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto">
+            <span className="shrink-0 truncate text-sm font-semibold">{displayName}</span>
             {sessionQueue && (
               <span
                 className="inline-flex max-w-[160px] shrink-0 items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none"
