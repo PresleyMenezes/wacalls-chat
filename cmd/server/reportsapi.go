@@ -79,6 +79,8 @@ type reportRatings struct {
 type reportHourly struct {
 	Hour           int `json:"hour"`
 	MessagesOut    int `json:"messagesOut"`
+	MessagesIn     int `json:"messagesIn"`
+	ReceivedChats  int `json:"receivedChats"`
 	RespondedChats int `json:"respondedChats"`
 	Opened         int `json:"opened"`
 	TicketsClosed  int `json:"ticketsClosed"`
@@ -248,15 +250,24 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 							delete(awaitingSince, m.ChatJID)
 						}
 					}
-										} else {
+					} else {
 						if countsForAgent {
 							summary.Messages.Inbound++
 							if b != nil {
 								b.MessagesIn++
 							}
+							if hb != nil {
+								hb.MessagesIn++
+							}
 						}
 						if _, ok := awaitingSince[m.ChatJID]; !ok {
 							awaitingSince[m.ChatJID] = m.Ts
+							// "Conversas recebidas": primeira mensagem recebida desta
+							// conversa dentro do período — uma por chat, no dia/hora
+							// em que ela chegou.
+							if countsForAgent && hb != nil {
+								hb.ReceivedChats++
+							}
 						}
 					}
 				}
@@ -484,15 +495,22 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, summary)
 }
 
+// brTZ is a fixed UTC-3 offset (Brasília time, no DST currently observed)
+// used to bucket reports by day/hour the way a Brazilian user actually
+// perceives them — timestamps are stored in UTC, so grouping by raw UTC
+// hour/day shifts everything by 3h from what's shown on screen.
+var brTZ = time.FixedZone("BRT", -3*60*60)
+
 func reportDayKey(ts int64) string {
-	return time.UnixMilli(ts).Format("2006-01-02")
+	return time.UnixMilli(ts).In(brTZ).Format("2006-01-02")
 }
 
-// reportHourKey buckets a timestamp into a 0-23 hour-of-day slot, ignoring
-// the specific date — used for the "Atendimentos por hora" chart, which
-// aggregates activity patterns across the whole period into 24 columns.
+// reportHourKey buckets a timestamp into a 0-23 hour-of-day slot (Brasília
+// time), ignoring the specific date — used for the "Atendimentos por hora"
+// chart, which aggregates activity patterns across the whole period into
+// 24 columns.
 func reportHourKey(ts int64) int {
-	return time.UnixMilli(ts).Hour()
+	return time.UnixMilli(ts).In(brTZ).Hour()
 }
 
 func makeHourlyBuckets() []*reportHourly {
@@ -505,10 +523,10 @@ func makeHourlyBuckets() []*reportHourly {
 
 func makeDailyBuckets(from, to int64) map[string]*reportDaily {
 	out := map[string]*reportDaily{}
-	start := time.UnixMilli(from)
-	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
-	end := time.UnixMilli(to)
-	end = time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, end.Location())
+	start := time.UnixMilli(from).In(brTZ)
+	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, brTZ)
+	end := time.UnixMilli(to).In(brTZ)
+	end = time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, brTZ)
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		key := d.Format("2006-01-02")
 		out[key] = &reportDaily{Day: key}
