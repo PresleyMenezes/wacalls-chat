@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"time"
 
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
@@ -36,6 +37,10 @@ type server struct {
 	db         *sql.DB
 	authStream *authStreamHub
 	cache      cache.Cache
+	// scopeCache absorbs the tenant/role/session-link lookups used to
+	// decide who can see a real-time event (see usercache.go) — without it,
+	// every chat message triggers several DB round-trips per connected agent.
+	scopeCache *userScopeCache
 }
 
 func openDB(dbPath string) (*sql.DB, error) {
@@ -106,37 +111,50 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	if err != nil {
 		return nil, err
 	}
+	// Cache curto (poucos segundos) dos dados de tenant/papel/conexões
+	// vinculadas usados pra decidir quem recebe cada evento em tempo real —
+	// sem isso, toda mensagem de chat disparava várias consultas ao banco
+	// por atendente conectado (ver usercache.go).
+	scopeCache := newUserScopeCache(5 * time.Second)
 	mgr.UserTenantFn = func(userID string) string {
-		if userID == "" {
+		return scopeCache.getTenant(userID, func() string {
+			if userID == "" {
+				return ""
+			}
+			pid, err := auth.ParentOf(ctx, userID)
+			if err == nil && pid != "" {
+				return pid
+			}
+			if err == nil {
+				return userID
+			}
 			return ""
-		}
-		pid, err := auth.ParentOf(ctx, userID)
-		if err == nil && pid != "" {
-			return pid
-		}
-		if err == nil {
-			return userID
-		}
-		return ""
+		})
 	}
 	mgr.IsAdminRoleFn = func(userID string) bool {
-		if userID == "" {
-			return false
-		}
-		ok, err := auth.HasRole(ctx, userID, RoleAdmin)
-		if err != nil {
-			return false
-		}
-		return ok
+		return scopeCache.getIsAdmin(userID, func() bool {
+			if userID == "" {
+				return false
+			}
+			ok, err := auth.HasRole(ctx, userID, RoleAdmin)
+			if err != nil {
+				return false
+			}
+			return ok
+		})
 	}
 	mgr.UserSessionsFn = func(userID string) []string {
-		if userID == "" {
-			return nil
-		}
-		ids, err := auth.SessionsFor(ctx, userID)
-		if err != nil {
-			return nil
-		}
+		return scopeCache.getSessions(userID, func() []string {
+			if userID == "" {
+				return nil
+			}
+			ids, err := auth.SessionsFor(ctx, userID)
+			if err != nil {
+				return nil
+			}
+			return ids
+		})
+	}
 		return ids
 	}
 	queues, err := newQueueStore(ctx, db)
@@ -206,6 +224,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 			hub.Revoke(t)
 		}
 	}
-	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch}
+	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch, scopeCache: scopeCache}
 	return srv, nil
 }
