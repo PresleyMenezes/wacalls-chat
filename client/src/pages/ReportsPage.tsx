@@ -353,11 +353,13 @@ export default function ReportsPage() {
       ? customFrom && customTo
         ? `${customFrom.split("-").reverse().join("/")} – ${customTo.split("-").reverse().join("/")}`
         : "Personalizado"
-      : range === "7d"
-        ? "Últimos 7 dias"
-        : range === "90d"
-          ? "Últimos 90 dias"
-          : "Últimos 30 dias";
+      : range === "today"
+        ? "Hoje"
+        : range === "7d"
+          ? "Últimos 7 dias"
+          : range === "90d"
+            ? "Últimos 90 dias"
+            : "Últimos 30 dias";
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const [callsAgentId, setCallsAgentId] = useState<string>("all");
@@ -400,6 +402,10 @@ export default function ReportsPage() {
       // Início do dia inicial até o fim do dia final, no fuso do navegador.
       from = new Date(`${customFrom}T00:00:00`).getTime();
       to = new Date(`${customTo}T23:59:59.999`).getTime();
+    } else if (range === "today") {
+      const now = new Date();
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+      to = Date.now();
     } else {
       const days = RANGES[range] ?? 30;
       to = Date.now();
@@ -646,7 +652,8 @@ export default function ReportsPage() {
               </button>
               {rangeMenuOpen && (
                 <div className="absolute right-0 z-50 mt-1 w-64 rounded-md border bg-popover p-1.5 text-popover-foreground shadow-md">
-                  {[
+                                    {[
+                    { value: "today", label: "Hoje" },
                     { value: "7d", label: "Últimos 7 dias" },
                     { value: "30d", label: "Últimos 30 dias" },
                     { value: "90d", label: "Últimos 90 dias" },
@@ -928,7 +935,9 @@ export default function ReportsPage() {
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenHourly)} />
+                <Bar dataKey="messagesIn" name="Recebidas" stackId="h" fill={C.blue} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesIn")} />
                 <Bar dataKey="messagesOut" name="Enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} />
+                <Bar dataKey="receivedChats" name="Conversas recebidas" stackId="h" fill={C.rose} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("receivedChats")} />
                 <Bar dataKey="respondedChats" name="Respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} />
                 <Bar dataKey="opened" name="Abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} />
                 <Bar dataKey="ticketsClosed" name="Finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} />
