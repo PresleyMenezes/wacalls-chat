@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { listUsers } from "@/services/auth";
 import type { AuthUser } from "@/types/auth";
 import {
   BarChart3,
   Calendar,
+  ChevronDown,
   Clock,
   MessageSquare,
   Phone,
@@ -335,6 +336,28 @@ export default function ReportsPage() {
   // Só têm efeito quando range === "custom".
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
+  const [rangeMenuOpen, setRangeMenuOpen] = useState(false);
+  const rangeMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!rangeMenuOpen) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (rangeMenuRef.current && !rangeMenuRef.current.contains(e.target as Node)) {
+        setRangeMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [rangeMenuOpen]);
+  const rangeLabel =
+    range === "custom"
+      ? customFrom && customTo
+        ? `${customFrom.split("-").reverse().join("/")} – ${customTo.split("-").reverse().join("/")}`
+        : "Personalizado"
+      : range === "7d"
+        ? "Últimos 7 dias"
+        : range === "90d"
+          ? "Últimos 90 dias"
+          : "Últimos 30 dias";
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const [callsAgentId, setCallsAgentId] = useState<string>("all");
@@ -596,36 +619,66 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={range} onValueChange={setRange}>
-              <SelectTrigger className="h-9 w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Últimos 7 dias</SelectItem>
-                <SelectItem value="30d">Últimos 30 dias</SelectItem>
-                <SelectItem value="90d">Últimos 90 dias</SelectItem>
-                <SelectItem value="custom">Personalizado...</SelectItem>
-              </SelectContent>
-            </Select>
-            {range === "custom" && (
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="date"
-                  value={customFrom}
-                  max={customTo || undefined}
-                  onChange={(e) => setCustomFrom(e.target.value)}
-                  className="h-9 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
-                />
-                <span className="text-xs text-muted-foreground">até</span>
-                <input
-                  type="date"
-                  value={customTo}
-                  min={customFrom || undefined}
-                  onChange={(e) => setCustomTo(e.target.value)}
-                  className="h-9 rounded-md border bg-background px-2 text-xs outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-            )}
+            <div className="relative" ref={rangeMenuRef}>
+              <button
+                type="button"
+                onClick={() => setRangeMenuOpen((o) => !o)}
+                className="flex h-9 w-[190px] items-center justify-between rounded-md border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <span className="truncate">{rangeLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+              {rangeMenuOpen && (
+                <div className="absolute right-0 z-50 mt-1 w-64 rounded-md border bg-popover p-1.5 text-popover-foreground shadow-md">
+                  {[
+                    { value: "7d", label: "Últimos 7 dias" },
+                    { value: "30d", label: "Últimos 30 dias" },
+                    { value: "90d", label: "Últimos 90 dias" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        setRange(opt.value);
+                        setRangeMenuOpen(false);
+                      }}
+                      className={`flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-muted ${
+                        range === opt.value ? "font-medium text-primary" : ""
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                  <div className="my-1.5 border-t" />
+                  <div className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Personalizado
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 pb-1.5">
+                    <input
+                      type="date"
+                      value={customFrom}
+                      max={customTo || undefined}
+                      onChange={(e) => {
+                        setCustomFrom(e.target.value);
+                        setRange("custom");
+                      }}
+                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    <span className="text-xs text-muted-foreground">–</span>
+                    <input
+                      type="date"
+                      value={customTo}
+                      min={customFrom || undefined}
+                      onChange={(e) => {
+                        setCustomTo(e.target.value);
+                        setRange("custom");
+                      }}
+                      className="h-8 w-full min-w-0 rounded-md border bg-background px-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
