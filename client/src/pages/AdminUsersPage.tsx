@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ElementType } from "react";
 import { History, Loader2, Pencil, Plus, Shield, Trash2, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -52,6 +53,7 @@ const emptyForm: FormState = {
 
 export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const me = useAuth((s) => s.user);
   const canManage = !!me?.roles.includes("admin");
   const [users, setUsers] = useState<AuthUser[]>([]);
@@ -273,6 +275,7 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
   };
 
   const dialogOpen = creating || !!editing;
+  const isEditingSelf = !!editing && editing.id === me?.id;
   const closeDialog = () => {
     setCreating(false);
     setEditing(null);
@@ -433,34 +436,53 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <Label htmlFor="u-email">Email</Label>
-                <Input
-                  id="u-email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="u-name">Nome do usuário</Label>
-                <Input
-                  id="u-name"
-                  placeholder="Ex.: João Silva — usado na assinatura do chat"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="u-pwd">Senha {editing && <span className="text-muted-foreground">(opcional)</span>}</Label>
-                <Input
-                  id="u-pwd"
-                  type="password"
-                  placeholder={editing ? "Deixe em branco para manter" : "Mínimo 8 caracteres"}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
-              </div>
+              {isEditingSelf ? (
+                <div className="col-span-2 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                  Email, nome e senha são editados em{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline underline-offset-2"
+                    onClick={() => {
+                      closeDialog();
+                      navigate("/profile");
+                    }}
+                  >
+                    Meu perfil
+                  </button>
+                  . Aqui você gerencia papel, filas, conexões e permissões.
+                </div>
+              ) : (
+                <>
+                  <div className="col-span-2">
+                    <Label htmlFor="u-email">Email</Label>
+                    <Input
+                      id="u-email"
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="u-name">Nome do usuário</Label>
+                    <Input
+                      id="u-name"
+                      placeholder="Ex.: João Silva — usado na assinatura do chat"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Label htmlFor="u-pwd">Senha {editing && <span className="text-muted-foreground">(opcional)</span>}</Label>
+                    <Input
+                      id="u-pwd"
+                      type="password"
+                      placeholder={editing ? "Deixe em branco para manter" : "Mínimo 8 caracteres"}
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
               <div>
                 <Label htmlFor="u-company">
                   Empresa{" "}
