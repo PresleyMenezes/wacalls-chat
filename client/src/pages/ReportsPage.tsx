@@ -732,26 +732,39 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <KpiCard
-            label="Tempo médio 1ª resposta"
-            value={
-              callsSelectedAgent
-                ? formatMinutes(callsSelectedAgent.avgFirstResponseMin)
-                : formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)
-            }
+        {/* Tempo médio 1ª resposta | gráfico comparativo | conversa finalizada */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <ChartCard
+            title="Tempo médio 1ª resposta"
+            subtitle={callsSelectedAgent ? callsSelectedAgent.name : "Geral e por agente"}
             icon={Clock}
-            tone="bg-violet-500/15 text-violet-400"
-          />
-          <KpiCard
-            label="Tempo médio de conversa finalizada"
-            value={formatMinutes(tickets?.avgResolutionMs ? Math.round(tickets.avgResolutionMs / 60000) : null)}
-            icon={TrendingUp}
-            tone="bg-emerald-500/15 text-emerald-400"
-          />
-        </div>
-        {/* Charts row 2c - Tempo médio 1ª resposta x conversa finalizada */}
-        <div className="grid gap-4">
+          >
+            <div className="flex h-full flex-col justify-center gap-3 px-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold tracking-tight">
+                  {callsSelectedAgent
+                    ? formatMinutes(callsSelectedAgent.avgFirstResponseMin)
+                    : formatMinutes(report?.avgFirstResponseMs ? Math.round(report.avgFirstResponseMs / 60000) : null)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {callsSelectedAgent ? "Média do agente" : "Média geral"}
+                </div>
+              </div>
+              {!callsSelectedAgent && (
+                <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
+                  {topAgents.filter((a) => a.avgFirstResponseMin !== null).map((a) => (
+                    <div key={a.name} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{a.name}</span>
+                      <span className="font-medium">{formatMinutes(a.avgFirstResponseMin)}</span>
+                    </div>
+                  ))}
+                  {topAgents.every((a) => a.avgFirstResponseMin === null) && (
+                    <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </ChartCard>
           <ChartCard
             title="Tempo médio 1ª resposta x conversa finalizada"
             subtitle={callsSelectedAgent ? callsSelectedAgent.name : "Por agente, em minutos"}
@@ -768,6 +781,37 @@ export default function ReportsPage() {
                 <Bar dataKey="avgResolutionMin" name="Conversa finalizada" fill={C.emerald} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </ChartCard>
+          <ChartCard
+            title="Tempo médio de conversa finalizada"
+            subtitle={callsSelectedAgent ? callsSelectedAgent.name : "Geral e por agente"}
+            icon={TrendingUp}
+          >
+            <div className="flex h-full flex-col justify-center gap-3 px-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold tracking-tight">
+                  {callsSelectedAgent
+                    ? formatMinutes(callsSelectedAgent.avgResolutionMin)
+                    : formatMinutes(tickets?.avgResolutionMs ? Math.round(tickets.avgResolutionMs / 60000) : null)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {callsSelectedAgent ? "Média do agente" : "Média geral"}
+                </div>
+              </div>
+              {!callsSelectedAgent && (
+                <div className="max-h-32 space-y-1 overflow-y-auto border-t pt-2">
+                  {topAgents.filter((a) => a.avgResolutionMin !== null).map((a) => (
+                    <div key={a.name} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{a.name}</span>
+                      <span className="font-medium">{formatMinutes(a.avgResolutionMin)}</span>
+                    </div>
+                  ))}
+                  {topAgents.every((a) => a.avgResolutionMin === null) && (
+                    <div className="text-center text-xs text-muted-foreground">Sem dados ainda</div>
+                  )}
+                </div>
+              )}
+            </div>
           </ChartCard>
         </div>
         {/* Charts row 2b - Atendimentos por hora */}
