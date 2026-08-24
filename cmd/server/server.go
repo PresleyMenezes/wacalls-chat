@@ -155,8 +155,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 			return ids
 		})
 	}
-		return ids
-	}
 	queues, err := newQueueStore(ctx, db)
 	if err != nil {
 		return nil, err
