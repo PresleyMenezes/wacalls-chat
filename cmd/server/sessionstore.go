@@ -17,6 +17,12 @@ type sessionRow struct {
 	IsDefault         bool
 	AllowGroups       bool
 	AllowBroadcast    bool
+	// SharedAttendance: quando true (padrão), qualquer agente com acesso à
+	// conexão vê e responde conversas "Em atendimento", independente de
+	// quem clicou em "Atender". Quando false, volta ao comportamento
+	// exclusivo: só o agente atribuído (e admins) vê a conversa na aba
+	// "Atendendo".
+	SharedAttendance  bool
 	IntegrationToken  string
 	QueueID           string
 	RedirectMinutes   int
@@ -68,6 +74,10 @@ func newSessionStore(ctx context.Context, db *sql.DB) (*sessionStore, error) {
 		// Quando desligado (padrão), mensagens de status@broadcast, canais de
 		// newsletter e outros broadcasts de venda são ignoradas silenciosamente.
 		`ALTER TABLE sessions ADD COLUMN allow_broadcast INTEGER NOT NULL DEFAULT 0`,
+		// Começa ligado (1) para não quebrar o comportamento já em uso —
+		// qualquer agente vê conversas em atendimento por padrão; desligar
+		// volta ao modelo antigo de dono exclusivo por conversa.
+		`ALTER TABLE sessions ADD COLUMN shared_attendance INTEGER NOT NULL DEFAULT 1`,
 		`ALTER TABLE sessions ADD COLUMN integration_token TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN queue_id TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN redirect_minutes INTEGER NOT NULL DEFAULT 0`,
@@ -109,6 +119,7 @@ func newSessionID() string {
 func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, name, COALESCE(jid, ''), COALESCE(owner_id, ''),
 		COALESCE(color, '#57adf8'), COALESCE(is_default, 0), COALESCE(allow_groups, 0), COALESCE(allow_broadcast, 0),
+		COALESCE(shared_attendance, 1),
 		COALESCE(integration_token, ''), COALESCE(queue_id, ''), COALESCE(redirect_minutes, 0),
 		COALESCE(flow_id, ''), COALESCE(chat_flow_id, ''), COALESCE(greeting_message, ''), COALESCE(completion_message, ''),
 		COALESCE(out_of_hours_message, ''),
@@ -123,9 +134,9 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 	var out []sessionRow
 	for rows.Next() {
 		var r sessionRow
-		var isDefault, allowGroups, allowBroadcast, surveyEnabled int
+		var isDefault, allowGroups, allowBroadcast, sharedAttendance, surveyEnabled int
 		if err := rows.Scan(&r.ID, &r.Name, &r.JID, &r.OwnerID,
-			&r.Color, &isDefault, &allowGroups, &allowBroadcast, &r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
+			&r.Color, &isDefault, &allowGroups, &allowBroadcast, &sharedAttendance, &r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
 			&r.ChatFlowID, &r.GreetingMessage, &r.CompletionMessage, &r.OutOfHoursMessage,
 			&surveyEnabled, &r.SurveyPrompt,
 			&r.Mode, &r.CloudPhoneID, &r.CloudWABAID, &r.CloudTokenEnc, &r.CloudAppSecretEnc, &r.CloudVerifyToken); err != nil {
@@ -134,6 +145,7 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 		r.IsDefault = isDefault == 1
 		r.AllowGroups = allowGroups == 1
 		r.AllowBroadcast = allowBroadcast == 1
+		r.SharedAttendance = sharedAttendance == 1
 		r.SurveyEnabled = surveyEnabled == 1
 		out = append(out, r)
 	}
@@ -242,6 +254,7 @@ type sessionUpdate struct {
 	IsDefault         bool
 	AllowGroups       bool
 	AllowBroadcast    bool
+	SharedAttendance  bool
 	QueueID           string
 	RedirectMinutes   int
 	FlowID            string
@@ -266,6 +279,10 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 	if u.AllowBroadcast {
 		bcast = 1
 	}
+	shared := 0
+	if u.SharedAttendance {
+		shared = 1
+	}
 	srv := 0
 	if u.SurveyEnabled {
 		srv = 1
@@ -275,11 +292,11 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 		_, _ = s.db.ExecContext(ctx, `UPDATE sessions SET is_default = 0 WHERE id != ? AND owner_id = (SELECT owner_id FROM sessions WHERE id = ?)`, id, id)
 	}
 	res, err := s.db.ExecContext(ctx, `UPDATE sessions
-		SET name = ?, color = ?, is_default = ?, allow_groups = ?, allow_broadcast = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
+		SET name = ?, color = ?, is_default = ?, allow_groups = ?, allow_broadcast = ?, shared_attendance = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
 		    greeting_message = ?, completion_message = ?, out_of_hours_message = ?,
 		    survey_enabled = ?, survey_prompt = ?
 		WHERE id = ?`,
-		strings.TrimSpace(u.Name), u.Color, def, grp, bcast, u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
+		strings.TrimSpace(u.Name), u.Color, def, grp, bcast, shared, u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
 		u.GreetingMessage, u.CompletionMessage, u.OutOfHoursMessage,
 		srv, strings.TrimSpace(u.SurveyPrompt), id)
 	if err != nil {
