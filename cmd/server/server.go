@@ -41,6 +41,9 @@ type server struct {
 	// decide who can see a real-time event (see usercache.go) — without it,
 	// every chat message triggers several DB round-trips per connected agent.
 	scopeCache *userScopeCache
+	// billingCache absorbs the subscription/free-tier-limits lookups run on
+	// every outgoing message/call BEFORE it's actually sent (see usercache.go).
+	billingCache *billingCache
 }
 
 func openDB(dbPath string) (*sql.DB, error) {
@@ -116,6 +119,7 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	// sem isso, toda mensagem de chat disparava várias consultas ao banco
 	// por atendente conectado (ver usercache.go).
 	scopeCache := newUserScopeCache(5 * time.Second)
+	billingCache := newBillingCache(15 * time.Second)
 	mgr.UserTenantFn = func(userID string) string {
 		return scopeCache.getTenant(userID, func() string {
 			if userID == "" {
@@ -222,6 +226,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 			hub.Revoke(t)
 		}
 	}
-	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch, scopeCache: scopeCache}
+	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch, scopeCache: scopeCache, billingCache: billingCache}
 	return srv, nil
 }
