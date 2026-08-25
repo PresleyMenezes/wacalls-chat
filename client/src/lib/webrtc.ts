@@ -111,7 +111,13 @@ export const openCall = async (
 
   const pc = new RTCPeerConnection({ iceServers: [] });
 
-  const dc = pc.createDataChannel(PCM_CHANNEL_LABEL, { ordered: true });
+  // ordered:false + maxRetransmits:0 = comportamento "tipo UDP": um pacote
+  // de áudio perdido é simplesmente descartado, em vez de travar todos os
+  // pacotes seguintes esperando reenvio (o padrão do WebRTC, ordered:true,
+  // é confiável feito TCP — ótimo pra dados, péssimo pra voz em tempo real,
+  // já que um pouco de perda é sempre preferível a atraso crescente).
+  // Mesma configuração já usada no canal de vídeo (H264) logo abaixo.
+  const dc = pc.createDataChannel(PCM_CHANNEL_LABEL, { ordered: false, maxRetransmits: 0 });
   dc.binaryType = "arraybuffer";
 
   const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
