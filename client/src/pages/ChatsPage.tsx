@@ -150,9 +150,10 @@ export const ChatsPage = () => {
   const pairedSessions = useMemo(() => sessions.filter((s) => s.paired), [sessions]);
 
   // Conversations targeted by "Fechar todos da aba" — respects current filters.
+  const sharedAttendance = sessions.find((s) => s.id === sessionId)?.sharedAttendance ?? true;
   const targetedForBulk = useMemo(
-    () => filterChats(chats, tab, me?.id ?? null, unreadOnly),
-    [chats, tab, me?.id, unreadOnly],
+    () => filterChats(chats, tab, me?.id ?? null, unreadOnly, sharedAttendance),
+    [chats, tab, me?.id, unreadOnly, sharedAttendance],
   );
 
   const TAB_LABEL: Record<Tab, string> = {
