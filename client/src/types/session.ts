@@ -12,6 +12,7 @@ export type SessionInfo = {
   isDefault?: boolean;
   allowGroups?: boolean;
   allowBroadcast?: boolean;
+  sharedAttendance?: boolean;
   integrationToken?: string;
   queueId?: string;
   redirectMinutes?: number;
