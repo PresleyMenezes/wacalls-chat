@@ -33,6 +33,7 @@ export const filterChats = (
   tab: ChatTab,
   myId: string | null,
   unreadOnly = false,
+  sharedAttendance = true,
 ): ChatSummary[] =>
   chats.filter((c) => {
     const status = c.status ?? (c.lastFromMe ? "open" : "waiting");
@@ -42,10 +43,11 @@ export const filterChats = (
     if (tab === "waiting" && status !== "waiting") return false;
     if (tab === "open") {
       if (status !== "open") return false;
-      // Atendimento compartilhado: qualquer agente com acesso à conexão vê
-      // e responde conversas "Em atendimento", não só quem clicou em
-      // "Atender" primeiro. O dono original (assignedUserId) continua
-      // registrado — só deixou de ser uma trava de visibilidade.
+      // Atendimento compartilhado (padrão, ligado por conexão): qualquer
+      // agente com acesso à conexão vê e responde conversas "Em
+      // atendimento", não só quem clicou em "Atender" primeiro. Com o
+      // toggle desligado para esta conexão, volta ao modelo exclusivo.
+      if (!sharedAttendance && myId && c.assignedUserId && c.assignedUserId !== myId) return false;
     }
     if (unreadOnly && (c.unread ?? 0) <= 0) return false;
     return true;
@@ -55,14 +57,15 @@ export const ChatList = ({ sessionId, activeJid, tab, myId, unreadOnly, sort = "
   const chats = useChats((s) => s.chatsBySession[sessionId] ?? EMPTY);
   const loading = useChats((s) => s.loadingChats[sessionId] ?? false);
   const sessionName = useSessions((s) => s.sessions.find((x) => x.id === sessionId)?.name ?? "");
+  const sharedAttendance = useSessions((s) => s.sessions.find((x) => x.id === sessionId)?.sharedAttendance ?? true);
   const [transferFor, setTransferFor] = useState<ChatSummary | null>(null);
   const [closeFor, setCloseFor] = useState<ChatSummary | null>(null);
   const filtered = useMemo(() => {
-    const list = filterChats(chats, tab, myId, unreadOnly);
+    const list = filterChats(chats, tab, myId, unreadOnly, sharedAttendance);
     return [...list].sort((a, b) =>
       sort === "asc" ? (a.lastTs ?? 0) - (b.lastTs ?? 0) : (b.lastTs ?? 0) - (a.lastTs ?? 0),
     );
-  }, [chats, tab, myId, unreadOnly, sort]);
+  }, [chats, tab, myId, unreadOnly, sort, sharedAttendance]);
 
   if (loading && filtered.length === 0) {
     return <div className="p-4 text-sm text-muted-foreground">Carregando conversas…</div>;
