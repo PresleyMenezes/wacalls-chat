@@ -408,6 +408,55 @@ func (s *Session) routeMessageToFlow(row MessageRow) {
 	s.mgr.flowExec.StartForMessage(s.mgr.appCtx, s.id, ownerID, flowID, row)
 }
 
+// quotedIDFromMessage extracts the StanzaID of the message being replied
+// to, if any — used so incoming replies (the contact quoting one of our
+// messages) render the same reply-preview balloon that outgoing replies
+// already get. Unwraps envelope types the same way classifyMessage does,
+// then checks ContextInfo across every "repliable" message type.
+func quotedIDFromMessage(m *waE2E.Message) string {
+	if m == nil {
+		return ""
+	}
+	if e := m.GetEphemeralMessage(); e != nil && e.GetMessage() != nil {
+		return quotedIDFromMessage(e.GetMessage())
+	}
+	if v := m.GetViewOnceMessage(); v != nil && v.GetMessage() != nil {
+		return quotedIDFromMessage(v.GetMessage())
+	}
+	if v := m.GetViewOnceMessageV2(); v != nil && v.GetMessage() != nil {
+		return quotedIDFromMessage(v.GetMessage())
+	}
+	if v := m.GetViewOnceMessageV2Extension(); v != nil && v.GetMessage() != nil {
+		return quotedIDFromMessage(v.GetMessage())
+	}
+	if d := m.GetDeviceSentMessage(); d != nil && d.GetMessage() != nil {
+		return quotedIDFromMessage(d.GetMessage())
+	}
+	var ctx *waE2E.ContextInfo
+	switch {
+	case m.GetExtendedTextMessage() != nil:
+		ctx = m.GetExtendedTextMessage().GetContextInfo()
+	case m.GetImageMessage() != nil:
+		ctx = m.GetImageMessage().GetContextInfo()
+	case m.GetVideoMessage() != nil:
+		ctx = m.GetVideoMessage().GetContextInfo()
+	case m.GetAudioMessage() != nil:
+		ctx = m.GetAudioMessage().GetContextInfo()
+	case m.GetDocumentMessage() != nil:
+		ctx = m.GetDocumentMessage().GetContextInfo()
+	case m.GetStickerMessage() != nil:
+		ctx = m.GetStickerMessage().GetContextInfo()
+	case m.GetContactMessage() != nil:
+		ctx = m.GetContactMessage().GetContextInfo()
+	case m.GetLocationMessage() != nil:
+		ctx = m.GetLocationMessage().GetContextInfo()
+	}
+	if ctx == nil {
+		return ""
+	}
+	return ctx.GetStanzaID()
+}
+
 // messageRowFromEvent maps a whatsmeow *events.Message into our local row.
 func messageRowFromEvent(sessionID string, evt *events.Message) MessageRow {
 	if evt == nil || evt.Message == nil {
@@ -429,9 +478,9 @@ func messageRowFromEvent(sessionID string, evt *events.Message) MessageRow {
 		Body:       body,
 		MediaMime:  mime,
 		SenderName: evt.Info.PushName,
+		QuotedID:   quotedIDFromMessage(evt.Message),
 	}
 }
-
 // classifyMessage returns (kind, displayBody, mediaMime).
 //
 // Cobre TODAS as variantes que chegam pela Cloud API oficial, anúncios
