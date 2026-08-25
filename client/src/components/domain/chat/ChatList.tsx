@@ -42,7 +42,10 @@ export const filterChats = (
     if (tab === "waiting" && status !== "waiting") return false;
     if (tab === "open") {
       if (status !== "open") return false;
-      if (myId && c.assignedUserId && c.assignedUserId !== myId) return false;
+      // Atendimento compartilhado: qualquer agente com acesso à conexão vê
+      // e responde conversas "Em atendimento", não só quem clicou em
+      // "Atender" primeiro. O dono original (assignedUserId) continua
+      // registrado — só deixou de ser uma trava de visibilidade.
     }
     if (unreadOnly && (c.unread ?? 0) <= 0) return false;
     return true;
