@@ -55,6 +55,10 @@ type SessionInfo struct {
 	IsDefault         bool   `json:"isDefault,omitempty"`
 	AllowGroups       bool   `json:"allowGroups,omitempty"`
 	AllowBroadcast    bool   `json:"allowBroadcast,omitempty"`
+	// Sem omitempty: precisa diferenciar "false" (desligado de propósito) de
+	// "campo ausente" no frontend — com omitempty, desligar o toggle faria
+	// o campo sumir do JSON, indistinguível de nunca ter sido configurado.
+	SharedAttendance  bool   `json:"sharedAttendance"`
 	IntegrationToken  string `json:"integrationToken,omitempty"`
 	QueueID           string `json:"queueId,omitempty"`
 	RedirectMinutes   int    `json:"redirectMinutes,omitempty"`
