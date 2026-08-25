@@ -32,26 +32,32 @@ func defaultFreeTierLimits() freeTierLimits {
 }
 
 func (s *server) freeTierLimits(ctx context.Context) freeTierLimits {
-	out := defaultFreeTierLimits()
-	if s.settings == nil {
+	compute := func() freeTierLimits {
+		out := defaultFreeTierLimits()
+		if s.settings == nil {
+			return out
+		}
+		if v, _ := s.settings.getKV(ctx, "free_tier_connections"); v != "" {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
+				out.Connections = n
+			}
+		}
+		if v, _ := s.settings.getKV(ctx, "free_tier_calls_week"); v != "" {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
+				out.CallsWeek = n
+			}
+		}
+		if v, _ := s.settings.getKV(ctx, "free_tier_chats_week"); v != "" {
+			if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
+				out.ChatsWeek = n
+			}
+		}
 		return out
 	}
-	if v, _ := s.settings.getKV(ctx, "free_tier_connections"); v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
-			out.Connections = n
-		}
+	if s.billingCache != nil {
+		return s.billingCache.getLimits(compute)
 	}
-	if v, _ := s.settings.getKV(ctx, "free_tier_calls_week"); v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
-			out.CallsWeek = n
-		}
-	}
-	if v, _ := s.settings.getKV(ctx, "free_tier_chats_week"); v != "" {
-		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil && n >= 0 {
-			out.ChatsWeek = n
-		}
-	}
-	return out
+	return compute()
 }
 
 // ensureFreeTierSchema cria a tabela de contadores semanais.
@@ -109,7 +115,13 @@ func (s *server) userHasPaidPlan(ctx context.Context, userID string, isAdmin boo
 	if userID == "" {
 		return false
 	}
-	row, err := s.getSubscription(ctx, userID)
+	var row subscriptionRow
+	var err error
+	if s.billingCache != nil {
+		row, err = s.billingCache.getSubscription(userID, func() (subscriptionRow, error) { return s.getSubscription(ctx, userID) })
+	} else {
+		row, err = s.getSubscription(ctx, userID)
+	}
 	if err != nil {
 		return false
 	}
