@@ -38,6 +38,7 @@ type Session struct {
 	isDefault         bool
 	allowGroups       bool
 	allowBroadcast    bool
+	sharedAttendance  bool
 	integrationToken  string
 	queueID           string
 	redirectMinutes   int
@@ -389,6 +390,7 @@ func (s *Session) info() SessionInfo {
 		Mode: s.mode, CloudPhoneID: s.cloudPhoneID, CloudWABAID: s.cloudWABAID, CloudConfigured: s.cloudConfigured,
 		AvatarURL: avatar,
 		Color:     s.color, IsDefault: s.isDefault, AllowGroups: s.allowGroups, AllowBroadcast: s.allowBroadcast,
+		SharedAttendance: s.sharedAttendance,
 		IntegrationToken: s.integrationToken, QueueID: s.queueID,
 		RedirectMinutes: s.redirectMinutes, FlowID: s.flowID, ChatFlowID: s.chatFlowID,
 		GreetingMessage: s.greetingMessage, CompletionMessage: s.completionMessage,
