@@ -52,7 +52,10 @@ func openDB(dbPath string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
+	// Mirrors internal/storage/storage.go's pool sizing — see the comment
+	// there for why a single-connection pool defeats WAL's whole purpose.
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
 	return db, nil
 }
 
