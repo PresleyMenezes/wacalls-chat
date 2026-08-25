@@ -249,6 +249,9 @@ func (s *server) upsertSubscription(ctx context.Context, row subscriptionRow) er
 		// UI flips Pago/Pendente instantly without polling.
 		s.broker.emitBilling(row.UserID, row.Status, row.PlanID, row.CurrentPeriodEnd)
 	}
+	if err == nil && s.billingCache != nil {
+		s.billingCache.invalidateSubscription(row.UserID)
+	}
 	return err
 }
 
