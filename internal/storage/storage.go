@@ -57,9 +57,18 @@ func Open(cfg Config) (*sql.DB, string, error) {
 		if err != nil {
 			return nil, "", err
 		}
-		// SQLite is a single-writer engine in this app; keep the pool at 1
-		// to serialise writes and avoid SQLITE_BUSY under load.
-		db.SetMaxOpenConns(1)
+		// WAL mode already allows multiple concurrent readers alongside a
+		// single writer, and SQLite serialises writes safely on its own even
+		// with several open connections — busy_timeout(10000) above handles
+		// any residual contention by retrying instead of failing outright.
+		// Capping the pool at a single connection defeated WAL's whole
+		// purpose: every read (including whatsmeow's own session/device
+		// storage, which shares this same *sql.DB) had to queue behind
+		// whatever else — even another read — was using that one
+		// connection, adding multi-second delays to message sends under
+		// any concurrent load.
+		db.SetMaxOpenConns(8)
+		db.SetMaxIdleConns(8)
 		return db, "sqlite3", nil
 	case "mariadb", "mysql":
 		return nil, "", fmt.Errorf("storage: DB_DRIVER=%s is not supported by this WaCalls build because whatsmeow does not accept the mysql dialect; remove DB_DRIVER/DB_DSN and use SQLite + Redis", driver)
