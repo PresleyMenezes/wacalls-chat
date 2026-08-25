@@ -261,6 +261,7 @@ func (m *SessionManager) Restore(ctx context.Context) error {
 		s.isDefault = row.IsDefault
 		s.allowGroups = row.AllowGroups
 		s.allowBroadcast = row.AllowBroadcast
+		s.sharedAttendance = row.SharedAttendance
 		s.integrationToken = row.IntegrationToken
 		s.queueID = row.QueueID
 		s.redirectMinutes = row.RedirectMinutes
@@ -403,6 +404,7 @@ func (m *SessionManager) Create(name, ownerID string) (string, error) {
 		s.color = row.Color
 		s.allowGroups = row.AllowGroups
 		s.allowBroadcast = row.AllowBroadcast
+		s.sharedAttendance = row.SharedAttendance
 		s.integrationToken = row.IntegrationToken
 	} else {
 		s.color = "#57adf8"
@@ -512,6 +514,7 @@ func (m *SessionManager) Update(ctx context.Context, id string, u sessionUpdate)
 	s.isDefault = u.IsDefault
 	s.allowGroups = u.AllowGroups
 	s.allowBroadcast = u.AllowBroadcast
+	s.sharedAttendance = u.SharedAttendance
 	s.queueID = u.QueueID
 	s.redirectMinutes = u.RedirectMinutes
 	s.flowID = u.FlowID
