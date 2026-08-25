@@ -101,3 +101,75 @@ func (c *userScopeCache) invalidate(userID string) {
 	delete(c.sessions, userID)
 	c.mu.Unlock()
 }
+
+// billingCache absorbs the subscription-status and free-tier-limits
+// lookups used to gate every single outgoing chat message/call
+// (enforceFreeTier, called from handleChatSend/handleStartCall BEFORE the
+// actual WhatsApp send). Without this cache, a non-admin agent sending a
+// message triggers ~5 synchronous SQLite round-trips (subscription row +
+// three separate free-tier-limit settings + weekly usage count) before the
+// message even reaches WhatsApp — under load this alone can add multi-
+// second delays to sending, independent of anything client-side.
+type billingCache struct {
+	mu  sync.Mutex
+	ttl time.Duration
+
+	subs   map[string]cachedSubscription
+	limits *cachedLimits
+}
+
+type cachedSubscription struct {
+	row subscriptionRow
+	err error
+	at  time.Time
+}
+
+type cachedLimits struct {
+	val freeTierLimits
+	at  time.Time
+}
+
+func newBillingCache(ttl time.Duration) *billingCache {
+	return &billingCache{ttl: ttl, subs: map[string]cachedSubscription{}}
+}
+
+func (c *billingCache) getSubscription(userID string, compute func() (subscriptionRow, error)) (subscriptionRow, error) {
+	c.mu.Lock()
+	if v, ok := c.subs[userID]; ok && time.Since(v.at) < c.ttl {
+		c.mu.Unlock()
+		return v.row, v.err
+	}
+	c.mu.Unlock()
+	row, err := compute()
+	c.mu.Lock()
+	c.subs[userID] = cachedSubscription{row: row, err: err, at: time.Now()}
+	c.mu.Unlock()
+	return row, err
+}
+
+// invalidateSubscription drops the cached subscription for a user —
+// called right after upsertSubscription (e.g. a Stripe webhook), so a
+// plan change reflects immediately instead of waiting out the TTL.
+func (c *billingCache) invalidateSubscription(userID string) {
+	c.mu.Lock()
+	delete(c.subs, userID)
+	c.mu.Unlock()
+}
+
+// getLimits caches the free-tier limits (a small set of admin-configured
+// platform-wide settings, not per-user) with a longer TTL — these change
+// essentially never during normal operation.
+func (c *billingCache) getLimits(compute func() freeTierLimits) freeTierLimits {
+	c.mu.Lock()
+	if c.limits != nil && time.Since(c.limits.at) < c.ttl*4 {
+		v := c.limits.val
+		c.mu.Unlock()
+		return v
+	}
+	c.mu.Unlock()
+	val := compute()
+	c.mu.Lock()
+	c.limits = &cachedLimits{val: val, at: time.Now()}
+	c.mu.Unlock()
+	return val
+}
