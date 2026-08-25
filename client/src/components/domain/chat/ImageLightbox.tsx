@@ -26,6 +26,7 @@ export const ImageLightbox = ({ src, alt, onClose }: Props) => {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,6 +42,36 @@ export const ImageLightbox = ({ src, alt, onClose }: Props) => {
       document.body.style.overflow = prev;
     };
   }, [onClose]);
+
+  // Ctrl+scroll amplia/reduz; scroll simples move a imagem para
+  // cima/baixo; Shift+scroll move para os lados — só quando já ampliada
+  // (scale > 1), já que sem zoom não há o que navegar. Precisa ser um
+  // listener nativo (não onWheel do React) porque o React registra esse
+  // evento como passivo por padrão, o que impede preventDefault() de
+  // bloquear o zoom nativo da página no Ctrl+scroll.
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        setScale((s) => Math.min(6, Math.max(0.25, s - e.deltaY * 0.0015 * s)));
+        return;
+      }
+      setScale((current) => {
+        if (current <= 1) return current;
+        e.preventDefault();
+        if (e.shiftKey) {
+          setPos((p) => ({ ...p, x: p.x - e.deltaY }));
+        } else {
+          setPos((p) => ({ ...p, y: p.y - e.deltaY }));
+        }
+        return current;
+      });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   // Reseta a posição sempre que o zoom volta para 100% ou menos — evita a
   // imagem "sumir" fora da tela ao dar zoom out depois de arrastar.
@@ -119,6 +150,7 @@ export const ImageLightbox = ({ src, alt, onClose }: Props) => {
         </ToolBtn>
       </div>
       <div
+        ref={viewportRef}
         className="flex flex-1 items-center justify-center overflow-hidden p-4"
         onClick={onClose}
         onMouseMove={onMouseMove}
