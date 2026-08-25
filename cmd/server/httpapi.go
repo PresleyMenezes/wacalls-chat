@@ -311,6 +311,7 @@ func (s *server) handleSessionUpdate(w http.ResponseWriter, r *http.Request) {
 		IsDefault         bool   `json:"isDefault"`
 		AllowGroups       bool   `json:"allowGroups"`
 		AllowBroadcast    bool   `json:"allowBroadcast"`
+		SharedAttendance  bool   `json:"sharedAttendance"`
 		QueueID           string `json:"queueId"`
 		RedirectMinutes   int    `json:"redirectMinutes"`
 		FlowID            string `json:"flowId"`
@@ -384,6 +385,7 @@ func (s *server) handleSessionUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.sessions.Update(r.Context(), sess.id, sessionUpdate{
 		Name: name, Color: body.Color, IsDefault: body.IsDefault, AllowGroups: body.AllowGroups, AllowBroadcast: body.AllowBroadcast,
+		SharedAttendance: body.SharedAttendance,
 		QueueID: body.QueueID, RedirectMinutes: body.RedirectMinutes, FlowID: voiceFlowID, ChatFlowID: chatFlowID,
 		GreetingMessage:   body.GreetingMessage,
 		CompletionMessage: body.CompletionMessage,
