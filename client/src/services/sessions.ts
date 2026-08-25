@@ -31,6 +31,7 @@ export type SessionUpdate = {
   isDefault: boolean;
   allowGroups: boolean;
   allowBroadcast: boolean;
+  sharedAttendance: boolean;
   queueId: string;
   redirectMinutes: number;
   flowId: string;
