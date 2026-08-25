@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Smartphone, Users2 } from "lucide-react";
+import { Loader2, Smartphone, Users2, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,9 @@ type Props = {
 export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Props) => {
   const [allowGroups, setAllowGroups] = useState(!!session.allowGroups);
   const [allowBroadcast, setAllowBroadcast] = useState(!!session.allowBroadcast);
+  // Padrão true (igual o backend) — sessões antigas sem esse campo ainda
+  // preenchido no cache do navegador devem continuar no modo compartilhado.
+  const [sharedAttendance, setSharedAttendance] = useState(session.sharedAttendance ?? true);
   const [queueId, setQueueId] = useState(session.queueId ?? "");
   const [queues, setQueues] = useState<Queue[]>([]);
   const [busy, setBusy] = useState(false);
@@ -27,6 +30,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
     if (!open) return;
     setAllowGroups(!!session.allowGroups);
     setAllowBroadcast(!!session.allowBroadcast);
+    setSharedAttendance(session.sharedAttendance ?? true);
     setQueueId(session.queueId ?? "");
     void listQueues().then(setQueues).catch(() => {});
   }, [open, session]);
@@ -40,6 +44,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
         isDefault: !!session.isDefault,
         allowGroups,
         allowBroadcast,
+        sharedAttendance,
         queueId,
         redirectMinutes: session.redirectMinutes ?? 0,
         flowId: session.flowId ?? "",
@@ -147,6 +152,35 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
               <span
                 className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
                   allowBroadcast ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary">
+                <UsersRound className="h-4 w-4" />
+              </span>
+              <div>
+                <div className="text-sm font-medium">Atendimento compartilhado entre agentes</div>
+                <div className="text-xs text-muted-foreground">
+                  Quando ativado, qualquer agente com acesso a esta conexão vê e responde conversas em atendimento,
+                  não só quem clicou em "Atender". Quando desativado, cada conversa fica exclusiva de quem a assumiu.
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={sharedAttendance}
+              onClick={() => setSharedAttendance((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+                sharedAttendance ? "bg-primary" : "bg-muted"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                  sharedAttendance ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </button>
