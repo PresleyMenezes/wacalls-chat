@@ -414,6 +414,13 @@ export default function ReportsPage() {
       .catch(() => setHourDetailChats([]))
       .finally(() => setHourDetailLoading(false));
   };
+  // Recharts passa os dados da barra clicada de formas ligeiramente
+  // diferentes conforme a versão — cobre os dois formatos comuns.
+  const onHourBarClick = (data: unknown) => {
+    const d = data as { hour?: number; payload?: { hour?: number } } | undefined;
+    const hour = d?.payload?.hour ?? d?.hour;
+    if (typeof hour === "number") openHourDetail(hour);
+  };
   useEffect(() => {
     void listUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
@@ -964,26 +971,18 @@ export default function ReportsPage() {
             icon={Clock}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={hourly}
-                margin={{ top: 10, right: 12, left: -10, bottom: 0 }}
-                onClick={(e) => {
-                  const hour = (e?.activePayload?.[0]?.payload as { hour?: number } | undefined)?.hour;
-                  if (typeof hour === "number") openHourDetail(hour);
-                }}
-                style={{ cursor: "pointer" }}
-              >
+              <BarChart data={hourly} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }} />
                 <Legend wrapperStyle={{ fontSize: 12, cursor: "pointer" }} onClick={makeLegendToggle(setHiddenHourly)} />
-                <Bar dataKey="messagesIn" name="Mensagens recebidas" stackId="h" fill={C.blue} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesIn")} />
-                <Bar dataKey="messagesOut" name="Mensagens enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} />
-                <Bar dataKey="receivedChats" name="Conversas recebidas" stackId="h" fill={C.rose} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("receivedChats")} />
-                <Bar dataKey="respondedChats" name="Conversas respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} />
-                <Bar dataKey="opened" name="Conversas abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} />
-                <Bar dataKey="ticketsClosed" name="Conversas finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} />
+                <Bar dataKey="messagesIn" name="Mensagens recebidas" stackId="h" fill={C.blue} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesIn")} onClick={onHourBarClick} cursor="pointer" />
+                <Bar dataKey="messagesOut" name="Mensagens enviadas" stackId="h" fill={C.emerald} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("messagesOut")} onClick={onHourBarClick} cursor="pointer" />
+                <Bar dataKey="receivedChats" name="Conversas recebidas" stackId="h" fill={C.rose} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("receivedChats")} onClick={onHourBarClick} cursor="pointer" />
+                <Bar dataKey="respondedChats" name="Conversas respondidas" stackId="h" fill={C.violet} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("respondedChats")} onClick={onHourBarClick} cursor="pointer" />
+                <Bar dataKey="opened" name="Conversas abertas" stackId="h" fill={C.amber} radius={[0, 0, 0, 0]} hide={hiddenHourly.has("opened")} onClick={onHourBarClick} cursor="pointer" />
+                <Bar dataKey="ticketsClosed" name="Conversas finalizadas" stackId="h" fill={C.sky} radius={[4, 4, 0, 0]} hide={hiddenHourly.has("ticketsClosed")} onClick={onHourBarClick} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </ChartCard>
