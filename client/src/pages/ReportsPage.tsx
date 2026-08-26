@@ -878,7 +878,7 @@ export default function ReportsPage() {
                 tone="bg-sky-500/15 text-sky-400"
                 onClick={() => openCardDetail("responded", "Respondidas")}
               />
-              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("openNoReply", "Em aberto — sem resposta ainda")} />
+              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("openNoReply", "Em aberto")} />
               {callsAgentId === "all" && (
                 <KpiCard className="flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("waiting", "Aguardando")} />
               )}
