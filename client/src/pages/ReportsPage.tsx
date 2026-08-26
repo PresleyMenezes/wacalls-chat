@@ -30,7 +30,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
-import { fetchReport, fetchReportHourDetail, type ReportSummary, type ReportHourChat } from "@/services/reports";
+import { fetchReport, fetchReportHourDetail, fetchReportCardDetail, type ReportSummary, type ReportHourChat, type ReportCardCategory } from "@/services/reports";
 import { fetchCallHistory, type CallHistoryRow } from "@/services/callsHistory";
 import { listChats, listMessages } from "@/services/chats";
 import type { ChatSummary } from "@/types/chat";
@@ -90,6 +90,7 @@ const KpiCard = ({
   tone,
   subStats,
   className,
+  onClick,
 }: {
   label: string;
   value: string;
@@ -99,8 +100,12 @@ const KpiCard = ({
   tone: string;
   subStats?: { label: string; value: string }[];
   className?: string;
+  onClick?: () => void;
 }) => (
-  <div className={`rounded-xl border bg-card p-4 transition hover:shadow-md ${className ?? ""}`}>
+  <div
+    onClick={onClick}
+    className={`rounded-xl border bg-card p-4 transition hover:shadow-md ${onClick ? "cursor-pointer hover:border-primary/40" : ""} ${className ?? ""}`}
+  >
     <div className="flex items-start justify-between">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
@@ -420,6 +425,30 @@ export default function ReportsPage() {
     const d = data as { hour?: number; payload?: { hour?: number } } | undefined;
     const hour = d?.payload?.hour ?? d?.hour;
     if (typeof hour === "number") openHourDetail(hour);
+  };
+  // Drill-down dos cards de "Atendimentos no chat" (Finalizados, Com/Sem
+  // mensagem, Respondidas, Em aberto, Aguardando) — mesmo padrão do
+  // drill-down por hora, com painel próprio pra não interferir naquele.
+  const [cardDetailOpen, setCardDetailOpen] = useState(false);
+  const [cardDetailTitle, setCardDetailTitle] = useState("");
+  const [cardDetailLoading, setCardDetailLoading] = useState(false);
+  const [cardDetailChats, setCardDetailChats] = useState<ReportHourChat[]>([]);
+  const openCardDetail = (category: ReportCardCategory, title: string) => {
+    if (!report) return;
+    setCardDetailTitle(title);
+    setCardDetailOpen(true);
+    setCardDetailLoading(true);
+    setCardDetailChats([]);
+    fetchReportCardDetail({
+      category,
+      from: report.from,
+      to: report.to,
+      sessionId: sessionId === ALL_SESSIONS ? undefined : sessionId,
+      agentId: callsAgentId === "all" ? undefined : callsAgentId,
+    })
+      .then(setCardDetailChats)
+      .catch(() => setCardDetailChats([]))
+      .finally(() => setCardDetailLoading(false));
   };
   useEffect(() => {
     void listUsers().then(setUsers).catch(() => setUsers([]));
@@ -831,9 +860,9 @@ export default function ReportsPage() {
             </div>
             {/* Bloco 2: finalizados e sua composição */}
             <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
-              <KpiCard className="flex-1" label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" />
-              <KpiCard className="flex-1" label="Com mensagem" value={String(tickets?.closedWithMsg ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
-              <KpiCard className="flex-1" label="Sem mensagem" value={String(tickets?.closedNoMsg ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+              <KpiCard className="flex-1" label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" onClick={() => openCardDetail("closed", "Finalizados")} />
+              <KpiCard className="flex-1" label="Com mensagem" value={String(tickets?.closedWithMsg ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("closedWithMsg", "Finalizados — com mensagem")} />
+              <KpiCard className="flex-1" label="Sem mensagem" value={String(tickets?.closedNoMsg ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("closedNoMsg", "Finalizados — sem mensagem")} />
             </div>
             {/* Bloco 3: fila de trabalho */}
             <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
@@ -847,10 +876,11 @@ export default function ReportsPage() {
                 )}
                 icon={UsersIcon}
                 tone="bg-sky-500/15 text-sky-400"
+                onClick={() => openCardDetail("responded", "Respondidas")}
               />
-              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" />
+              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("openNoReply", "Em aberto — sem resposta ainda")} />
               {callsAgentId === "all" && (
-                <KpiCard className="flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" />
+                <KpiCard className="flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("waiting", "Aguardando")} />
               )}
             </div>
           </div>
@@ -1033,6 +1063,53 @@ export default function ReportsPage() {
                   </div>
                   <span className="shrink-0 text-[11px] text-muted-foreground">
                     {new Date(c.lastTs).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cardDetailOpen} onOpenChange={setCardDetailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{cardDetailTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+            {cardDetailLoading ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Carregando...</p>
+            ) : cardDetailChats.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nenhuma conversa nessa categoria, dentro do período selecionado.
+              </p>
+            ) : (
+              cardDetailChats.map((c) => (
+                <button
+                  key={`${c.sessionId}-${c.chatJid}`}
+                  type="button"
+                  onClick={() => {
+                    setCardDetailOpen(false);
+                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}`);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm hover:bg-muted"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-muted">
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{c.name || c.chatJid}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c.lastFromMe ? "Você: " : ""}
+                      {c.lastKind === "text" ? c.lastMessage : `[${c.lastKind || "mídia"}]`}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {c.lastTs ? new Date(c.lastTs).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}
                   </span>
                 </button>
               ))
