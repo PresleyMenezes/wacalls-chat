@@ -265,7 +265,7 @@ func (s *server) handleReportCardDetail(w http.ResponseWriter, r *http.Request) 
 				}
 				hasMsg := false
 				if s.messages != nil {
-					hasMsg, _ = s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, from, c.ClosedAt+1)
+					hasMsg, _ = s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, c.ClosedAt+1)
 				}
 				if category == "closedWithMsg" && !hasMsg {
 					continue
@@ -299,7 +299,7 @@ func (s *server) handleReportCardDetail(w http.ResponseWriter, r *http.Request) 
 						continue
 					}
 					if s.messages != nil {
-						if had, _ := s.messages.HasPriorOutbound(r.Context(), sid, jid, 0, to); had {
+						if had, _ := s.messages.HasPriorOutbound(r.Context(), sid, jid, to); had {
 							continue
 						}
 					}
