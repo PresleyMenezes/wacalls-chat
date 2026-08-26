@@ -104,6 +104,7 @@ type reportSummary struct {
 func (s *server) registerReportRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/reports/summary", s.requireAuth(s.handleReportSummary))
 	mux.HandleFunc("GET /api/reports/hour-detail", s.requireAuth(s.handleReportHourDetail))
+	mux.HandleFunc("GET /api/reports/card-detail", s.requireAuth(s.handleReportCardDetail))
 }
 
 // reportHourChat is one row in the drill-down list shown when the operator
@@ -181,6 +182,133 @@ func (s *server) handleReportHourDetail(w http.ResponseWriter, r *http.Request) 
 					row.AvatarURL = m.AvatarURL
 				}
 				out = append(out, row)
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].LastTs > out[j].LastTs })
+	writeJSON(w, http.StatusOK, map[string]any{"chats": out})
+}
+
+// handleReportCardDetail is the drill-down behind the KPI cards in
+// "Atendimentos no chat": Finalizados, Com mensagem, Sem mensagem,
+// Respondidas, Em aberto (sem resposta) e Aguardando. Each category reuses
+// the exact same data source the aggregate count on the card comes from,
+// so the list always matches the number the operator clicked on.
+func (s *server) handleReportCardDetail(w http.ResponseWriter, r *http.Request) {
+	u := currentUserFromReq(r)
+	q := r.URL.Query()
+	now := time.Now().UnixMilli()
+	from, _ := strconv.ParseInt(q.Get("from"), 10, 64)
+	to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
+	if to == 0 {
+		to = now
+	}
+	if from == 0 {
+		from = to - int64(30*24*time.Hour/time.Millisecond)
+	}
+	category := strings.TrimSpace(q.Get("category"))
+	valid := map[string]bool{"closed": true, "closedWithMsg": true, "closedNoMsg": true, "responded": true, "openNoReply": true, "waiting": true}
+	if !valid[category] {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid category"})
+		return
+	}
+	requested := strings.TrimSpace(q.Get("sessionId"))
+	agentFilter := strings.TrimSpace(q.Get("agentId"))
+	visible := s.sessions.infosFor(u.ID, u.IsSuperAdmin())
+	sessionIDs := make([]string, 0, len(visible))
+	visibleSet := map[string]bool{}
+	for _, si := range visible {
+		visibleSet[si.ID] = true
+		if requested == "" || si.ID == requested {
+			sessionIDs = append(sessionIDs, si.ID)
+		}
+	}
+	if requested != "" && !visibleSet[requested] {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such session"})
+		return
+	}
+
+	out := []reportHourChat{}
+	for _, sid := range sessionIDs {
+		var metas map[string]ChatMeta
+		if s.chatMeta != nil {
+			metas, _ = s.chatMeta.ListBySession(r.Context(), sid)
+		}
+		addRow := func(chatJID string, lastTs int64, fallbackName string) {
+			row := reportHourChat{SessionID: sid, ChatJID: chatJID, LastTs: lastTs}
+			if s.messages != nil {
+				if body, kind, ts, fromMe, ok := s.messages.LastMessageFor(r.Context(), sid, chatJID, to); ok {
+					row.LastMessage, row.LastKind, row.LastTs, row.LastFromMe = body, kind, ts, fromMe
+				}
+			}
+			if m, ok := metas[chatJID]; ok {
+				row.Name = m.Name
+				row.AvatarURL = m.AvatarURL
+			} else if fallbackName != "" {
+				row.Name = fallbackName
+			}
+			out = append(out, row)
+		}
+
+		switch category {
+		case "closed", "closedWithMsg", "closedNoMsg":
+			if s.chatMeta == nil {
+				continue
+			}
+			closures, cerr := s.chatMeta.listClosuresInRange(r.Context(), sid, from, to)
+			if cerr != nil {
+				continue
+			}
+			for _, c := range closures {
+				if agentFilter != "" && c.UserID != agentFilter {
+					continue
+				}
+				hasMsg := false
+				if s.messages != nil {
+					hasMsg, _ = s.messages.HasPriorOutbound(r.Context(), sid, c.ChatJID, from, c.ClosedAt+1)
+				}
+				if category == "closedWithMsg" && !hasMsg {
+					continue
+				}
+				if category == "closedNoMsg" && hasMsg {
+					continue
+				}
+				addRow(c.ChatJID, c.ClosedAt, "")
+			}
+		case "responded":
+			if s.messages == nil {
+				continue
+			}
+			chats, merr := s.messages.RespondedChatsInRange(r.Context(), sid, from, to, agentFilter)
+			if merr != nil {
+				continue
+			}
+			for _, c := range chats {
+				addRow(c.ChatJID, c.LastTs, "")
+			}
+		case "openNoReply", "waiting":
+			if metas == nil {
+				continue
+			}
+			for jid, m := range metas {
+				if category == "openNoReply" {
+					if m.Status != ChatStatusOpen {
+						continue
+					}
+					if agentFilter != "" && m.AssignedUserID != agentFilter {
+						continue
+					}
+					if s.messages != nil {
+						if had, _ := s.messages.HasPriorOutbound(r.Context(), sid, jid, 0, to); had {
+							continue
+						}
+					}
+				} else {
+					if m.Status == ChatStatusOpen || m.Status == ChatStatusClosed {
+						continue
+					}
+				}
+				addRow(jid, m.UpdatedAt, m.Name)
 			}
 		}
 	}
