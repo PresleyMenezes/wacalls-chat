@@ -70,3 +70,21 @@ export const fetchReportHourDetail = (params: {
   if (params.agentId) q.set("agentId", params.agentId);
   return apiGet<{ chats: ReportHourChat[] }>(`/api/reports/hour-detail?${q.toString()}`).then((r) => r.chats ?? []);
 };
+
+export type ReportCardCategory = "closed" | "closedWithMsg" | "closedNoMsg" | "responded" | "openNoReply" | "waiting";
+
+export const fetchReportCardDetail = (params: {
+  category: ReportCardCategory;
+  from: number;
+  to: number;
+  sessionId?: string;
+  agentId?: string;
+}) => {
+  const q = new URLSearchParams();
+  q.set("category", params.category);
+  q.set("from", String(params.from));
+  q.set("to", String(params.to));
+  if (params.sessionId) q.set("sessionId", params.sessionId);
+  if (params.agentId) q.set("agentId", params.agentId);
+  return apiGet<{ chats: ReportHourChat[] }>(`/api/reports/card-detail?${q.toString()}`).then((r) => r.chats ?? []);
+};
