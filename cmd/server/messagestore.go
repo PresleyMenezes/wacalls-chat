@@ -185,6 +185,53 @@ func (s *messageStore) ListChatsActiveInHour(ctx context.Context, sessionID stri
 	return out, rows.Err()
 }
 
+// LastMessageFor returns the most recent message in a specific chat, up to
+// and including beforeTs — used to build a preview line ("última mensagem")
+// for chats surfaced by report drill-downs that aren't already tied to a
+// specific message (e.g. "Finalizados", "Aguardando").
+func (s *messageStore) LastMessageFor(ctx context.Context, sessionID, chatJID string, beforeTs int64) (body, kind string, ts int64, fromMe bool, ok bool) {
+	var fm int
+	err := s.db.QueryRowContext(ctx, `SELECT body, kind, ts, from_me FROM messages
+		WHERE session_id = ? AND chat_jid = ? AND ts <= ? ORDER BY ts DESC LIMIT 1`,
+		sessionID, chatJID, beforeTs,
+	).Scan(&body, &kind, &ts, &fm)
+	if err != nil {
+		return "", "", 0, false, false
+	}
+	return body, kind, ts, fm == 1, true
+}
+
+// RespondedChatsInRange returns, per distinct chat, the timestamp of the
+// agent's most recent outbound message within [from, to] — the same
+// "conversas respondidas" definition used by the aggregate report
+// (reportAgentCount.RespondedChats): any outbound message from the agent
+// counts, regardless of whether it followed an inbound one.
+func (s *messageStore) RespondedChatsInRange(ctx context.Context, sessionID string, from, to int64, agentUserID string) ([]ChatSummary, error) {
+	query := `SELECT chat_jid, MAX(ts) as last_ts FROM messages
+		WHERE session_id = ? AND from_me = 1 AND ts >= ? AND ts <= ?`
+	args := []any{sessionID, from, to}
+	if agentUserID != "" {
+		query += ` AND sent_by_user_id = ?`
+		args = append(args, agentUserID)
+	}
+	query += ` GROUP BY chat_jid ORDER BY last_ts DESC`
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ChatSummary{}
+	for rows.Next() {
+		var c ChatSummary
+		if err := rows.Scan(&c.ChatJID, &c.LastTs); err != nil {
+			return nil, err
+		}
+		c.LastFromMe = true
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // Get returns a single message by composite key (sessionID, id).
 func (s *messageStore) Get(ctx context.Context, sessionID, id string) (MessageRow, bool, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name
