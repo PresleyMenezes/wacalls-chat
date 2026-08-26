@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { listUsers } from "@/services/auth";
 import type { AuthUser } from "@/types/auth";
 import {
@@ -29,7 +30,7 @@ import {
   YAxis,
 } from "recharts";
 import { AppShell } from "@/components/layout/AppShell";
-import { fetchReport, type ReportSummary } from "@/services/reports";
+import { fetchReport, fetchReportHourDetail, type ReportSummary, type ReportHourChat } from "@/services/reports";
 import { fetchCallHistory, type CallHistoryRow } from "@/services/callsHistory";
 import { listChats, listMessages } from "@/services/chats";
 import type { ChatSummary } from "@/types/chat";
@@ -43,6 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const RANGES: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90 };
 const ALL_SESSIONS = "__all__";
@@ -381,6 +388,31 @@ export default function ReportsPage() {
       else next.add(key);
       return next;
     });
+  };
+  const navigate = useNavigate();
+  // Drill-down: clicar numa coluna do gráfico "Atendimentos por hora" abre
+  // a lista de conversas que tiveram atividade naquela hora, dentro do
+  // mesmo período/filtro de agente já selecionado na tela.
+  const [hourDetailOpen, setHourDetailOpen] = useState(false);
+  const [hourDetailHour, setHourDetailHour] = useState<number | null>(null);
+  const [hourDetailLoading, setHourDetailLoading] = useState(false);
+  const [hourDetailChats, setHourDetailChats] = useState<ReportHourChat[]>([]);
+  const openHourDetail = (hour: number) => {
+    if (!report) return;
+    setHourDetailHour(hour);
+    setHourDetailOpen(true);
+    setHourDetailLoading(true);
+    setHourDetailChats([]);
+    fetchReportHourDetail({
+      from: report.from,
+      to: report.to,
+      hour,
+      sessionId: sessionId === ALL_SESSIONS ? undefined : sessionId,
+      agentId: callsAgentId === "all" ? undefined : callsAgentId,
+    })
+      .then(setHourDetailChats)
+      .catch(() => setHourDetailChats([]))
+      .finally(() => setHourDetailLoading(false));
   };
   useEffect(() => {
     void listUsers().then(setUsers).catch(() => setUsers([]));
@@ -925,11 +957,22 @@ export default function ReportsPage() {
         <div className="grid gap-4">
           <ChartCard
             title="Atendimentos por hora"
-            subtitle={callsSelectedAgent ? `${callsSelectedAgent.name} · horários mais movimentados` : "Todos os agentes · horários mais movimentados"}
+            subtitle={
+              (callsSelectedAgent ? `${callsSelectedAgent.name} · horários mais movimentados` : "Todos os agentes · horários mais movimentados") +
+              " · clique numa coluna para ver as conversas"
+            }
             icon={Clock}
           >
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={hourly} margin={{ top: 10, right: 12, left: -10, bottom: 0 }}>
+              <BarChart
+                data={hourly}
+                margin={{ top: 10, right: 12, left: -10, bottom: 0 }}
+                onClick={(e) => {
+                  const hour = (e?.activePayload?.[0]?.payload as { hour?: number } | undefined)?.hour;
+                  if (typeof hour === "number") openHourDetail(hour);
+                }}
+                style={{ cursor: "pointer" }}
+              >
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} interval={0} />
                 <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} width={30} />
@@ -945,10 +988,59 @@ export default function ReportsPage() {
             </ResponsiveContainer>
           </ChartCard>
         </div>
-        {loading && (
+               {loading && (
           <p className="text-center text-xs text-muted-foreground">Carregando...</p>
         )}
       </div>
+
+      <Dialog open={hourDetailOpen} onOpenChange={setHourDetailOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Conversas às {hourDetailHour !== null ? String(hourDetailHour).padStart(2, "0") : "--"}h
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+            {hourDetailLoading ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Carregando...</p>
+            ) : hourDetailChats.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nenhuma conversa nesse horário, dentro do período selecionado.
+              </p>
+            ) : (
+              hourDetailChats.map((c) => (
+                <button
+                  key={`${c.sessionId}-${c.chatJid}`}
+                  type="button"
+                  onClick={() => {
+                    setHourDetailOpen(false);
+                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}`);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm hover:bg-muted"
+                >
+                  <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-muted">
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <UsersIcon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{c.name || c.chatJid}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {c.lastFromMe ? "Você: " : ""}
+                      {c.lastKind === "text" ? c.lastMessage : `[${c.lastKind || "mídia"}]`}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[11px] text-muted-foreground">
+                    {new Date(c.lastTs).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </button>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
