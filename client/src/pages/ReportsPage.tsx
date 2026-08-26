@@ -365,13 +365,15 @@ export default function ReportsPage() {
       ? customFrom && customTo
         ? `${customFrom.split("-").reverse().join("/")} – ${customTo.split("-").reverse().join("/")}`
         : "Personalizado"
-      : range === "today"
-        ? "Hoje"
-        : range === "7d"
-          ? "Últimos 7 dias"
-          : range === "90d"
-            ? "Últimos 90 dias"
-            : "Últimos 30 dias";
+      : range === "yesterday"
+        ? "Ontem"
+        : range === "today"
+          ? "Hoje"
+          : range === "7d"
+            ? "Últimos 7 dias"
+            : range === "90d"
+              ? "Últimos 90 dias"
+              : "Últimos 30 dias";
   const [sessionId, setSessionId] = useState<string>(ALL_SESSIONS);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("all");
   const [callsAgentId, setCallsAgentId] = useState<string>("all");
@@ -474,6 +476,11 @@ export default function ReportsPage() {
       const now = new Date();
       from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
       to = Date.now();
+    } else if (range === "yesterday") {
+      const now = new Date();
+      const y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      from = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0, 0).getTime();
+      to = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59, 999).getTime();
     } else {
       const days = RANGES[range] ?? 30;
       to = Date.now();
@@ -720,7 +727,8 @@ export default function ReportsPage() {
               </button>
               {rangeMenuOpen && (
                 <div className="absolute right-0 z-50 mt-1 w-64 rounded-md border bg-popover p-1.5 text-popover-foreground shadow-md">
-                                    {[
+                    {[
+                    { value: "yesterday", label: "Ontem" },
                     { value: "today", label: "Hoje" },
                     { value: "7d", label: "Últimos 7 dias" },
                     { value: "30d", label: "Últimos 30 dias" },
