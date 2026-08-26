@@ -298,11 +298,6 @@ func (s *server) handleReportCardDetail(w http.ResponseWriter, r *http.Request) 
 					if agentFilter != "" && m.AssignedUserID != agentFilter {
 						continue
 					}
-					if s.messages != nil {
-						if had, _ := s.messages.HasPriorOutbound(r.Context(), sid, jid, to); had {
-							continue
-						}
-					}
 				} else {
 					if m.Status == ChatStatusOpen || m.Status == ChatStatusClosed {
 						continue
