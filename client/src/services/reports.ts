@@ -43,3 +43,30 @@ export const fetchReport = (params: { from?: number; to?: number; sessionId?: st
   const qs = q.toString();
   return apiGet<ReportSummary>(`/api/reports/summary${qs ? `?${qs}` : ""}`);
 };
+
+export type ReportHourChat = {
+  sessionId: string;
+  chatJid: string;
+  name?: string;
+  avatarUrl?: string;
+  lastMessage: string;
+  lastKind: string;
+  lastTs: number;
+  lastFromMe: boolean;
+};
+
+export const fetchReportHourDetail = (params: {
+  from: number;
+  to: number;
+  hour: number;
+  sessionId?: string;
+  agentId?: string;
+}) => {
+  const q = new URLSearchParams();
+  q.set("from", String(params.from));
+  q.set("to", String(params.to));
+  q.set("hour", String(params.hour));
+  if (params.sessionId) q.set("sessionId", params.sessionId);
+  if (params.agentId) q.set("agentId", params.agentId);
+  return apiGet<{ chats: ReportHourChat[] }>(`/api/reports/hour-detail?${q.toString()}`).then((r) => r.chats ?? []);
+};
