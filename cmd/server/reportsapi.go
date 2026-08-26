@@ -103,6 +103,89 @@ type reportSummary struct {
 
 func (s *server) registerReportRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/reports/summary", s.requireAuth(s.handleReportSummary))
+	mux.HandleFunc("GET /api/reports/hour-detail", s.requireAuth(s.handleReportHourDetail))
+}
+
+// reportHourChat is one row in the drill-down list shown when the operator
+// clicks an hour column in "Atendimentos por hora" — enough to render a
+// clickable chat entry and to build the /chats?jid=&sid= deep link.
+type reportHourChat struct {
+	SessionID   string `json:"sessionId"`
+	ChatJID     string `json:"chatJid"`
+	Name        string `json:"name,omitempty"`
+	AvatarURL   string `json:"avatarUrl,omitempty"`
+	LastMessage string `json:"lastMessage"`
+	LastKind    string `json:"lastKind"`
+	LastTs      int64  `json:"lastTs"`
+	LastFromMe  bool   `json:"lastFromMe"`
+}
+
+func (s *server) handleReportHourDetail(w http.ResponseWriter, r *http.Request) {
+	u := currentUserFromReq(r)
+	q := r.URL.Query()
+	now := time.Now().UnixMilli()
+	from, _ := strconv.ParseInt(q.Get("from"), 10, 64)
+	to, _ := strconv.ParseInt(q.Get("to"), 10, 64)
+	if to == 0 {
+		to = now
+	}
+	if from == 0 {
+		from = to - int64(30*24*time.Hour/time.Millisecond)
+	}
+	hour, err := strconv.Atoi(q.Get("hour"))
+	if err != nil || hour < 0 || hour > 23 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "hour must be 0-23"})
+		return
+	}
+	requested := strings.TrimSpace(q.Get("sessionId"))
+	agentFilter := strings.TrimSpace(q.Get("agentId"))
+	visible := s.sessions.infosFor(u.ID, u.IsSuperAdmin())
+	sessionIDs := make([]string, 0, len(visible))
+	visibleSet := map[string]bool{}
+	for _, si := range visible {
+		visibleSet[si.ID] = true
+		if requested == "" || si.ID == requested {
+			sessionIDs = append(sessionIDs, si.ID)
+		}
+	}
+	if requested != "" && !visibleSet[requested] {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "no such session"})
+		return
+	}
+
+	out := []reportHourChat{}
+	if s.messages != nil {
+		for _, sid := range sessionIDs {
+			chats, cerr := s.messages.ListChatsActiveInHour(r.Context(), sid, from, to, hour)
+			if cerr != nil {
+				continue
+			}
+			var metas map[string]ChatMeta
+			if s.chatMeta != nil {
+				metas, _ = s.chatMeta.ListBySession(r.Context(), sid)
+			}
+			for _, c := range chats {
+				if agentFilter != "" {
+					m, ok := metas[c.ChatJID]
+					if !ok || m.AssignedUserID != agentFilter {
+						continue
+					}
+				}
+				row := reportHourChat{
+					SessionID: sid, ChatJID: c.ChatJID,
+					LastMessage: c.LastMessage, LastKind: c.LastKind,
+					LastTs: c.LastTs, LastFromMe: c.LastFromMe,
+				}
+				if m, ok := metas[c.ChatJID]; ok {
+					row.Name = m.Name
+					row.AvatarURL = m.AvatarURL
+				}
+				out = append(out, row)
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].LastTs > out[j].LastTs })
+	writeJSON(w, http.StatusOK, map[string]any{"chats": out})
 }
 
 func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
