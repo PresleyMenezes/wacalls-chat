@@ -150,6 +150,41 @@ func (s *messageStore) ListChats(ctx context.Context, sessionID string) ([]ChatS
 	return out, rows.Err()
 }
 
+// ListChatsActiveInHour returns, for the given session and date range, the
+// distinct chats that had at least one message during the given hour-of-day
+// (0-23, Brasília time) — used by the "Atendimentos por hora" chart's
+// drill-down: clicking a column shows exactly which conversations happened
+// in that hour, so the agent can reopen one to review what was handled.
+func (s *messageStore) ListChatsActiveInHour(ctx context.Context, sessionID string, from, to int64, hour int) ([]ChatSummary, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		WITH ranked AS (
+			SELECT chat_jid, body, kind, ts, from_me,
+			       ROW_NUMBER() OVER (PARTITION BY chat_jid ORDER BY ts DESC) AS rn,
+			       COUNT(*) OVER (PARTITION BY chat_jid) AS cnt
+			FROM messages
+			WHERE session_id = ? AND ts >= ? AND ts <= ?
+			  AND CAST(strftime('%H', datetime(ts/1000, 'unixepoch', '-3 hours')) AS INTEGER) = ?
+		)
+		SELECT chat_jid, body, kind, ts, from_me, cnt
+		FROM ranked WHERE rn = 1
+		ORDER BY ts DESC`, sessionID, from, to, hour)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []ChatSummary{}
+	for rows.Next() {
+		var c ChatSummary
+		var fromMe int
+		if err := rows.Scan(&c.ChatJID, &c.LastMessage, &c.LastKind, &c.LastTs, &fromMe, &c.Count); err != nil {
+			return nil, err
+		}
+		c.LastFromMe = fromMe == 1
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 // Get returns a single message by composite key (sessionID, id).
 func (s *messageStore) Get(ctx context.Context, sessionID, id string) (MessageRow, bool, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name
