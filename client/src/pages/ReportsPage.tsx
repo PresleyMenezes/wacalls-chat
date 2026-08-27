@@ -857,25 +857,25 @@ export default function ReportsPage() {
           </h3>
           <div className="flex flex-wrap gap-3">
             {/* Bloco 1: interações gerais */}
-            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
+            <div className="flex flex-1 min-w-[280px] flex-wrap gap-2 rounded-xl border border-border/70 p-2">
               {callsAgentId === "all" && (
                 <>
-                  <KpiCard className="flex-1" label="Interações" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
-                  <KpiCard className="flex-1" label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
+                  <KpiCard className="min-w-[110px] flex-1" label="Interações" value={String(messages?.total ?? 0)} icon={MessageSquare} tone="bg-sky-500/15 text-sky-400" />
+                  <KpiCard className="min-w-[110px] flex-1" label="Recebidas" value={String(messages?.inbound ?? 0)} icon={PhoneIncoming} tone="bg-primary/15 text-primary" />
                 </>
               )}
-              <KpiCard className="flex-1" label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
+              <KpiCard className="min-w-[110px] flex-1" label="Enviadas" value={String(messages?.outbound ?? 0)} icon={PhoneOutgoing} tone="bg-emerald-500/15 text-emerald-400" />
             </div>
             {/* Bloco 2: finalizados e sua composição */}
-            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
-              <KpiCard className="flex-1" label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" onClick={() => openCardDetail("closed", "Finalizados")} />
-              <KpiCard className="flex-1" label="Com mensagem" value={String(tickets?.closedWithMsg ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("closedWithMsg", "Finalizados — com mensagem")} />
-              <KpiCard className="flex-1" label="Sem mensagem" value={String(tickets?.closedNoMsg ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("closedNoMsg", "Finalizados — sem mensagem")} />
+            <div className="flex flex-1 min-w-[280px] flex-wrap gap-2 rounded-xl border border-border/70 p-2">
+              <KpiCard className="min-w-[110px] flex-1" label="Finalizados" value={String(tickets?.closed ?? 0)} icon={TrendingUp} tone="bg-emerald-500/15 text-emerald-400" onClick={() => openCardDetail("closed", "Finalizados")} />
+              <KpiCard className="min-w-[110px] flex-1" label="Com mensagem" value={String(tickets?.closedWithMsg ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("closedWithMsg", "Finalizados — com mensagem")} />
+              <KpiCard className="min-w-[110px] flex-1" label="Sem mensagem" value={String(tickets?.closedNoMsg ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("closedNoMsg", "Finalizados — sem mensagem")} />
             </div>
             {/* Bloco 3: fila de trabalho */}
-            <div className="flex flex-1 min-w-[280px] gap-2 rounded-xl border border-border/70 p-2">
+            <div className="flex flex-1 min-w-[280px] flex-wrap gap-2 rounded-xl border border-border/70 p-2">
               <KpiCard
-                className="flex-1"
+                className="min-w-[110px] flex-1"
                 label="Respondidas"
                 value={String(
                   callsSelectedAgent
@@ -886,9 +886,9 @@ export default function ReportsPage() {
                 tone="bg-sky-500/15 text-sky-400"
                 onClick={() => openCardDetail("responded", "Respondidas")}
               />
-              <KpiCard className="flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("openNoReply", "Em aberto")} />
+              <KpiCard className="min-w-[110px] flex-1" label="Em aberto" value={String(tickets?.open ?? 0)} icon={UsersIcon} tone="bg-amber-500/15 text-amber-400" onClick={() => openCardDetail("openNoReply", "Em aberto")} />
               {callsAgentId === "all" && (
-                <KpiCard className="flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("waiting", "Aguardando")} />
+                <KpiCard className="min-w-[110px] flex-1" label="Aguardando" value={String(tickets?.waiting ?? 0)} icon={Clock} tone="bg-violet-500/15 text-violet-400" onClick={() => openCardDetail("waiting", "Aguardando")} />
               )}
             </div>
           </div>
