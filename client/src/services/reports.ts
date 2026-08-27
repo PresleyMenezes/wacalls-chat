@@ -53,6 +53,7 @@ export type ReportHourChat = {
   lastKind: string;
   lastTs: number;
   lastFromMe: boolean;
+  messageId?: string;
 };
 
 export const fetchReportHourDetail = (params: {
