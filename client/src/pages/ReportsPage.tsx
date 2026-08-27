@@ -1051,7 +1051,7 @@ export default function ReportsPage() {
                   type="button"
                   onClick={() => {
                     setHourDetailOpen(false);
-                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}`);
+                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}${c.messageId ? `&mid=${encodeURIComponent(c.messageId)}` : ""}`);
                   }}
                   className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm hover:bg-muted"
                 >
@@ -1098,7 +1098,7 @@ export default function ReportsPage() {
                   type="button"
                   onClick={() => {
                     setCardDetailOpen(false);
-                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}`);
+                    navigate(`/chats?jid=${encodeURIComponent(c.chatJid)}&sid=${encodeURIComponent(c.sessionId)}${c.messageId ? `&mid=${encodeURIComponent(c.messageId)}` : ""}`);
                   }}
                   className="flex w-full items-center gap-3 rounded-md p-2 text-left text-sm hover:bg-muted"
                 >
