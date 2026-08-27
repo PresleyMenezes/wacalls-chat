@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, CheckCheck, Eye, Filter, ListFilter, MoreVertical, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -62,18 +62,35 @@ export const ChatsPage = () => {
   // directly (used by the dedicated /contacts page). The params are consumed
   // once and then cleared so refreshes don't re-fire the navigation.
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null);
+  // Evita que o efeito genérico abaixo (que sempre recarrega sem âncora)
+  // sobrescreva a página já carregada ancorada numa mensagem específica —
+  // os dois efeitos podem disparar em passadas de render seguidas.
+  const skipNextGenericFetchRef = useRef<string | null>(null);
   useEffect(() => {
     const sid = searchParams.get("sid");
     const jid = searchParams.get("jid");
     const mid = searchParams.get("mid");
+    const mts = searchParams.get("mts");
     if (!sid && !jid) return;
     if (sid) setPickedSession(sid);
     if (sid && jid) setActiveChat(sid, jid);
     if (mid) setJumpToMessageId(mid);
+    // Se veio de um link direto pra uma mensagem específica (relatórios),
+    // carrega a página de mensagens ANCORADA naquele horário, em vez das
+    // 100 mais recentes — senão mensagens antigas nunca chegam a existir
+    // na tela pro "pular até ela" funcionar.
+    if (sid && jid && mts) {
+      const ts = Number(mts);
+      if (!Number.isNaN(ts) && ts > 0) {
+        skipNextGenericFetchRef.current = `${sid}::${jid}`;
+        void fetchMessages(sid, jid, ts + 1000);
+      }
+    }
     const next = new URLSearchParams(searchParams);
     next.delete("sid");
     next.delete("jid");
     next.delete("mid");
+    next.delete("mts");
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -114,7 +131,12 @@ export const ChatsPage = () => {
 
   useEffect(() => {
     if (sessionId && activeJid) {
-      void fetchMessages(sessionId, activeJid);
+      const key = `${sessionId}::${activeJid}`;
+      if (skipNextGenericFetchRef.current === key) {
+        skipNextGenericFetchRef.current = null;
+      } else {
+        void fetchMessages(sessionId, activeJid);
+      }
       markChatAsRead(sessionId, activeJid);
     }
   }, [sessionId, activeJid]);
