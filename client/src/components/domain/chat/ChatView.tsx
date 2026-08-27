@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChats, setChatStatus } from "@/stores/chats";
+import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
 import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
 import type { GroupParticipant } from "@/services/chats";
@@ -529,48 +529,66 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
     let sigText = autoName || signature.text.trim();
     if (signature.enabled && !sigText) sigText = signature.text.trim();
     const finalText = signature.enabled && sigText ? `*${sigText}*\n${composed}` : composed;
-    setSending(true);
-    try {
-      // O campo mostra o nome do contato (@Fulano), mas o WhatsApp só
-      // reconhece a marcação quando o texto enviado contém o número
-      // (@<dígitos>). Convertemos aqui, na hora de enviar. "Todos" expande
-      // para os JIDs de todos os participantes do grupo, mantendo no texto
-      // apenas "@todos" (visual), mas marcando todo mundo de fato.
-      let outgoingText = finalText;
-      const mentionJidList: string[] = [];
-      for (const m of mentions) {
-        const marker = `@${m.name}`;
-        const idx = outgoingText.indexOf(marker);
-        if (idx === -1) continue;
-        if (m.jid === MENTION_ALL_JID) {
-          outgoingText = outgoingText.slice(0, idx) + `@todos` + outgoingText.slice(idx + marker.length);
-          for (const p of groupParticipants) mentionJidList.push(p.jid);
-          continue;
-        }
-        const digits = m.jid.split("@")[0];
-        outgoingText = outgoingText.slice(0, idx) + `@${digits}` + outgoingText.slice(idx + marker.length);
-        mentionJidList.push(m.jid);
+    const replyToId = replyTo?.id;
+    // O campo mostra o nome do contato (@Fulano), mas o WhatsApp só
+    // reconhece a marcação quando o texto enviado contém o número
+    // (@<dígitos>). Convertemos aqui, na hora de enviar. "Todos" expande
+    // para os JIDs de todos os participantes do grupo, mantendo no texto
+    // apenas "@todos" (visual), mas marcando todo mundo de fato.
+    let outgoingText = finalText;
+    const mentionJidList: string[] = [];
+    for (const m of mentions) {
+      const marker = `@${m.name}`;
+      const idx = outgoingText.indexOf(marker);
+      if (idx === -1) continue;
+      if (m.jid === MENTION_ALL_JID) {
+        outgoingText = outgoingText.slice(0, idx) + `@todos` + outgoingText.slice(idx + marker.length);
+        for (const p of groupParticipants) mentionJidList.push(p.jid);
+        continue;
       }
-      await sendMessage(sessionId, chatJid, outgoingText, mentionJidList, replyTo?.id);
-      rememberMessage(value);
-      setText("");
-      setShowEmoji(false);
-      setReplyTo(null);
-      setMentions([]);
-      setMentionQuery(null);
+      const digits = m.jid.split("@")[0];
+      outgoingText = outgoingText.slice(0, idx) + `@${digits}` + outgoingText.slice(idx + marker.length);
+      mentionJidList.push(m.jid);
+    }
+    // Envio otimista: a mensagem aparece na área do chat IMEDIATAMENTE, e o
+    // campo já limpa e recupera o foco na hora — sem esperar a confirmação
+    // do servidor/WhatsApp. Se o envio falhar de verdade, a mensagem fica
+    // marcada como "falhou" em vez de simplesmente sumir.
+    setText("");
+    setShowEmoji(false);
+    setReplyTo(null);
+    setMentions([]);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = messageInputRef.current;
+        if (el) {
+          el.style.height = "auto";
+          el.focus();
+        }
+      });
+    });
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    upsertMessage({
+      id: tempId,
+      sessionId,
+      chatJid: chatJid!,
+      senderJid: "",
+      fromMe: true,
+      ts: Date.now(),
+      kind: "text",
+      body: finalText,
+      quotedId: replyToId,
+      pending: true,
+    });
+    rememberMessage(value);
+    try {
+      const real = await sendMessage(sessionId, chatJid, outgoingText, mentionJidList, replyToId);
+      removeMessage(sessionId, chatJid!, tempId);
+      upsertMessage(real);
     } catch (e) {
       console.error("send failed", e);
-    } finally {
-      setSending(false);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const el = messageInputRef.current;
-          if (el) {
-            el.style.height = "auto";
-            el.focus();
-          }
-        });
-      });
+      markMessageFailed(sessionId, chatJid!, tempId);
     }
   };
 
