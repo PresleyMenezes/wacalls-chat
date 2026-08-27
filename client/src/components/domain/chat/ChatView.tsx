@@ -410,29 +410,39 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   };
 
   // Evita que o scroll automático "para o fim" sobrescreva o salto até uma
-  // mensagem específica logo depois de tratá-lo (onJumpHandled limpa a prop
-  // no componente pai, o que por si só já dispara este efeito de novo).
-  const justJumpedRef = useRef(false);
+  // mensagem específica — usa um prazo (não só "a próxima vez"), porque o
+  // efeito pode rodar de novo enquanto ainda estamos no meio do salto
+  // (mensagens chegando em tempo real, segunda etapa de carregamento etc).
+  // Pula sem animação, segura a posição por 2s, só então pisca — assim a
+  // rolagem suave não é cortada no meio por outro disparo do efeito.
+  const justJumpedUntilRef = useRef(0);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Se veio de um resultado de busca global, tenta ir direto para a
-    // mensagem em vez do fim da conversa.
+    // Se veio de um resultado de busca global ou de um relatório, tenta ir
+    // direto para a mensagem em vez do fim da conversa.
     if (jumpToMessageId) {
       const target = document.getElementById(`msg-${jumpToMessageId}`);
       if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "center" });
-        setHighlightedId(jumpToMessageId);
-        window.setTimeout(() => setHighlightedId((cur) => (cur === jumpToMessageId ? null : cur)), 1500);
-        justJumpedRef.current = true;
+        target.scrollIntoView({ behavior: "auto", block: "center" });
+        justJumpedUntilRef.current = Date.now() + 2000;
+        const targetId = jumpToMessageId;
+        window.setTimeout(() => {
+          // Reafirma a posição (algo pode ter mexido no layout nesses 2s)
+          // e só então pisca — dando tempo de qualquer outra rolagem
+          // concorrente já ter acontecido e se acomodado antes do destaque.
+          const el2 = document.getElementById(`msg-${targetId}`);
+          el2?.scrollIntoView({ behavior: "auto", block: "center" });
+          setHighlightedId(targetId);
+          window.setTimeout(() => setHighlightedId((cur) => (cur === targetId ? null : cur)), 1500);
+        }, 2000);
         onJumpHandled?.();
         return;
       }
       // Mensagem ainda não carregada nesta passada — tenta de novo quando
       // mais mensagens chegarem (efeito roda de novo com messages.length).
     }
-    if (justJumpedRef.current) {
-      justJumpedRef.current = false;
+    if (Date.now() < justJumpedUntilRef.current) {
       return;
     }
     el.scrollTo({ top: el.scrollHeight });
