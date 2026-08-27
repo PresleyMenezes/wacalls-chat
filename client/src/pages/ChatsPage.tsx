@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, CheckCheck, Eye, Filter, ListFilter, MoreVertical, Plus, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { useResizableWidth } from "@/hooks/useResizableWidth";
 import { AppShell } from "@/components/layout/AppShell";
 import { ensureSessionsWired, useSessions } from "@/stores/sessions";
 import {
@@ -44,6 +45,7 @@ export const ChatsPage = () => {
   const activeId = useSessions((s) => s.activeId);
   const [pickedSession, setPickedSession] = useState<string | null>(activeId);
   const [searchParams, setSearchParams] = useSearchParams();
+  const listResize = useResizableWidth("primevoip.chatlist.width", 320, 260, 480);
 
   // Hidrata pickedSession quando a store de sessões resolve depois do primeiro
   // render (acontece em F5: na primeira renderização activeId ainda é null e
@@ -227,7 +229,10 @@ export const ChatsPage = () => {
   return (
     <AppShell>
       <div className="flex h-full min-h-0 gap-3">
-        <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm 2xl:w-96">
+        <div
+          className="relative flex shrink-0 flex-col overflow-hidden rounded-2xl border bg-card shadow-sm"
+          style={{ width: listResize.width }}
+        >
           {pairedSessions.length > 1 && (
             <div className="border-b p-2">
               <select
@@ -353,6 +358,11 @@ export const ChatsPage = () => {
               if (status === "open") setTab("open");
               else if (status === "waiting" || status === "closed") setTab("waiting");
             }}
+          />
+          <div
+            onMouseDown={listResize.onHandleMouseDown}
+            className="absolute -right-0.5 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-primary/40"
+            title="Arraste para redimensionar"
           />
         </div>
         <div className="flex min-w-0 flex-1 overflow-hidden rounded-2xl border bg-card shadow-sm">
