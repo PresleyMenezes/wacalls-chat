@@ -33,6 +33,10 @@ export interface ChatMessage {
   originalMediaUrl?: string;
   originalMediaMime?: string;
   originalFileName?: string;
+  // Envio otimista: true enquanto aguarda confirmação do servidor.
+  pending?: boolean;
+  // true se o envio falhou de verdade (fica visível pra reenviar).
+  failed?: boolean;
 }
 
 export interface ChatSummary {
