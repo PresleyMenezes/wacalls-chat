@@ -188,11 +188,11 @@ const scheduleEmptyRetry = (sessionId: string) => {
   );
 };
 
-export const fetchMessages = async (sessionId: string, jid: string) => {
+export const fetchMessages = async (sessionId: string, jid: string, beforeTs?: number) => {
   const key = `${sessionId}::${jid}`;
   useChats.setState((s) => ({ loadingMessages: { ...s.loadingMessages, [key]: true } }));
   try {
-    const messages = ((await listMessages(sessionId, jid, { limit: 100 })) ?? []).map(normalizeDeletedMessage);
+    const messages = ((await listMessages(sessionId, jid, { limit: 100, before: beforeTs })) ?? []).map(normalizeDeletedMessage);
     useChats.setState((s) => {
       const perSession = { ...(s.messagesBySession[sessionId] ?? {}) };
       perSession[jid] = messages;
