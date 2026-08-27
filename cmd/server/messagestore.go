@@ -36,6 +36,9 @@ type ChatSummary struct {
 	LastTs      int64  `json:"lastTs"`
 	LastFromMe  bool   `json:"lastFromMe"`
 	Count       int    `json:"count"`
+	// ID da última mensagem — usado pelos drill-downs de relatório pra abrir
+	// o chat já posicionado exatamente naquela mensagem (?mid=).
+	LastID string `json:"lastId,omitempty"`
 	// Filled in by the API layer from chatMetaStore (best-effort).
 	Name           string `json:"name,omitempty"`
 	IsGroup        bool   `json:"isGroup,omitempty"`
@@ -158,14 +161,14 @@ func (s *messageStore) ListChats(ctx context.Context, sessionID string) ([]ChatS
 func (s *messageStore) ListChatsActiveInHour(ctx context.Context, sessionID string, from, to int64, hour int) ([]ChatSummary, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		WITH ranked AS (
-			SELECT chat_jid, body, kind, ts, from_me,
+			SELECT id, chat_jid, body, kind, ts, from_me,
 			       ROW_NUMBER() OVER (PARTITION BY chat_jid ORDER BY ts DESC) AS rn,
 			       COUNT(*) OVER (PARTITION BY chat_jid) AS cnt
 			FROM messages
 			WHERE session_id = ? AND ts >= ? AND ts <= ?
 			  AND CAST(strftime('%H', datetime(ts/1000, 'unixepoch', '-3 hours')) AS INTEGER) = ?
 		)
-		SELECT chat_jid, body, kind, ts, from_me, cnt
+		SELECT id, chat_jid, body, kind, ts, from_me, cnt
 		FROM ranked WHERE rn = 1
 		ORDER BY ts DESC`, sessionID, from, to, hour)
 	if err != nil {
@@ -176,7 +179,7 @@ func (s *messageStore) ListChatsActiveInHour(ctx context.Context, sessionID stri
 	for rows.Next() {
 		var c ChatSummary
 		var fromMe int
-		if err := rows.Scan(&c.ChatJID, &c.LastMessage, &c.LastKind, &c.LastTs, &fromMe, &c.Count); err != nil {
+		if err := rows.Scan(&c.LastID, &c.ChatJID, &c.LastMessage, &c.LastKind, &c.LastTs, &fromMe, &c.Count); err != nil {
 			return nil, err
 		}
 		c.LastFromMe = fromMe == 1
@@ -189,16 +192,16 @@ func (s *messageStore) ListChatsActiveInHour(ctx context.Context, sessionID stri
 // and including beforeTs — used to build a preview line ("última mensagem")
 // for chats surfaced by report drill-downs that aren't already tied to a
 // specific message (e.g. "Finalizados", "Aguardando").
-func (s *messageStore) LastMessageFor(ctx context.Context, sessionID, chatJID string, beforeTs int64) (body, kind string, ts int64, fromMe bool, ok bool) {
+func (s *messageStore) LastMessageFor(ctx context.Context, sessionID, chatJID string, beforeTs int64) (id, body, kind string, ts int64, fromMe bool, ok bool) {
 	var fm int
-	err := s.db.QueryRowContext(ctx, `SELECT body, kind, ts, from_me FROM messages
+	err := s.db.QueryRowContext(ctx, `SELECT id, body, kind, ts, from_me FROM messages
 		WHERE session_id = ? AND chat_jid = ? AND ts <= ? ORDER BY ts DESC LIMIT 1`,
 		sessionID, chatJID, beforeTs,
-	).Scan(&body, &kind, &ts, &fm)
+	).Scan(&id, &body, &kind, &ts, &fm)
 	if err != nil {
-		return "", "", 0, false, false
+		return "", "", "", 0, false, false
 	}
-	return body, kind, ts, fm == 1, true
+	return id, body, kind, ts, fm == 1, true
 }
 
 // RespondedChatsInRange returns, per distinct chat, the timestamp of the
