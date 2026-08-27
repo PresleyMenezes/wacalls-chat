@@ -265,15 +265,9 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <span className={`min-w-0 truncate text-sm ${unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground"}`}>
+            <span className={`min-w-0 flex-1 truncate text-sm ${unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground"}`}>
               {name}
             </span>
-            {sessionName && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-                <Send className="h-2.5 w-2.5" />
-                {sessionName}
-              </span>
-            )}
           </div>
 
           <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
