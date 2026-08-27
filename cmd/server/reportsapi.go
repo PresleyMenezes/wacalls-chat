@@ -119,6 +119,9 @@ type reportHourChat struct {
 	LastKind    string `json:"lastKind"`
 	LastTs      int64  `json:"lastTs"`
 	LastFromMe  bool   `json:"lastFromMe"`
+	// ID da mensagem específica — usado pelo frontend pra abrir o chat já
+	// posicionado exatamente nela (?mid=), em vez de rolar até o final.
+	MessageID string `json:"messageId,omitempty"`
 }
 
 func (s *server) handleReportHourDetail(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +179,7 @@ func (s *server) handleReportHourDetail(w http.ResponseWriter, r *http.Request) 
 					SessionID: sid, ChatJID: c.ChatJID,
 					LastMessage: c.LastMessage, LastKind: c.LastKind,
 					LastTs: c.LastTs, LastFromMe: c.LastFromMe,
+					MessageID: c.LastID,
 				}
 				if m, ok := metas[c.ChatJID]; ok {
 					row.Name = m.Name
@@ -237,8 +241,8 @@ func (s *server) handleReportCardDetail(w http.ResponseWriter, r *http.Request) 
 		addRow := func(chatJID string, lastTs int64, fallbackName string) {
 			row := reportHourChat{SessionID: sid, ChatJID: chatJID, LastTs: lastTs}
 			if s.messages != nil {
-				if body, kind, ts, fromMe, ok := s.messages.LastMessageFor(r.Context(), sid, chatJID, to); ok {
-					row.LastMessage, row.LastKind, row.LastTs, row.LastFromMe = body, kind, ts, fromMe
+				if id, body, kind, ts, fromMe, ok := s.messages.LastMessageFor(r.Context(), sid, chatJID, to); ok {
+					row.MessageID, row.LastMessage, row.LastKind, row.LastTs, row.LastFromMe = id, body, kind, ts, fromMe
 				}
 			}
 			if m, ok := metas[chatJID]; ok {
