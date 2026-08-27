@@ -281,7 +281,7 @@ const normalizeDeletedMessage = (msg: ChatMessage): ChatMessage => {
   };
 };
 
-const upsertMessage = (msg: ChatMessage) => {
+export const upsertMessage = (msg: ChatMessage) => {
   const placeholder = !msg.deleted && looksDeletedPlaceholder(msg.body, msg.kind);
   const effectivelyDeleted = msg.deleted || placeholder;
   // Persist non-deleted snapshots so we can recover them after refresh.
@@ -376,6 +376,32 @@ const upsertMessage = (msg: ChatMessage) => {
   if (state.activeJidBySession[msg.sessionId] === msg.chatJid && !msg.fromMe) {
     void markChatReadAPI(msg.sessionId, msg.chatJid, msg.ts).catch(() => {});
   }
+};
+
+// removeMessage drops a single message from the local store — usado pra
+// tirar o placeholder temporário assim que a mensagem real (com ID do
+// servidor) chega, evitando ficar com as duas ao mesmo tempo.
+export const removeMessage = (sessionId: string, chatJid: string, id: string) => {
+  useChats.setState((s) => {
+    const perSession = { ...(s.messagesBySession[sessionId] ?? {}) };
+    const existing = perSession[chatJid];
+    if (!existing) return {};
+    perSession[chatJid] = existing.filter((m) => m.id !== id);
+    return { messagesBySession: { ...s.messagesBySession, [sessionId]: perSession } };
+  });
+};
+
+// markMessageFailed marks a pending optimistic message as failed (instead
+// of removing it), so the operator sees it stayed on-screen but didn't
+// actually go out, with a visual cue to retry or delete.
+export const markMessageFailed = (sessionId: string, chatJid: string, id: string) => {
+  useChats.setState((s) => {
+    const perSession = { ...(s.messagesBySession[sessionId] ?? {}) };
+    const existing = perSession[chatJid];
+    if (!existing) return {};
+    perSession[chatJid] = existing.map((m) => (m.id === id ? { ...m, pending: false, failed: true } : m));
+    return { messagesBySession: { ...s.messagesBySession, [sessionId]: perSession } };
+  });
 };
 
 let wired = false;
