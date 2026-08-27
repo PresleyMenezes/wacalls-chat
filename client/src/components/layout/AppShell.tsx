@@ -16,6 +16,7 @@ import { ensureCallsWired } from "@/stores/calls";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { hasPermission, type Permission } from "@/lib/permissions";
+import { useResizableWidth } from "@/hooks/useResizableWidth";
 import { usePlan, usePlanStore } from "@/stores/plan";
 import { useOptionsStore } from "@/stores/options";
 import * as settingsApi from "@/services/settings";
@@ -87,6 +88,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem("primevoip.sidebar.collapsed") === "1"; } catch { return false; }
   });
+  const sidebarResize = useResizableWidth("primevoip.sidebar.width", 240, 180, 400);
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       const next = !v;
@@ -265,10 +267,18 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
     <div className="flex h-dvh w-full overflow-hidden bg-muted/30">
       {/* Desktop sidebar */}
       <aside
-        className={`sticky top-0 z-30 hidden h-dvh shrink-0 flex-col border-r bg-background transition-[width] duration-200 md:flex ${collapsed ? "w-16" : "w-60"}`}
+        className={`sticky top-0 z-30 hidden h-dvh shrink-0 flex-col border-r bg-background md:flex relative ${collapsed ? "w-16 transition-[width] duration-200" : sidebarResize.dragging ? "" : "transition-[width] duration-200"}`}
+        style={collapsed ? undefined : { width: sidebarResize.width }}
         aria-label={t("nav.menu")}
       >
         {renderSidebar(false)}
+        {!collapsed && (
+          <div
+            onMouseDown={sidebarResize.onHandleMouseDown}
+            className="absolute -right-0.5 top-0 hidden h-full w-1 cursor-col-resize md:block hover:bg-primary/40"
+            title="Arraste para redimensionar"
+          />
+        )}
       </aside>
 
       {/* Mobile drawer */}
