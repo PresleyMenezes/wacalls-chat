@@ -677,6 +677,13 @@ func (s *server) handleReportSummary(w http.ResponseWriter, r *http.Request) {
 		if a.Name == "" {
 			a.Name = nameByID[a.UserID]
 		}
+		// Mensagens enviadas por um dispositivo vinculado diferente do nosso
+		// (ex.: chatbot externo via GOWA/n8n no mesmo número) não têm um
+		// usuário real — mostra um nome amigável em vez de vazio.
+		if a.UserID == externalDeviceAgentID {
+			a.Name = "Chatbot externo"
+			a.Email = ""
+		}
 		if a.FirstResponses > 0 {
 			a.AvgFirstResponseMs = a.totalFirstResponseMs / int64(a.FirstResponses)
 			totalFirstResponseMs += a.totalFirstResponseMs
