@@ -51,6 +51,20 @@ func (s *Session) handleWAMessage(evt *events.Message) {
 	if row.ID == "" || row.ChatJID == "" {
 		return
 	}
+	// Detecta mensagens enviadas por OUTRO aparelho vinculado à mesma conta
+	// (ex.: um chatbot externo como GOWA/n8n, pareado separadamente no
+	// mesmo número) — o WhatsApp sincroniza essas mensagens pra cá
+	// normalmente, mas o "aparelho" de quem enviou (parte do JID do
+	// remetente) é diferente do nosso próprio aparelho pareado. Atribui
+	// essas mensagens a um agente sintético, pra contarem nos relatórios
+	// em vez de ficarem sem dono.
+	if evt.Info.IsFromMe && row.SentByUserID == "" {
+		if s.client != nil && s.client.Store != nil && s.client.Store.ID != nil {
+			if evt.Info.Sender.Device != s.client.Store.ID.Device {
+				row.SentByUserID = externalDeviceAgentID
+			}
+		}
+	}
 	// Honor the per-connection "Receber mensagens de grupo" flag: when the
 	// operator disables groups on the connection, inbound group messages are
 	// dropped entirely (not persisted, not broadcast).
@@ -1097,6 +1111,14 @@ func (s *server) handleChatClose(w http.ResponseWriter, r *http.Request) {
 
 // defaultSurveyPrompt is used when the connection has surveys enabled but no
 // custom text configured.
+// externalDeviceAgentID is the synthetic SentByUserID used for messages
+// sent from a DIFFERENT linked device on the same WhatsApp account (e.g. an
+// external chatbot like GOWA/n8n paired separately) — WhatsApp syncs these
+// in normally, but they never went through this app's send endpoint, so
+// there's no real user to attribute them to. Reports resolve this ID to a
+// friendly "Chatbot externo" label instead of a real agent name.
+const externalDeviceAgentID = "external:linked-device"
+
 const defaultSurveyPrompt = "Avalie nosso atendimento respondendo apenas com um número:\n1 - Bom\n2 - Ruim\n3 - Péssimo"
 
 // maybeSendSurvey delivers the CSAT prompt over WhatsApp and records the
