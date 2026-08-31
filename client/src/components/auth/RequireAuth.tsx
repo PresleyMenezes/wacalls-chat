@@ -4,6 +4,28 @@ import { clearAuthClientState, useAuth } from "@/stores/auth";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+// Conexão SSE de invalidação de sessão — feita UMA ÚNICA VEZ pra vida toda
+// da aba do navegador, não uma por página. RequireAuth remonta a cada troca
+// de menu (cada página tem seu próprio <RequireAuth>), então se essa
+// conexão fosse aberta/fechada dentro do componente, trocar de página
+// repetidamente rapidamente abria várias conexões antes da anterior
+// terminar de fechar — estourando o limite de conexões simultâneas do
+// navegador por site (~6 em HTTP/1.1) e travando o carregamento de tudo,
+// inclusive a própria página nova.
+let authStreamStarted = false;
+function ensureAuthStreamConnected(onInvalidated: () => void) {
+  if (authStreamStarted) return;
+  authStreamStarted = true;
+  window.addEventListener("auth:invalidated", onInvalidated);
+  const es = new EventSource("/api/auth/stream", { withCredentials: true });
+  es.addEventListener("revoked", () => {
+    onInvalidated();
+  });
+  es.onerror = () => {
+    // O navegador reconecta sozinho; nada a fazer aqui.
+  };
+}
+
 export const RequireAuth = ({ children, adminOnly = false, superAdminOnly = false }: { children: ReactNode; adminOnly?: boolean; superAdminOnly?: boolean }) => {
   const user = useAuth((s) => s.user);
   const loading = useAuth((s) => s.loading);
@@ -16,32 +38,17 @@ export const RequireAuth = ({ children, adminOnly = false, superAdminOnly = fals
   }, [loading, refresh]);
 
   // Política de sessão única: se outro navegador fizer login com o mesmo
-  // usuário, o backend revoga o token atual. Mantemos uma conexão SSE em
-  // /api/auth/stream para receber o evento "revoked" em tempo real, além
-  // de ouvir o evento "auth:invalidated" (disparado pelo cliente HTTP em
-  // respostas 401) como fallback.
+  // usuário, o backend revoga o token atual — recebido em tempo real pela
+  // conexão SSE (aberta uma única vez, ver ensureAuthStreamConnected acima).
   useEffect(() => {
     if (!user) return;
-    const handleInvalidated = () => {
+    ensureAuthStreamConnected(() => {
       toast.error("Sua sessão foi encerrada porque você entrou em outro navegador.");
       clearAuthClientState();
       useAuth.setState({ user: null });
       nav("/login", { replace: true });
-    };
-    window.addEventListener("auth:invalidated", handleInvalidated);
-    const es = new EventSource("/api/auth/stream", { withCredentials: true });
-    es.addEventListener("revoked", () => {
-      handleInvalidated();
-      es.close();
     });
-    es.onerror = () => {
-      // O navegador reconecta sozinho; nada a fazer aqui.
-    };
-    return () => {
-      window.removeEventListener("auth:invalidated", handleInvalidated);
-      es.close();
-    };
-  }, [user, refresh, nav]);
+  }, [user, nav]);
 
   if (loading) {
     return (
