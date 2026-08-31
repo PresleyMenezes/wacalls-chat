@@ -16,6 +16,17 @@ export default defineConfig({
     // bug, pode voltar pra false (arquivos ficam menores sem os mapas).
     sourcemap: true,
   },
+  esbuild: {
+    // O erro "Cannot access 'X' before initialization" apontou pra uma
+    // linha cujas variáveis já estavam todas declaradas corretamente antes
+    // dela no código-fonte — sinal de que o problema é o próprio
+    // minificador reaproveitando um nome curto (tipo "pl") pra duas
+    // variáveis diferentes por engano, um bug raro de minificação, não do
+    // nosso código. Desligar só a compactação de NOMES (mantendo o resto
+    // da minificação) evita essa classe de bug, trocando um bundle
+    // levemente maior por correção garantida.
+    minifyIdentifiers: false,
+  },
   server: {
     port: 5173,
     proxy: {
