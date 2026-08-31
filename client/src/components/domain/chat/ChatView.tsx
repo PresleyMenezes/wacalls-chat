@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed } from "@/stores/chats";
@@ -62,6 +62,25 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   );
 
   const [text, setText] = useState("");
+  // Rascunho por conversa (igual o WhatsApp): trocar de contato guarda o
+  // que estava sendo digitado na conversa anterior e recupera o rascunho
+  // (se houver) da conversa nova, em vez do texto continuar "vazando"
+  // entre conversas diferentes. Guardado em memória (por sessão do app),
+  // não precisa sobreviver a um recarregamento de página.
+  const draftsRef = useRef<Record<string, string>>({});
+  const prevDraftKeyRef = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const newKey = chatJid ? `${sessionId}::${chatJid}` : null;
+    const prevKey = prevDraftKeyRef.current;
+    if (prevKey && prevKey !== newKey) {
+      draftsRef.current[prevKey] = text;
+    }
+    if (newKey && newKey !== prevKey) {
+      setText(draftsRef.current[newKey] ?? "");
+    }
+    prevDraftKeyRef.current = newKey;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, chatJid]);
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
