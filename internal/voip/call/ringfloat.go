@@ -23,6 +23,13 @@ type ringFloat32 struct {
 	head int // read index
 	tail int // write index
 	size int // number of valid samples
+	// maxBacklog, quando > 0, é o alvo de atraso (jitter buffer) em
+	// amostras: depois de cada escrita, se o acúmulo passar disso, as
+	// amostras mais antigas em excesso são descartadas — sem isso, rajadas
+	// de rede fazem o atraso crescer e NUNCA voltar a diminuir (a
+	// capacidade grande do buffer é só uma proteção contra estouro, não um
+	// atraso aceitável de verdade).
+	maxBacklog int
 }
 
 func newRingFloat32(capacity int) *ringFloat32 {
@@ -30,6 +37,13 @@ func newRingFloat32(capacity int) *ringFloat32 {
 		capacity = 1
 	}
 	return &ringFloat32{buf: make([]float32, capacity)}
+}
+
+// SetMaxBacklog configures the soft jitter-buffer target (in samples). Call
+// once right after construction. 0 disables trimming (falls back to only
+// the hard capacity limit already enforced by Write).
+func (r *ringFloat32) SetMaxBacklog(n int) {
+	r.maxBacklog = n
 }
 
 func (r *ringFloat32) Cap() int  { return len(r.buf) }
@@ -64,6 +78,13 @@ func (r *ringFloat32) Write(src []float32) {
 	}
 	r.tail = (r.tail + len(src)) % cap
 	r.size += len(src)
+	// Alvo de atraso: descarta o excesso mais antigo além do jitter buffer
+	// configurado, pra nunca deixar o atraso crescer indefinidamente.
+	if r.maxBacklog > 0 && r.size > r.maxBacklog {
+		drop := r.size - r.maxBacklog
+		r.head = (r.head + drop) % cap
+		r.size -= drop
+	}
 }
 
 // ReadInto fills dst with up to len(dst) samples and returns how many were
