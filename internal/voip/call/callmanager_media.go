@@ -26,9 +26,12 @@ func (m *CallManager) FeedCapturedPCM(data []float32) {
 		return
 	}
 	if m.captureRing == nil {
-		// 120s of headroom at the codec's sample rate. Ring memory is
-		// allocated once and reused for the lifetime of the call.
+		// 120s de capacidade física (evita realocação sob rajadas), mas o
+		// atraso de verdade é limitado a ~150ms via SetMaxBacklog logo
+		// abaixo — sem isso, qualquer rajada de rede faz o atraso crescer e
+		// nunca mais voltar a diminuir.
 		m.captureRing = newRingFloat32(m.codec.SampleRate() * 120)
+		m.captureRing.SetMaxBacklog(m.codec.SampleRate() * 150 / 1000)
 	}
 	// Ring.Write drops oldest samples on overflow (same semantics as the
 	// previous slice-truncation guard) and never reallocates — eliminates
