@@ -17,6 +17,7 @@ import { useStartCall } from "@/hooks/useStartCall";
 import { useDevices } from "@/stores/devices";
 import { toast } from "sonner";
 import { listContacts, type ContactRow } from "@/services/contacts";
+import { resolveLidPhone } from "@/services/chats";
 import { fetchCallHistory, type CallHistoryRow } from "@/services/callsHistory";
 
 type Tab = "keypad" | "contacts" | "history";
@@ -138,8 +139,17 @@ export const DialerPanel = () => {
     );
   };
 
-  const callFromContact = (c: ContactRow) => {
-    const p = c.phone || jidToPhone(c.chatJid);
+  const callFromContact = async (c: ContactRow) => {
+    let p = c.phone;
+    if (!p && c.chatJid.endsWith("@lid")) {
+      // Mesma resolução usada na tela de Contatos: o @lid é um
+      // identificador interno do WhatsApp, não um telefone de verdade —
+      // precisa perguntar ao servidor qual é o número real por trás dele
+      // antes de conseguir discar.
+      const resolved = await resolveLidPhone(c.sessionId, c.chatJid);
+      p = resolved?.phone ? resolved.phone.replace(/\D/g, "") : "";
+    }
+    if (!p) p = jidToPhone(c.chatJid);
     if (!p) {
       toast.error("Contato sem telefone");
       return;
