@@ -536,10 +536,19 @@ func (s *server) doStartCall(sess *Session, w http.ResponseWriter, r *http.Reque
 		// Self-heal: if the call manager no longer tracks this call (e.g. the
 		// previous dial died right after sending the offer and we never got an
 		// OnEnded), drop the stale broker entry so the operator can dial again.
+		// Also treat a call as stale if it's been sitting in a non-terminal
+		// status for too long — covers cases where the call got stuck in some
+		// intermediate state (e.g. a bad LID resolution mid-signaling) that
+		// isn't caught by the reg-presence check alone, permanently blocking
+		// the operator from dialing again until a manual server restart.
 		stale := true
 		if rec, found := s.broker.getCall(other); found {
 			if ac, ok := sess.reg.get(other); ok && ac != nil && rec.Status != StatusEnded {
 				stale = false
+				const staleCallTimeout = 2 * time.Minute
+				if rec.StartedAt > 0 && time.Since(time.UnixMilli(rec.StartedAt)) > staleCallTimeout {
+					stale = true
+				}
 			}
 		}
 		if stale {
