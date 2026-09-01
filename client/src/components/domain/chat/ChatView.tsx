@@ -382,6 +382,17 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const rafRef = useRef<number | null>(null);
+  // Declarada aqui em cima (não mais no meio do componente) porque é
+  // usada dentro de efeitos de limpeza que rodam antes do componente
+  // terminar de renderizar pela primeira vez — declará-la mais abaixo
+  // causava "Cannot access before initialization" ao navegar rápido entre
+  // páginas (o componente desmontava no meio da renderização).
+  const teardownAudioVis = () => {
+    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    if (recordTimerRef.current != null) { window.clearInterval(recordTimerRef.current); recordTimerRef.current = null; }
+    if (audioCtxRef.current) { try { void audioCtxRef.current.close(); } catch { /* ignore */ } audioCtxRef.current = null; }
+    analyserRef.current = null;
+  };
   const waveCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Signature comes from the user profile (/api/me/signature). The per-conversation
@@ -727,13 +738,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
     recordStreamRef.current = null;
     teardownAudioVis();
     setRecording(false);
-  };
-
-  const teardownAudioVis = () => {
-    if (rafRef.current != null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    if (recordTimerRef.current != null) { window.clearInterval(recordTimerRef.current); recordTimerRef.current = null; }
-    if (audioCtxRef.current) { try { void audioCtxRef.current.close(); } catch { /* ignore */ } audioCtxRef.current = null; }
-    analyserRef.current = null;
   };
 
   const drawWaveform = () => {
