@@ -67,6 +67,14 @@ func jidPhone(jid string) string {
 	if suffix == "g.us" || suffix == "newsletter" || suffix == "broadcast" {
 		return ""
 	}
+	if suffix == "lid" {
+		// @lid é um identificador interno do WhatsApp (privacidade), não um
+		// telefone — os dígitos antes do @ NÃO são discáveis. Retornar vazio
+		// aqui é o que permite ao frontend saber que precisa resolver o
+		// telefone real via /lid-pn antes de tentar ligar, em vez de discar
+		// esses dígitos crus (que sempre falham).
+		return ""
+	}
 	user := jid[:at]
 	if i := strings.IndexAny(user, ":."); i > 0 {
 		user = user[:i]
