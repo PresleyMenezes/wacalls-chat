@@ -327,6 +327,16 @@ func (s *Session) handleEvent(rawEvt any) {
 		}
 	case *events.Message:
 		s.handleWAMessage(evt)
+	case *events.Receipt:
+		// ReceiptTypeReadSelf: o WhatsApp avisa quando VOCÊ leu a conversa em
+		// outro aparelho vinculado (o celular) — sincroniza esse "lido" pra
+		// cá também, marcando como lida aqui do mesmo jeito, em tempo real.
+		if evt.Type == types.ReceiptTypeReadSelf && s.mgr != nil && s.mgr.chatMeta != nil {
+			ts := evt.Timestamp.UnixMilli()
+			if m, err := s.mgr.chatMeta.MarkRead(s.mgr.appCtx, s.id, evt.Chat.String(), ts); err == nil && s.mgr.broker != nil {
+				s.mgr.broker.emitChatMeta(m)
+			}
+		}
 	}
 }
 
