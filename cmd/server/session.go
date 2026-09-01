@@ -328,6 +328,10 @@ func (s *Session) handleEvent(rawEvt any) {
 	case *events.Message:
 		s.handleWAMessage(evt)
 	case *events.Receipt:
+		// Log temporário de diagnóstico: queremos ver TODO recibo que chega,
+		// não só os "ReadSelf" — pra confirmar se o evento sequer chega, e
+		// com qual Type de verdade, antes de decidir o que fazer com ele.
+		s.log.Info("receipt event", "type", string(evt.Type), "chat", evt.Chat.String(), "isFromMe", evt.IsFromMe, "messageIds", evt.MessageIDs)
 		// ReceiptTypeReadSelf: o WhatsApp avisa quando VOCÊ leu a conversa em
 		// outro aparelho vinculado (o celular) — sincroniza esse "lido" pra
 		// cá também, marcando como lida aqui do mesmo jeito, em tempo real.
