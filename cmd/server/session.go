@@ -337,7 +337,9 @@ func (s *Session) handleEvent(rawEvt any) {
 		// cá também, marcando como lida aqui do mesmo jeito, em tempo real.
 		if evt.Type == types.ReceiptTypeReadSelf && s.mgr != nil && s.mgr.chatMeta != nil {
 			ts := evt.Timestamp.UnixMilli()
-			if m, err := s.mgr.chatMeta.MarkRead(s.mgr.appCtx, s.id, evt.Chat.String(), ts); err == nil && s.mgr.broker != nil {
+			m, err := s.mgr.chatMeta.MarkRead(s.mgr.appCtx, s.id, evt.Chat.String(), ts)
+			s.log.Info("read-self: markread result", "chat", evt.Chat.String(), "ts", ts, "err", err, "lastReadTs", m.LastReadTs)
+			if err == nil && s.mgr.broker != nil {
 				s.mgr.broker.emitChatMeta(m)
 			}
 		}
