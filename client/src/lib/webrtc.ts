@@ -28,7 +28,7 @@ export type OpenCall = {
   remoteStream: MediaStream | null;
   localVideoStream: MediaStream | null;
   remoteVideoStream: MediaStream | null;
-  close: () => void;
+  close: () => Promise<void>;
 };
 
 const waitForIceGathering = (pc: RTCPeerConnection, timeoutMs = 1000) =>
@@ -55,7 +55,7 @@ const waitForIceGathering = (pc: RTCPeerConnection, timeoutMs = 1000) =>
     timer = setTimeout(finish, timeoutMs);
   });
 
-const closeLocalResources = (
+const closeLocalResources = async (
   pc: RTCPeerConnection,
   stream: MediaStream,
   ctx: AudioContext,
@@ -79,7 +79,11 @@ const closeLocalResources = (
     }
   } catch {}
   try {
-    ctx.close();
+    // ctx.close() devolve uma promessa — sem esperar ela terminar, uma
+    // chamada nova (que pede o microfone de novo quase na hora) pode tentar
+    // abrir antes do sistema operacional ter liberado de verdade o áudio da
+    // chamada anterior, deixando a nova chamada muda dos dois lados.
+    await ctx.close();
   } catch {}
   try {
     pc.close();
@@ -205,7 +209,7 @@ export const openCall = async (
     );
     await pc.setRemoteDescription({ type: "answer", sdp: sdp_answer });
   } catch (err) {
-    closeLocalResources(pc, localStream, ctx, videoSender, videoReceiver, remoteAudio);
+    await closeLocalResources(pc, localStream, ctx, videoSender, videoReceiver, remoteAudio);
     throw err;
   }
 
@@ -215,8 +219,6 @@ export const openCall = async (
     remoteStream: streamDest.stream,
     localVideoStream,
     remoteVideoStream,
-    close: () => {
-      closeLocalResources(pc, localStream, ctx, videoSender, videoReceiver, remoteAudio);
-    },
+    close: () => closeLocalResources(pc, localStream, ctx, videoSender, videoReceiver, remoteAudio),
   };
 };
