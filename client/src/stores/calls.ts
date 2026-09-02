@@ -20,9 +20,27 @@ export const useCalls = create<State>(() => ({
   incoming: null,
 }));
 
+// Rastreia, por conexão (sessionId), a limpeza de áudio/WebRTC ainda em
+// andamento da última chamada encerrada nela — assim, ao iniciar uma
+// chamada nova na MESMA conexão, dá pra esperar essa limpeza terminar de
+// verdade antes de pedir o microfone de novo. Sem isso, desligar e ligar
+// rapidamente podia deixar a chamada nova muda dos dois lados, porque o
+// sistema operacional ainda não tinha liberado o áudio da chamada anterior.
+const closingPromises = new Map<string, Promise<void>>();
+
+export const waitForPendingClose = async (sid: string): Promise<void> => {
+  const p = closingPromises.get(sid);
+  if (!p) return;
+  try {
+    await p;
+  } catch {
+    /* ignore */
+  }
+};
+
 export const resetCallsStore = (): void => {
   const current = useCalls.getState();
-  for (const conn of current.ownConnections.values()) conn.close();
+  for (const conn of current.ownConnections.values()) void conn.close();
   useCalls.setState({ calls: [], ownConnections: new Map(), ownSessions: new Map(), incoming: null });
 };
 
@@ -42,9 +60,15 @@ export const ensureCallsWired = (): void => {
         ),
       }));
     } else if (ev.type === "call-ended") {
+      const before = useCalls.getState();
+      const conn = before.ownConnections.get(ev.id);
+      const sid = before.ownSessions.get(ev.id);
+      let closePromise: Promise<void> | undefined;
+      if (conn) {
+        closePromise = conn.close().catch(() => {});
+        if (sid) closingPromises.set(sid, closePromise);
+      }
       useCalls.setState((s) => {
-        const conn = s.ownConnections.get(ev.id);
-        if (conn) conn.close();
         const msg = conn ? callEndMessage(ev.reason) : null;
         if (msg) toast.error(msg);
         const next = new Map(s.ownConnections);
@@ -58,6 +82,12 @@ export const ensureCallsWired = (): void => {
           incoming: s.incoming?.callId === ev.id ? null : s.incoming,
         };
       });
+      if (closePromise && sid) {
+        const settled = closePromise;
+        void settled.finally(() => {
+          if (closingPromises.get(sid) === settled) closingPromises.delete(sid);
+        });
+      }
       void queryClient.invalidateQueries({ queryKey: queryKeys.history });
     } else if (ev.type === "incoming") {
       useCalls.setState((s) => ({
