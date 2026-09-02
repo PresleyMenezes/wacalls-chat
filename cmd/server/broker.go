@@ -59,6 +59,7 @@ type SessionInfo struct {
 	// "campo ausente" no frontend — com omitempty, desligar o toggle faria
 	// o campo sumir do JSON, indistinguível de nunca ter sido configurado.
 	SharedAttendance  bool   `json:"sharedAttendance"`
+	ExternalBotDevice int    `json:"externalBotDevice,omitempty"`
 	IntegrationToken  string `json:"integrationToken,omitempty"`
 	QueueID           string `json:"queueId,omitempty"`
 	RedirectMinutes   int    `json:"redirectMinutes,omitempty"`
