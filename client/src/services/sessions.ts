@@ -32,6 +32,7 @@ export type SessionUpdate = {
   allowGroups: boolean;
   allowBroadcast: boolean;
   sharedAttendance: boolean;
+  externalBotDevice: number;
   queueId: string;
   redirectMinutes: number;
   flowId: string;
@@ -92,3 +93,11 @@ export type AccountHealth = {
 
 export const fetchAccountHealth = (id: string) =>
   apiGet<AccountHealth>(`/api/sessions/${id}/health`);
+
+export type LinkedDevices = {
+  ownDevice: number;
+  devices: number[];
+};
+
+export const fetchLinkedDevices = (id: string) =>
+  apiGet<LinkedDevices>(`/api/sessions/${id}/linked-devices`);
