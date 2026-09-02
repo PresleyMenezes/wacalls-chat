@@ -173,7 +173,7 @@ export const DialerPanel = () => {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && close()}>
-      <DialogContent showCloseButton={false} className="max-w-xs gap-0 p-0">
+      <DialogContent showCloseButton={false} className="w-[420px] max-w-[92vw] gap-0 p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
             <Phone className="h-4 w-4 text-emerald-500" />
