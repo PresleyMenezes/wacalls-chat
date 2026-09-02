@@ -711,6 +711,7 @@ export default function ReportsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os agentes</SelectItem>
+                <SelectItem value="external:linked-device">🤖 Chatbot externo</SelectItem>
                 {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>{u.name?.trim() || u.email}</SelectItem>
                 ))}
