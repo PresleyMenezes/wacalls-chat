@@ -425,7 +425,7 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={(o) => !o && closeDialog()}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="flex max-h-[90vh] max-w-lg flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>{editing ? t("pages.users.dialogEdit") : t("pages.users.dialogNew")}</DialogTitle>
             <DialogDescription>
@@ -434,7 +434,7 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
                 : "Crie um novo usuário e selecione as filas que ele atenderá."}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-3">
               {isEditingSelf ? (
                 <div className="col-span-2 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
