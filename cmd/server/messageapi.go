@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.mau.fi/whatsmeow"
@@ -2014,37 +2015,54 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 		if mime == "" {
 			mime = guessMimeForKind(src.Kind)
 		}
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+		// Envia pra todos os destinos em paralelo, não um por vez — antes,
+		// encaminhar pra vários contatos somava o tempo de cada envio (até
+		// 20s cada); em paralelo, o tempo total fica limitado ao envio mais
+		// lento, não à soma de todos.
 		for _, t := range body.Targets {
 			target, terr := parseChatJID(t)
 			if terr != nil {
+				mu.Lock()
 				failures = append(failures, t+": "+terr.Error())
+				mu.Unlock()
 				continue
 			}
-			msg := buildMediaMessage(src.Kind, up, mime, src.Body, src.FileName, uint64(len(data)))
-			applyForwardedContext(msg)
-			ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-			resp, serr := sess.client.SendMessage(ctx, target, msg)
-			cancel()
-			if serr != nil {
-				failures = append(failures, t+": "+serr.Error())
-				continue
-			}
-			localURL := saveLocalMedia(resp.ID, src.FileName, data)
-			row := MessageRow{
-				ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
-				SenderJID: jidOrEmpty(sess), FromMe: true,
-				Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body,
-				MediaMime: mime, MediaURL: localURL, FileName: src.FileName, FileSize: int64(len(data)),
-				SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
-			}
-			if row.Ts == 0 {
-				row.Ts = time.Now().UnixMilli()
-			}
-			_ = s.messages.Insert(r.Context(), row)
-			s.markChatOpen(r.Context(), sess, row.ChatJID, currentUserFromReq(r))
-			s.broker.emitMessage(row)
-			sent++
+			wg.Add(1)
+			go func(t string, target types.JID) {
+				defer wg.Done()
+				msg := buildMediaMessage(src.Kind, up, mime, src.Body, src.FileName, uint64(len(data)))
+				applyForwardedContext(msg)
+				ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+				resp, serr := sess.client.SendMessage(ctx, target, msg)
+				cancel()
+				if serr != nil {
+					mu.Lock()
+					failures = append(failures, t+": "+serr.Error())
+					mu.Unlock()
+					return
+				}
+				localURL := saveLocalMedia(resp.ID, src.FileName, data)
+				row := MessageRow{
+					ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
+					SenderJID: jidOrEmpty(sess), FromMe: true,
+					Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body,
+					MediaMime: mime, MediaURL: localURL, FileName: src.FileName, FileSize: int64(len(data)),
+					SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
+				}
+				if row.Ts == 0 {
+					row.Ts = time.Now().UnixMilli()
+				}
+				_ = s.messages.Insert(r.Context(), row)
+				s.markChatOpen(r.Context(), sess, row.ChatJID, currentUserFromReq(r))
+				s.broker.emitMessage(row)
+				mu.Lock()
+				sent++
+				mu.Unlock()
+			}(t, target)
 		}
+		wg.Wait()
 		writeJSON(w, http.StatusOK, map[string]any{"sent": sent, "errors": failures})
 		return
 	}
@@ -2054,25 +2072,34 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "mensagem vazia"})
 		return
 	}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 	for _, t := range body.Targets {
 		target, err := parseChatJID(t)
 		if err != nil {
+			mu.Lock()
 			failures = append(failures, t+": "+err.Error())
+			mu.Unlock()
 			continue
 		}
-		msg := &waE2E.Message{ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-			Text: proto.String(text),
-			ContextInfo: &waE2E.ContextInfo{
-				IsForwarded:     proto.Bool(true),
-				ForwardingScore: proto.Uint32(1),
-			},
-		}}
-		ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-		resp, err := sess.client.SendMessage(ctx, target, msg)
+		wg.Add(1)
+		go func(t string, target types.JID) {
+			defer wg.Done()
+			msg := &waE2E.Message{ExtendedTextMessage: &waE2E.ExtendedTextMessage{
+				Text: proto.String(text),
+				ContextInfo: &waE2E.ContextInfo{
+					IsForwarded:     proto.Bool(true),
+					ForwardingScore: proto.Uint32(1),
+				},
+			}}
+			ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+			resp, err := sess.client.SendMessage(ctx, target, msg)
 			cancel()
 			if err != nil {
+				mu.Lock()
 				failures = append(failures, t+": "+err.Error())
-				continue
+				mu.Unlock()
+				return
 			}
 			row := MessageRow{
 				ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
@@ -2080,14 +2107,18 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 				Ts: resp.Timestamp.UnixMilli(), Kind: "text", Body: text,
 				SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
 			}
-		if row.Ts == 0 {
-			row.Ts = time.Now().UnixMilli()
-		}
-		_ = s.messages.Insert(r.Context(), row)
-		s.markChatOpen(r.Context(), sess, row.ChatJID, currentUserFromReq(r))
-		s.broker.emitMessage(row)
-		sent++
+			if row.Ts == 0 {
+				row.Ts = time.Now().UnixMilli()
+			}
+			_ = s.messages.Insert(r.Context(), row)
+			s.markChatOpen(r.Context(), sess, row.ChatJID, currentUserFromReq(r))
+			s.broker.emitMessage(row)
+			mu.Lock()
+			sent++
+			mu.Unlock()
+		}(t, target)
 	}
+	wg.Wait()
 	writeJSON(w, http.StatusOK, map[string]any{"sent": sent, "errors": failures})
 }
 
