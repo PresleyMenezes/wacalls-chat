@@ -13,6 +13,7 @@ export type SessionInfo = {
   allowGroups?: boolean;
   allowBroadcast?: boolean;
   sharedAttendance?: boolean;
+  externalBotDevice?: number;
   integrationToken?: string;
   queueId?: string;
   redirectMinutes?: number;
