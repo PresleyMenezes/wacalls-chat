@@ -51,17 +51,24 @@ func (s *Session) handleWAMessage(evt *events.Message) {
 	if row.ID == "" || row.ChatJID == "" {
 		return
 	}
-	// Detecta mensagens enviadas por OUTRO aparelho vinculado à mesma conta
-	// (ex.: um chatbot externo como GOWA/n8n, pareado separadamente no
-	// mesmo número) — o WhatsApp sincroniza essas mensagens pra cá
-	// normalmente, mas o "aparelho" de quem enviou (parte do JID do
-	// remetente) é diferente do nosso próprio aparelho pareado. Atribui
-	// essas mensagens a um agente sintético, pra contarem nos relatórios
-	// em vez de ficarem sem dono.
+	// Detecta mensagens enviadas por um aparelho vinculado ESPECÍFICO
+	// (identificado pelo número do dispositivo, configurado manualmente
+	// pelo operador via o botão "Buscar dispositivos vinculados") — não
+	// basta "ser diferente do nosso aparelho", porque o mesmo número de
+	// WhatsApp pode ter vários outros aparelhos vinculados (WhatsApp Web de
+	// pessoas de verdade, outras conexões nossas), e só UM deles é de fato
+	// o bot externo (GOWA/n8n).
 	if evt.Info.IsFromMe && row.SentByUserID == "" {
 		if s.client != nil && s.client.Store != nil && s.client.Store.ID != nil {
-			if evt.Info.Sender.Device != s.client.Store.ID.Device {
-				row.SentByUserID = externalDeviceAgentID
+			senderDevice := int(evt.Info.Sender.Device)
+			ownDevice := int(s.client.Store.ID.Device)
+			if senderDevice != ownDevice {
+				s.mu.Lock()
+				botDevice := s.externalBotDevice
+				s.mu.Unlock()
+				if botDevice > 0 && senderDevice == botDevice {
+					row.SentByUserID = externalDeviceAgentID
+				}
 			}
 		}
 	}
