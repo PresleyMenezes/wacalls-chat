@@ -2,11 +2,16 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { openCall } from "@/lib/webrtc";
 import { startCall, endCall } from "@/services/calls";
-import { registerOwnConnection } from "@/stores/calls";
+import { registerOwnConnection, waitForPendingClose } from "@/stores/calls";
 
 export const useStartCall = (sid: string, micId: string | null, outId?: string | null) =>
   useMutation({
     mutationFn: async (vars: { phone: string; record: boolean; video: boolean }) => {
+      // Espera a limpeza de áudio/WebRTC de uma chamada anterior NESSA
+      // MESMA conexão terminar de verdade (se ainda estiver em andamento)
+      // antes de tentar pegar o microfone de novo — desligar e discar de
+      // novo rapidamente podia deixar a chamada nova muda dos dois lados.
+      await waitForPendingClose(sid);
       // Testa o microfone ANTES de discar de verdade — sem isso, o pedido
       // de chamada já saía pro WhatsApp (o telefone da outra pessoa
       // chegava a tocar) e só depois a gente descobria que faltava
