@@ -300,7 +300,16 @@ export const upsertMessage = (msg: ChatMessage) => {
     // Update message list for the open conversation.
     const perSession = { ...(s.messagesBySession[msg.sessionId] ?? {}) };
     const existing = perSession[msg.chatJid] ?? [];
-    const existingIdx = existing.findIndex((m) => m.id === msg.id);
+    let existingIdx = existing.findIndex((m) => m.id === msg.id);
+    // Quando a mensagem "de verdade" chega (com o ID real do servidor)
+    // enquanto ainda existe um placeholder otimista pendente pra ela (ID
+    // temporário, criado na hora de enviar), substitui o placeholder em vez
+    // de adicionar uma segunda entrada — sem isso, o balão aparecia
+    // duplicado por um instante até o placeholder ser removido separadamente.
+    if (existingIdx < 0 && msg.fromMe && !msg.id.startsWith("temp-")) {
+      const pendingIdx = existing.findIndex((m) => m.pending && m.id.startsWith("temp-") && m.body === msg.body);
+      if (pendingIdx >= 0) existingIdx = pendingIdx;
+    }
     if (existingIdx >= 0) {
       // Edit / delete updates arrive as a re-emit of the same id.
       const next = [...existing];
