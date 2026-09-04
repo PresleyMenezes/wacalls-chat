@@ -24,6 +24,15 @@ type sessionRow struct {
 	// ter vários outros aparelhos vinculados (WhatsApp Web de pessoas de
 	// verdade, outras conexões nossas), e só um deles é o bot de verdade.
 	ExternalBotDevice int
+	// WebhookInboundURL: se preenchida, toda mensagem recebida nesta
+	// conexão é repassada (POST) pra essa URL — usado pra integrar com
+	// n8n/automações externas, avisando em tempo real sobre mensagens
+	// novas.
+	WebhookInboundURL string
+	// WebhookToken: token secreto que autentica chamadas ao endpoint de
+	// ENVIO via webhook (POST /api/sessions/{sid}/bot/send) — gerado
+	// automaticamente na primeira vez que o operador liga a integração.
+	WebhookToken string
 	// SharedAttendance: quando true (padrão), qualquer agente com acesso à
 	// conexão vê e responde conversas "Em atendimento", independente de
 	// quem clicou em "Atender". Quando false, volta ao comportamento
@@ -88,6 +97,8 @@ func newSessionStore(ctx context.Context, db *sql.DB) (*sessionStore, error) {
 		// 0 = não configurado. O operador define o número exato do aparelho
 		// do bot depois de identificá-lo pelo botão "Buscar dispositivos".
 		`ALTER TABLE sessions ADD COLUMN external_bot_device INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sessions ADD COLUMN webhook_inbound_url TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE sessions ADD COLUMN webhook_token TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN integration_token TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN queue_id TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE sessions ADD COLUMN redirect_minutes INTEGER NOT NULL DEFAULT 0`,
@@ -130,6 +141,7 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, name, COALESCE(jid, ''), COALESCE(owner_id, ''),
 		COALESCE(color, '#57adf8'), COALESCE(is_default, 0), COALESCE(allow_groups, 0), COALESCE(allow_broadcast, 0),
 		COALESCE(shared_attendance, 1), COALESCE(external_bot_device, 0),
+		COALESCE(webhook_inbound_url, ''), COALESCE(webhook_token, ''),
 		COALESCE(integration_token, ''), COALESCE(queue_id, ''), COALESCE(redirect_minutes, 0),
 		COALESCE(flow_id, ''), COALESCE(chat_flow_id, ''), COALESCE(greeting_message, ''), COALESCE(completion_message, ''),
 		COALESCE(out_of_hours_message, ''),
@@ -146,7 +158,9 @@ func (s *sessionStore) list(ctx context.Context) ([]sessionRow, error) {
 		var r sessionRow
 		var isDefault, allowGroups, allowBroadcast, sharedAttendance, surveyEnabled int
 		if err := rows.Scan(&r.ID, &r.Name, &r.JID, &r.OwnerID,
-			&r.Color, &isDefault, &allowGroups, &allowBroadcast, &sharedAttendance, &r.ExternalBotDevice, &r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
+			&r.Color, &isDefault, &allowGroups, &allowBroadcast, &sharedAttendance, &r.ExternalBotDevice,
+			&r.WebhookInboundURL, &r.WebhookToken,
+			&r.IntegrationToken, &r.QueueID, &r.RedirectMinutes, &r.FlowID,
 			&r.ChatFlowID, &r.GreetingMessage, &r.CompletionMessage, &r.OutOfHoursMessage,
 			&surveyEnabled, &r.SurveyPrompt,
 			&r.Mode, &r.CloudPhoneID, &r.CloudWABAID, &r.CloudTokenEnc, &r.CloudAppSecretEnc, &r.CloudVerifyToken); err != nil {
@@ -266,6 +280,7 @@ type sessionUpdate struct {
 	AllowBroadcast    bool
 	SharedAttendance  bool
 	ExternalBotDevice int
+	WebhookInboundURL string
 	QueueID           string
 	RedirectMinutes   int
 	FlowID            string
@@ -303,11 +318,11 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 		_, _ = s.db.ExecContext(ctx, `UPDATE sessions SET is_default = 0 WHERE id != ? AND owner_id = (SELECT owner_id FROM sessions WHERE id = ?)`, id, id)
 	}
 	res, err := s.db.ExecContext(ctx, `UPDATE sessions
-		SET name = ?, color = ?, is_default = ?, allow_groups = ?, allow_broadcast = ?, shared_attendance = ?, external_bot_device = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
+		SET name = ?, color = ?, is_default = ?, allow_groups = ?, allow_broadcast = ?, shared_attendance = ?, external_bot_device = ?, webhook_inbound_url = ?, queue_id = ?, redirect_minutes = ?, flow_id = ?, chat_flow_id = ?,
 		    greeting_message = ?, completion_message = ?, out_of_hours_message = ?,
 		    survey_enabled = ?, survey_prompt = ?
 		WHERE id = ?`,
-		strings.TrimSpace(u.Name), u.Color, def, grp, bcast, shared, u.ExternalBotDevice, u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
+		strings.TrimSpace(u.Name), u.Color, def, grp, bcast, shared, u.ExternalBotDevice, strings.TrimSpace(u.WebhookInboundURL), u.QueueID, u.RedirectMinutes, u.FlowID, u.ChatFlowID,
 		u.GreetingMessage, u.CompletionMessage, u.OutOfHoursMessage,
 		srv, strings.TrimSpace(u.SurveyPrompt), id)
 	if err != nil {
@@ -323,6 +338,12 @@ func (s *sessionStore) update(ctx context.Context, id string, u sessionUpdate) e
 func (s *sessionStore) regenerateToken(ctx context.Context, id string) (string, error) {
 	tok := newToken()
 	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET integration_token = ? WHERE id = ?`, tok, id)
+	return tok, err
+}
+
+func (s *sessionStore) regenerateWebhookToken(ctx context.Context, id string) (string, error) {
+	tok := newToken()
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET webhook_token = ? WHERE id = ?`, tok, id)
 	return tok, err
 }
 
