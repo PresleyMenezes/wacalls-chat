@@ -24,6 +24,7 @@ type server struct {
 	flowExec   *FlowExecutor
 	flowTracer *flowTracer
 	messages   *messageStore
+	syncedContacts *syncedContactsStore
 	auth       *authStore
 	loginLimit *loginLimiter
 	queues     *queueStore
@@ -102,6 +103,10 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 		return nil, err
 	}
 	messages, err := newMessageStore(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	syncedContacts, err := newSyncedContactsStore(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -188,6 +193,7 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	// Composite indexes per-tenant — safe to (re)run on every boot.
 	ensureTenantIndexes(ctx, db, log)
 	mgr.messages = messages
+	mgr.syncedContacts = syncedContacts
 	mgr.chatMeta = chatMeta
 	mgr.kanban = kanban
 	mgr.calls = callStore
@@ -229,6 +235,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 			hub.Revoke(t)
 		}
 	}
-	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch, scopeCache: scopeCache, billingCache: billingCache}
+	srv := &server{broker: broker, sessions: mgr, log: log, staticDir: staticDir, flows: flows, quickReplies: quickReplies, flowExec: exec, flowTracer: tracer, messages: messages, syncedContacts: syncedContacts, auth: auth, loginLimit: newLoginLimiter(), queues: queues, tags: tags, kanban: kanban, sessStore: store, chatMeta: chatMeta, calls: callStore, recSigner: signer, settings: settings, db: db, authStream: hub, cache: cch, scopeCache: scopeCache, billingCache: billingCache}
 	return srv, nil
 }
