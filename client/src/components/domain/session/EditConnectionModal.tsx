@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { updateSession, regenerateWebhookToken } from "@/services/sessions";
+import { updateSession, regenerateWebhookToken, syncContacts } from "@/services/sessions";
 import { listQueues } from "@/services/queues";
 import type { SessionInfo } from "@/types/session";
 import type { Queue } from "@/types/queue";
@@ -26,6 +26,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
   const [webhookInboundUrl, setWebhookInboundUrl] = useState(session.webhookInboundUrl ?? "");
   const [webhookToken, setWebhookToken] = useState(session.webhookToken ?? "");
   const [webhookTokenBusy, setWebhookTokenBusy] = useState(false);
+  const [contactSyncBusy, setContactSyncBusy] = useState(false);
   const [queueId, setQueueId] = useState(session.queueId ?? "");
   const [queues, setQueues] = useState<Queue[]>([]);
   const [busy, setBusy] = useState(false);
@@ -51,6 +52,18 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
       toast.error(e instanceof Error ? e.message : "Não foi possível gerar o token.");
     } finally {
       setWebhookTokenBusy(false);
+    }
+  };
+
+  const onSyncContacts = async () => {
+    setContactSyncBusy(true);
+    try {
+      const n = await syncContacts(session.id);
+      toast.success(`${n} contatos/grupos sincronizados.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível sincronizar.");
+    } finally {
+      setContactSyncBusy(false);
     }
   };
 
@@ -265,6 +278,33 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
                     uma mensagem.
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                <Users2 className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">Contatos e grupos</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Puxa a lista de contatos e grupos direto do WhatsApp pareado nesta conexão — assim dá pra ligar ou
+                  mandar mensagem pra alguém mesmo antes dessa pessoa ter escrito primeiro. Isso já acontece
+                  automaticamente ao parear e a cada reconexão; use o botão abaixo pra atualizar na hora.
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 w-full"
+                  onClick={onSyncContacts}
+                  disabled={contactSyncBusy}
+                >
+                  {contactSyncBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                  Sincronizar contatos e grupos agora
+                </Button>
               </div>
             </div>
           </div>
