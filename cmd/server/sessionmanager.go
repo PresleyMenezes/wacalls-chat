@@ -24,6 +24,7 @@ type SessionManager struct {
 
 	flowExec *FlowExecutor
 	messages *messageStore
+	syncedContacts *syncedContactsStore
 	chatMeta *chatMetaStore
 	kanban   *kanbanStore
 	calls    *callStore
