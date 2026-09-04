@@ -60,6 +60,8 @@ type SessionInfo struct {
 	// o campo sumir do JSON, indistinguível de nunca ter sido configurado.
 	SharedAttendance  bool   `json:"sharedAttendance"`
 	ExternalBotDevice int    `json:"externalBotDevice,omitempty"`
+	WebhookInboundURL string `json:"webhookInboundUrl,omitempty"`
+	WebhookToken      string `json:"webhookToken,omitempty"`
 	IntegrationToken  string `json:"integrationToken,omitempty"`
 	QueueID           string `json:"queueId,omitempty"`
 	RedirectMinutes   int    `json:"redirectMinutes,omitempty"`
