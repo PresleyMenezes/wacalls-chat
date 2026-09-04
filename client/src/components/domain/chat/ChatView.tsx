@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed } from "@/stores/chats";
@@ -13,6 +14,7 @@ import { listUsers } from "@/services/auth";
 import { listFlows } from "@/services/flows";
 import type { FlowRow } from "@/types/flow";
 import { MessageBubble } from "./MessageBubble";
+import { GroupParticipantSheet } from "./GroupParticipantSheet";
 import { ForwardDialog } from "./ForwardDialog";
 import { KanbanLinkDialog } from "./KanbanLinkDialog";
 import { EmojiPicker } from "./EmojiPicker";
@@ -134,6 +136,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [editingText, setEditingText] = useState("");
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  // Painel lateral do participante do grupo — aberto ao clicar duas vezes no
+  // nome de quem mandou a mensagem, dentro de uma conversa de grupo.
+  const [participantSheet, setParticipantSheet] = useState<{ jid: string; name: string } | null>(null);
+  const navigate = useNavigate();
   const [noteMode, setNoteMode] = useState(false);
   const [showFlows, setShowFlows] = useState(false);
   const [suggestIdx, setSuggestIdx] = useState(-1);
@@ -1156,6 +1162,9 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                           const targetId = resolveTargetId(m.quotedId);
                           if (targetId) scrollToMessage(targetId);
                         }}
+                        onSenderDoubleClick={
+                          isGroup ? (jid, name) => setParticipantSheet({ jid, name }) : undefined
+                        }
                         onForward={(msg) => setForwardTarget(msg)}
                         onSelect={startSelection}
                         onReply={(msg) => setReplyTo(msg)}
@@ -1750,6 +1759,16 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           chat={chat}
           messages={messages}
           onTagsChange={setChatTags}
+        />
+      )}
+      {participantSheet && (
+        <GroupParticipantSheet
+          open={!!participantSheet}
+          onOpenChange={(v) => !v && setParticipantSheet(null)}
+          sessionId={sessionId}
+          participantJid={participantSheet.jid}
+          participantName={participantSheet.name}
+          onOpenChat={(jid) => navigate(`/chats?sid=${sessionId}&jid=${encodeURIComponent(jid)}`)}
         />
       )}
     </div>
