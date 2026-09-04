@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Phone } from "lucide-react";
-import { resolveLidPhone } from "@/services/chats";
+import { resolveLidPhone, syncChatContact } from "@/services/chats";
 import { formatPhone } from "@/lib/phone-format";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useDevices } from "@/stores/devices";
@@ -30,6 +30,8 @@ export const GroupParticipantSheet = ({
 }: Props) => {
   const [phone, setPhone] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [displayName, setDisplayName] = useState(participantName);
   const micId = useDevices((s) => s.micId);
   const outId = useDevices((s) => s.outId);
   const start = useStartCall(sessionId, micId, outId);
@@ -37,8 +39,11 @@ export const GroupParticipantSheet = ({
   useEffect(() => {
     if (!open || !participantJid) {
       setPhone(null);
+      setAvatarUrl(undefined);
+      setDisplayName(participantName);
       return;
     }
+    setDisplayName(participantName);
     if (participantJid.endsWith("@lid")) {
       setResolving(true);
       setPhone(null);
@@ -49,13 +54,38 @@ export const GroupParticipantSheet = ({
       const digits = (participantJid.split("@")[0] ?? "").replace(/\D/g, "");
       setPhone(digits || null);
     }
-  }, [open, participantJid, sessionId]);
+    // Busca nome e foto de perfil reais direto do WhatsApp — o nome que
+    // aparece na mensagem do grupo às vezes é só o "nome de exibição"
+    // curto, e a foto nunca vem junto com a mensagem em si.
+    syncChatContact(sessionId, participantJid)
+      .then((meta) => {
+        if (meta.avatarUrl) setAvatarUrl(meta.avatarUrl);
+        if (meta.name) setDisplayName(meta.name);
+      })
+      .catch(() => {
+        /* segue sem foto — não é crítico */
+      });
+  }, [open, participantJid, participantName, sessionId]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[340px] sm:w-[380px]">
-        <SheetHeader>
-          <SheetTitle className="truncate">{participantName || "Participante"}</SheetTitle>
+        <SheetHeader className="items-center text-center">
+          <div className="mx-auto grid h-20 w-20 place-items-center overflow-hidden rounded-full bg-primary/10 text-2xl font-semibold text-primary ring-4 ring-background shadow-sm">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={displayName}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              (displayName || "?").slice(0, 1).toUpperCase()
+            )}
+          </div>
+          <SheetTitle className="mt-2 truncate">{displayName || "Participante"}</SheetTitle>
           <SheetDescription>
             {resolving ? "Resolvendo número..." : phone ? formatPhone(`+${phone}`) : "Número não disponível"}
           </SheetDescription>
