@@ -61,6 +61,7 @@ func (s *server) routes() http.Handler {
 	s.registerEmailVerificationRoutes(mux)
 	s.registerHealthRoutes(mux)
 	s.registerLinkedDevicesRoutes(mux)
+	s.registerBotWebhookRoutes(mux)
 	s.registerCloudAPIRoutes(mux)
 	s.registerCallControlRoutes(mux)
 	s.registerReportRoutes(mux)
@@ -314,6 +315,7 @@ func (s *server) handleSessionUpdate(w http.ResponseWriter, r *http.Request) {
 		AllowBroadcast    bool   `json:"allowBroadcast"`
 		SharedAttendance  bool   `json:"sharedAttendance"`
 		ExternalBotDevice int    `json:"externalBotDevice"`
+		WebhookInboundURL string `json:"webhookInboundUrl"`
 		QueueID           string `json:"queueId"`
 		RedirectMinutes   int    `json:"redirectMinutes"`
 		FlowID            string `json:"flowId"`
@@ -389,6 +391,7 @@ func (s *server) handleSessionUpdate(w http.ResponseWriter, r *http.Request) {
 		Name: name, Color: body.Color, IsDefault: body.IsDefault, AllowGroups: body.AllowGroups, AllowBroadcast: body.AllowBroadcast,
 		SharedAttendance: body.SharedAttendance,
 		ExternalBotDevice: body.ExternalBotDevice,
+		WebhookInboundURL: body.WebhookInboundURL,
 		QueueID: body.QueueID, RedirectMinutes: body.RedirectMinutes, FlowID: voiceFlowID, ChatFlowID: chatFlowID,
 		GreetingMessage:   body.GreetingMessage,
 		CompletionMessage: body.CompletionMessage,
