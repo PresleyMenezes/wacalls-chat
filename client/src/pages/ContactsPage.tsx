@@ -119,7 +119,7 @@ export default function ContactsPage() {
     try {
       setError(null);
       setLoading(true);
-      const res = await listContacts({ q, kind, limit: 200 });
+      const res = await listContacts({ q, kind, limit: 5000 });
       setContacts(res.contacts ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar");
