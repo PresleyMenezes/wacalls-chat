@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { updateSession, fetchLinkedDevices, regenerateWebhookToken } from "@/services/sessions";
+import { updateSession, regenerateWebhookToken } from "@/services/sessions";
 import { listQueues } from "@/services/queues";
 import type { SessionInfo } from "@/types/session";
 import type { Queue } from "@/types/queue";
@@ -23,11 +23,6 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
   // Padrão true (igual o backend) — sessões antigas sem esse campo ainda
   // preenchido no cache do navegador devem continuar no modo compartilhado.
   const [sharedAttendance, setSharedAttendance] = useState(session.sharedAttendance ?? true);
-  // 0 = não configurado. Descoberto pelo botão "Buscar dispositivos
-  // vinculados" logo abaixo.
-  const [externalBotDevice, setExternalBotDevice] = useState(session.externalBotDevice ?? 0);
-  const [devicesLoading, setDevicesLoading] = useState(false);
-  const [linkedDevices, setLinkedDevices] = useState<number[] | null>(null);
   const [webhookInboundUrl, setWebhookInboundUrl] = useState(session.webhookInboundUrl ?? "");
   const [webhookToken, setWebhookToken] = useState(session.webhookToken ?? "");
   const [webhookTokenBusy, setWebhookTokenBusy] = useState(false);
@@ -40,29 +35,13 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
     setAllowGroups(!!session.allowGroups);
     setAllowBroadcast(!!session.allowBroadcast);
     setSharedAttendance(session.sharedAttendance ?? true);
-    setExternalBotDevice(session.externalBotDevice ?? 0);
     setWebhookInboundUrl(session.webhookInboundUrl ?? "");
     setWebhookToken(session.webhookToken ?? "");
     setQueueId(session.queueId ?? "");
     void listQueues().then(setQueues).catch(() => {});
   }, [open, session]);
 
-  const onSearchDevices = async () => {
-    setDevicesLoading(true);
-    try {
-      const res = await fetchLinkedDevices(session.id);
-      setLinkedDevices(res.devices);
-      if (res.devices.length === 0) {
-        toast.info("Nenhum outro aparelho vinculado encontrado neste número.");
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível buscar os dispositivos vinculados.");
-    } finally {
-      setDevicesLoading(false);
-    }
-  };
-
-    const onGenerateWebhookToken = async () => {
+  const onGenerateWebhookToken = async () => {
     setWebhookTokenBusy(true);
     try {
       const tok = await regenerateWebhookToken(session.id);
@@ -85,7 +64,6 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
         allowGroups,
         allowBroadcast,
         sharedAttendance,
-        externalBotDevice,
         webhookInboundUrl,
         queueId,
         redirectMinutes: session.redirectMinutes ?? 0,
@@ -226,56 +204,6 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
                 }`}
               />
             </button>
-          </div>
-          <div className="rounded-lg border bg-card p-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
-                <Bot className="h-4 w-4" />
-              </span>
-              <div className="flex-1">
-                <div className="text-sm font-medium">Chatbot externo nesta conexão (opcional)</div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  Se este número de WhatsApp também tiver um bot externo pareado (ex.: GOWA/n8n), busque abaixo os
-                  aparelhos vinculados e escolha qual é o do bot. O WhatsApp não manda um nome pra cada aparelho — só
-                  o número —, então na primeira vez pode ser preciso testar (mandar uma mensagem pelo bot e ver qual
-                  número aparece como "usado recentemente" antes de escolher).
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={onSearchDevices} disabled={devicesLoading}>
-                    {devicesLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-                    Buscar dispositivos vinculados
-                  </Button>
-                </div>
-                {linkedDevices !== null && linkedDevices.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {linkedDevices.map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setExternalBotDevice(d)}
-                        className={`rounded-full border px-3 py-1 text-xs transition ${
-                          externalBotDevice === d ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
-                        }`}
-                      >
-                        Aparelho {d}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="mt-2 flex items-center gap-2">
-                  <Label htmlFor="external-bot-device" className="text-xs">Ou digite o número direto:</Label>
-                  <Input
-                    id="external-bot-device"
-                    type="number"
-                    min={0}
-                    className="h-8 w-24"
-                    value={externalBotDevice}
-                    onChange={(e) => setExternalBotDevice(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <span className="text-xs text-muted-foreground">(0 = desligado)</span>
-                </div>
-              </div>
-            </div>
           </div>
 
           <div className="rounded-lg border bg-card p-3">
