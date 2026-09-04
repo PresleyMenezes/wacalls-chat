@@ -211,12 +211,12 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
               <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
                 <Bot className="h-4 w-4" />
               </span>
-              <div className="flex-1 space-y-3">
+              <div className="min-w-0 flex-1 space-y-3">
                 <div>
                   <div className="text-sm font-medium">Webhook para automação externa (n8n) — recomendado</div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    Caminho mais confiável que a detecção por aparelho acima: as mensagens do bot passam pelo nosso
-                    próprio envio, então a métrica de "Chatbot externo" nos relatórios fica exata.
+                    As mensagens do bot passam pelo nosso próprio envio, então a métrica de "Chatbot externo" nos
+                    relatórios fica exata.
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -233,24 +233,23 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">Endpoint pra o n8n mandar mensagens (webhook "de envio")</Label>
-                  <div className="flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
-                    <span className="truncate">
-                      POST {typeof window !== "undefined" ? window.location.origin : ""}/api/sessions/{session.id}/bot/send
-                    </span>
+                  <div className="min-w-0 break-all rounded-md border bg-muted/40 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+                    POST {typeof window !== "undefined" ? window.location.origin : ""}/api/sessions/{session.id}/bot/send
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs shrink-0">Token de autenticação:</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Token de autenticação:</Label>
                     {webhookToken ? (
-                      <code className="flex-1 truncate rounded-md border bg-muted/40 px-2 py-1 text-[11px]">
+                      <code className="block min-w-0 break-all rounded-md border bg-muted/40 px-2 py-1 text-[11px]">
                         {webhookToken}
                       </code>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Nenhum token gerado ainda</span>
+                      <div className="text-xs text-muted-foreground">Nenhum token gerado ainda</div>
                     )}
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="w-full"
                       onClick={onGenerateWebhookToken}
                       disabled={webhookTokenBusy}
                     >
