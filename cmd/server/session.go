@@ -281,6 +281,17 @@ func (s *Session) handleEvent(rawEvt any) {
 		}
 		s.setAuth(AuthSnapshot{State: "open", Paired: true})
 		go s.refreshSelfAvatar()
+		// Puxa contatos e grupos ao parear (e a cada reconexão — barato,
+		// já que lê do armazenamento local do whatsmeow) — sem isso, só
+		// dava pra ligar/mandar mensagem pra alguém depois que essa
+		// pessoa mandasse uma mensagem primeiro.
+		go func() {
+			ctx, cancel := context.WithTimeout(s.mgr.appCtx, 60*time.Second)
+			defer cancel()
+			if _, err := s.syncContactsAndGroups(ctx); err != nil {
+				s.log.Warn("contact sync on connect failed", "err", err)
+			}
+		}()
 	case *events.LoggedOut:
 		s.setAuth(AuthSnapshot{State: "logged_out", Paired: false})
 	case *events.CallOffer:
