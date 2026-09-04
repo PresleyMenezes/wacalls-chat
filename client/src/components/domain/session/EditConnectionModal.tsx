@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { updateSession, fetchLinkedDevices } from "@/services/sessions";
+import { updateSession, fetchLinkedDevices, regenerateWebhookToken } from "@/services/sessions";
 import { listQueues } from "@/services/queues";
 import type { SessionInfo } from "@/types/session";
 import type { Queue } from "@/types/queue";
@@ -28,6 +28,9 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
   const [externalBotDevice, setExternalBotDevice] = useState(session.externalBotDevice ?? 0);
   const [devicesLoading, setDevicesLoading] = useState(false);
   const [linkedDevices, setLinkedDevices] = useState<number[] | null>(null);
+  const [webhookInboundUrl, setWebhookInboundUrl] = useState(session.webhookInboundUrl ?? "");
+  const [webhookToken, setWebhookToken] = useState(session.webhookToken ?? "");
+  const [webhookTokenBusy, setWebhookTokenBusy] = useState(false);
   const [queueId, setQueueId] = useState(session.queueId ?? "");
   const [queues, setQueues] = useState<Queue[]>([]);
   const [busy, setBusy] = useState(false);
@@ -38,6 +41,8 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
     setAllowBroadcast(!!session.allowBroadcast);
     setSharedAttendance(session.sharedAttendance ?? true);
     setExternalBotDevice(session.externalBotDevice ?? 0);
+    setWebhookInboundUrl(session.webhookInboundUrl ?? "");
+    setWebhookToken(session.webhookToken ?? "");
     setQueueId(session.queueId ?? "");
     void listQueues().then(setQueues).catch(() => {});
   }, [open, session]);
@@ -57,6 +62,19 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
     }
   };
 
+    const onGenerateWebhookToken = async () => {
+    setWebhookTokenBusy(true);
+    try {
+      const tok = await regenerateWebhookToken(session.id);
+      setWebhookToken(tok);
+      toast.success("Token gerado. Já pode ser usado no n8n.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível gerar o token.");
+    } finally {
+      setWebhookTokenBusy(false);
+    }
+  };
+
   const onSave = async () => {
     setBusy(true);
     try {
@@ -68,6 +86,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
         allowBroadcast,
         sharedAttendance,
         externalBotDevice,
+        webhookInboundUrl,
         queueId,
         redirectMinutes: session.redirectMinutes ?? 0,
         flowId: session.flowId ?? "",
@@ -89,7 +108,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-hidden p-0">
+      <DialogContent className="flex max-h-[90vh] max-w-md flex-col overflow-hidden p-0">
         <DialogHeader className="border-b bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-6 py-5">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary/15 text-primary">
@@ -102,7 +121,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
           </div>
         </DialogHeader>
 
-        <div className="space-y-5 px-6 py-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
           <div>
             <Label htmlFor="cqueue">Fila vinculada</Label>
             <select
@@ -254,6 +273,70 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
                     onChange={(e) => setExternalBotDevice(Math.max(0, Number(e.target.value) || 0))}
                   />
                   <span className="text-xs text-muted-foreground">(0 = desligado)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-card p-3">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+                <Bot className="h-4 w-4" />
+              </span>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <div className="text-sm font-medium">Webhook para automação externa (n8n) — recomendado</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Caminho mais confiável que a detecção por aparelho acima: as mensagens do bot passam pelo nosso
+                    próprio envio, então a métrica de "Chatbot externo" nos relatórios fica exata.
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="webhook-inbound-url" className="text-xs">
+                    URL do n8n pra receber mensagens novas (webhook "de recebimento")
+                  </Label>
+                  <Input
+                    id="webhook-inbound-url"
+                    placeholder="https://seu-n8n.com/webhook/..."
+                    className="h-9 text-sm"
+                    value={webhookInboundUrl}
+                    onChange={(e) => setWebhookInboundUrl(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Endpoint pra o n8n mandar mensagens (webhook "de envio")</Label>
+                  <div className="flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+                    <span className="truncate">
+                      POST {typeof window !== "undefined" ? window.location.origin : ""}/api/sessions/{session.id}/bot/send
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs shrink-0">Token de autenticação:</Label>
+                    {webhookToken ? (
+                      <code className="flex-1 truncate rounded-md border bg-muted/40 px-2 py-1 text-[11px]">
+                        {webhookToken}
+                      </code>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Nenhum token gerado ainda</span>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onGenerateWebhookToken}
+                      disabled={webhookTokenBusy}
+                    >
+                      {webhookTokenBusy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                      {webhookToken ? "Gerar novo" : "Gerar token"}
+                    </Button>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    No n8n, use o cabeçalho <code>Authorization: Bearer {"<token>"}</code>. Corpo esperado:
+                    <code className="ml-1">{"{ to, text }"}</code> pra texto, ou
+                    <code className="ml-1">{"{ to, mediaUrl, mediaKind, caption }"}</code> pra mídia
+                    (mediaKind: image/video/audio/document). Some <code className="ml-1">replyToId</code> pra citar
+                    uma mensagem.
+                  </div>
                 </div>
               </div>
             </div>
