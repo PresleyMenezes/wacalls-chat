@@ -241,6 +241,32 @@ func (s *server) collectContactRows(ctx context.Context, u *currentUser) []conta
 					Unread:      unread[c.ChatJID],
 				})
 			}
+			// Inclui também contatos/grupos sincronizados direto do WhatsApp
+			// que ainda NÃO têm nenhuma mensagem trocada aqui — sem isso, só
+			// dava pra ligar/mandar mensagem pra quem já tivesse escrito
+			// antes. Contatos que já apareceram via mensagem (acima) não são
+			// duplicados aqui.
+			if s.syncedContacts != nil {
+				seen := make(map[string]bool, len(local))
+				for _, r := range local {
+					seen[r.ChatJID] = true
+				}
+				if synced, serr := s.syncedContacts.ListBySession(ctx, sinfo.ID); serr == nil {
+					for jid, sc := range synced {
+						if seen[jid] {
+							continue
+						}
+						local = append(local, contactRow{
+							SessionID:   sinfo.ID,
+							SessionName: sinfo.Name,
+							ChatJID:     jid,
+							Name:        sc.Name,
+							Phone:       jidPhone(jid),
+							IsGroup:     sc.IsGroup,
+						})
+					}
+				}
+			}
 			out[i] = bucket{rows: local}
 		}(i)
 	}
