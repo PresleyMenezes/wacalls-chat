@@ -14,6 +14,8 @@ export type SessionInfo = {
   allowBroadcast?: boolean;
   sharedAttendance?: boolean;
   externalBotDevice?: number;
+  webhookInboundUrl?: string;
+  webhookToken?: string;
   integrationToken?: string;
   queueId?: string;
   redirectMinutes?: number;
