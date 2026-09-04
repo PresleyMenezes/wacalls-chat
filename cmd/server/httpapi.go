@@ -62,6 +62,7 @@ func (s *server) routes() http.Handler {
 	s.registerHealthRoutes(mux)
 	s.registerLinkedDevicesRoutes(mux)
 	s.registerBotWebhookRoutes(mux)
+	s.registerContactSyncRoutes(mux)
 	s.registerCloudAPIRoutes(mux)
 	s.registerCallControlRoutes(mux)
 	s.registerReportRoutes(mux)
