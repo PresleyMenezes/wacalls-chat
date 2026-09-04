@@ -33,6 +33,7 @@ export type SessionUpdate = {
   allowBroadcast: boolean;
   sharedAttendance: boolean;
   externalBotDevice: number;
+  webhookInboundUrl: string;
   queueId: string;
   redirectMinutes: number;
   flowId: string;
@@ -62,6 +63,18 @@ export const regenerateToken = async (id: string): Promise<string> => {
     body: "{}",
   });
   if (!r.ok) throw new Error(`regen token ${r.status}`);
+  const j = (await r.json()) as { token: string };
+  return j.token;
+};
+
+export const regenerateWebhookToken = async (id: string): Promise<string> => {
+  const r = await fetch(apiUrl(`/api/sessions/${id}/bot-webhook/token`), {
+    method: "POST",
+    headers: { "X-Client-Id": getClientId(), "Content-Type": "application/json" },
+    credentials: "include",
+    body: "{}",
+  });
+  if (!r.ok) throw new Error(`regen webhook token ${r.status}`);
   const j = (await r.json()) as { token: string };
   return j.token;
 };
