@@ -68,6 +68,10 @@ interface BubbleProps {
   // qualquer operador — não só para quem enviou a resposta.
   quotedPreview?: { label: string; text: string } | null;
   onQuotedClick?: () => void;
+  // Disparado ao clicar duas vezes no nome do remetente (só faz sentido em
+  // grupos, onde o nome aparece) — abre o painel de detalhes desse
+  // participante específico.
+  onSenderDoubleClick?: (jid: string, name: string) => void;
 }
 // Substitui ocorrências de "@<dígitos>" pelo nome do contato correspondente,
 // usando o mapa de participantes do grupo. Dígitos sem correspondência
@@ -79,7 +83,7 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
-export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview, onQuotedClick }: BubbleProps) => {
+export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview, onQuotedClick, onSenderDoubleClick }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
@@ -316,7 +320,11 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           </div>
         )}
         {senderLabel && (
-          <div className="mb-0.5 text-[11px] font-semibold leading-tight" style={{ color: senderColor }}>
+          <div
+            className={`mb-0.5 text-[11px] font-semibold leading-tight ${onSenderDoubleClick ? "cursor-pointer select-none" : ""}`}
+            style={{ color: senderColor }}
+            onDoubleClick={() => onSenderDoubleClick?.(message.senderJid, senderLabel)}
+          >
             {senderLabel}
           </div>
         )}
