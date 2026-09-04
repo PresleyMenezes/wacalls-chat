@@ -79,6 +79,18 @@ export const regenerateWebhookToken = async (id: string): Promise<string> => {
   return j.token;
 };
 
+export const syncContacts = async (id: string): Promise<number> => {
+  const r = await fetch(apiUrl(`/api/sessions/${id}/contacts/sync`), {
+    method: "POST",
+    headers: { "X-Client-Id": getClientId(), "Content-Type": "application/json" },
+    credentials: "include",
+    body: "{}",
+  });
+  if (!r.ok) throw new Error(`sync contacts ${r.status}`);
+  const j = (await r.json()) as { synced: number };
+  return j.synced;
+};
+
 export type AccountHealth = {
   sessionId: string;
   connected: boolean;
