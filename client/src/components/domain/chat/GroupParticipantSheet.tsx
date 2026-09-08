@@ -124,9 +124,19 @@ export const GroupParticipantSheet = ({
               // nome/aceitar/recarregar quando é uma conversa GENUINAMENTE
               // nova (nunca vista antes), que é quando elas são realmente
               // necessárias.
-              const existing = knownChats.find(
-                (c) => c.chatJid === resolved || (phone && c.chatJid.split("@")[0]?.replace(/\D/g, "") === phone),
-              );
+              const existing = knownChats.find((c) => {
+                if (c.chatJid === resolved) return true;
+                if (!phone) return false;
+                const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
+                // Compara só os últimos 8 dígitos — evita falhar por causa
+                // do "9" extra que números de celular brasileiros às vezes
+                // têm numa representação e não na outra, mesmo sendo a
+                // mesma pessoa.
+                return cDigits.length >= 8 && phone.length >= 8 && cDigits.slice(-8) === phone.slice(-8);
+              });
+              // Log temporário de diagnóstico — remover depois de confirmar
+              // que a comparação está funcionando certo.
+              console.log("[GroupParticipantSheet] resolved:", resolved, "phone:", phone, "knownChats:", knownChats.map((c) => c.chatJid), "existing:", existing?.chatJid);
               if (existing) {
                 onOpenChat(existing.chatJid);
                 onOpenChange(false);
