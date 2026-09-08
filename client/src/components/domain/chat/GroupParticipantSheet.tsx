@@ -105,7 +105,6 @@ export const GroupParticipantSheet = ({
         </SheetHeader>
         <div className="mt-6 space-y-2 px-4">
           <Button
-          <Button
             className="w-full justify-start"
             variant="outline"
             disabled={resolving}
