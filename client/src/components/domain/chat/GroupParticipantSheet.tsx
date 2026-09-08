@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Phone } from "lucide-react";
 import { resolveLidPhone, syncChatContact, assignChat } from "@/services/chats";
 import { updateContact } from "@/services/contacts";
+import { fetchChats } from "@/stores/chats";
 import { formatPhone } from "@/lib/phone-format";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useDevices } from "@/stores/devices";
@@ -117,8 +118,16 @@ export const GroupParticipantSheet = ({
               // o nome e aceitar a conversa rodam em segundo plano, sem
               // travar a experiência (a UI resolve sozinha, via evento em
               // tempo real, assim que essas chamadas terminarem).
-              if (displayName) void updateContact(sessionId, openJid, { name: displayName });
-              void assignChat(sessionId, openJid);
+              // Depois que as chamadas em segundo plano terminarem, recarrega
+              // a lista de conversas do zero (mesma coisa que o F5 faz) —
+              // corrige sozinho qualquer entrada duplicada que apareça
+              // momentaneamente, sem precisar de F5 manual.
+              void Promise.all([
+                displayName ? updateContact(sessionId, openJid, { name: displayName }) : Promise.resolve(),
+                assignChat(sessionId, openJid),
+              ]).finally(() => {
+                void fetchChats(sessionId);
+              });
               onOpenChat(openJid);
               onOpenChange(false);
             }}
