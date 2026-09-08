@@ -1757,6 +1757,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           chat={chat}
           messages={messages}
           onTagsChange={setChatTags}
+          onOpenChat={(jid) => setActiveChat(sessionId, jid)}
         />
       )}
       {participantSheet && (
