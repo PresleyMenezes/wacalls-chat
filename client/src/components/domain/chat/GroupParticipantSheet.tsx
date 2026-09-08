@@ -72,17 +72,28 @@ export const GroupParticipantSheet = ({
       setPhone(digits || null);
       setResolvedJid(participantJid);
     }
-    // Busca nome e foto de perfil reais direto do WhatsApp — o nome que
-    // aparece na mensagem do grupo às vezes é só o "nome de exibição"
-    // curto, e a foto nunca vem junto com a mensagem em si.
-    syncChatContact(sessionId, participantJid)
-      .then((meta) => {
-        if (meta.avatarUrl) setAvatarUrl(meta.avatarUrl);
-        if (meta.name) setDisplayName(meta.name);
-      })
-      .catch(() => {
-        /* segue sem foto — não é crítico */
-      });
+    // Busca nome e foto de perfil reais direto do WhatsApp — só quando
+    // ainda não sabemos quem é essa pessoa. Se já existe uma conversa (ou
+    // o nome do grupo já é suficiente), pula essa busca ao vivo — ela é
+    // lenta e não é necessária, e evita gerar atualizações em segundo
+    // plano bem na hora que o chat está abrindo.
+    const alreadyKnown = knownChats.some((c) => {
+      if (c.chatJid === participantJid) return true;
+      const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
+      const pDigits = (participantJid.split("@")[0] ?? "").replace(/\D/g, "");
+      return cDigits.length >= 8 && pDigits.length >= 8 && cDigits.slice(-8) === pDigits.slice(-8);
+    });
+    if (!alreadyKnown) {
+      syncChatContact(sessionId, participantJid)
+        .then((meta) => {
+          if (meta.avatarUrl) setAvatarUrl(meta.avatarUrl);
+          if (meta.name) setDisplayName(meta.name);
+        })
+        .catch(() => {
+          /* segue sem foto — não é crítico */
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, participantJid, participantName, sessionId]);
 
   return (
@@ -134,10 +145,11 @@ export const GroupParticipantSheet = ({
                 // mesma pessoa.
                 return cDigits.length >= 8 && phone.length >= 8 && cDigits.slice(-8) === phone.slice(-8);
               });
-              // Log temporário de diagnóstico — remover depois de confirmar
-              // que a comparação está funcionando certo.
-              console.log("[GroupParticipantSheet] resolved:", resolved, "phone:", phone, "knownChats:", knownChats.map((c) => c.chatJid), "existing:", existing?.chatJid);
               if (existing) {
+                // Mesmo já existindo, garante que está "aceita" — sem
+                // isso, se a conversa ainda estiver em "Aguardando", o
+                // campo de escrever fica bloqueado até alguém aceitar.
+                void assignChat(sessionId, existing.chatJid);
                 onOpenChat(existing.chatJid);
                 onOpenChange(false);
                 return;
