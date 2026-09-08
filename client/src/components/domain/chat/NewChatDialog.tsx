@@ -273,8 +273,8 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
             </label>
             <select
               value={assignUserId}
-              onChange={(e) => setAssignUserId(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              disabled
+              className="flex h-8 w-full cursor-not-allowed rounded-md border border-input bg-muted px-2 text-xs text-muted-foreground shadow-sm"
             >
               <option value="">— Selecionar —</option>
               {operators.map((o) => (
@@ -290,8 +290,8 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
             </label>
             <select
               value={assignQueueId}
-              onChange={(e) => setAssignQueueId(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              disabled
+              className="flex h-8 w-full cursor-not-allowed rounded-md border border-input bg-muted px-2 text-xs text-muted-foreground shadow-sm"
             >
               <option value="">— Selecionar —</option>
               {queues.map((qq) => (
@@ -302,7 +302,7 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
             </select>
           </div>
           <p className="col-span-full text-[10px] text-muted-foreground">
-            Selecione ao menos um operador ou uma fila para abrir o atendimento.
+            Atendimento será aberto em seu nome, na sua fila.
           </p>
         </div>
       </DialogContent>
