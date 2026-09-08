@@ -145,20 +145,34 @@ export const GroupParticipantSheet = ({
               const participantLidNumber = participantJid.endsWith("@lid")
                 ? participantJid.split("@")[0]?.split(":")[0]
                 : null;
-              const existing = knownChats.find((c) => {
-                if (c.chatJid === resolved || c.chatJid === participantJid) return true;
-                if (participantLidNumber && c.chatJid.endsWith("@lid")) {
-                  const cLidNumber = c.chatJid.split("@")[0]?.split(":")[0];
-                  if (cLidNumber === participantLidNumber) return true;
-                }
-                if (!phone) return false;
-                const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
-                // Compara só os últimos 8 dígitos — evita falhar por causa
-                // do "9" extra que números de celular brasileiros às vezes
-                // têm numa representação e não na outra, mesmo sendo a
-                // mesma pessoa.
-                return cDigits.length >= 8 && phone.length >= 8 && cDigits.slice(-8) === phone.slice(-8);
-              });
+              // Busca em ORDEM DE PRIORIDADE (não tudo numa passada só) —
+              // antes, um match "mais fraco" (telefone resolvido) podia
+              // vencer um match "mais forte" (LID) só por aparecer antes
+              // na lista, abrindo a conversa errada quando as duas
+              // existiam. LID primeiro, por ser o identificador nativo do
+              // participante do grupo (o mais confiável); telefone e JID
+              // exato só como reserva.
+              let existing = null as (typeof knownChats)[number] | null;
+              if (participantLidNumber) {
+                existing =
+                  knownChats.find(
+                    (c) => c.chatJid.endsWith("@lid") && c.chatJid.split("@")[0]?.split(":")[0] === participantLidNumber,
+                  ) ?? null;
+              }
+              if (!existing) {
+                existing = knownChats.find((c) => c.chatJid === resolved || c.chatJid === participantJid) ?? null;
+              }
+              if (!existing && phone) {
+                existing =
+                  knownChats.find((c) => {
+                    const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
+                    // Compara só os últimos 8 dígitos — evita falhar por
+                    // causa do "9" extra que números de celular
+                    // brasileiros às vezes têm numa representação e não
+                    // na outra, mesmo sendo a mesma pessoa.
+                    return cDigits.length >= 8 && phone.length >= 8 && cDigits.slice(-8) === phone.slice(-8);
+                  }) ?? null;
+              }
               if (existing) {
                 // Mesmo já existindo, garante que está "aceita" — sem
                 // isso, se a conversa ainda estiver em "Aguardando", o
