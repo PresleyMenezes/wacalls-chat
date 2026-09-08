@@ -54,7 +54,10 @@ func (s *syncedContactsStore) ReplaceAll(ctx context.Context, sessionID string, 
 	if _, err := tx.ExecContext(ctx, `DELETE FROM synced_contacts WHERE session_id = ?`, sessionID); err != nil {
 		return err
 	}
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO synced_contacts (session_id, chat_jid, name, is_group, synced_at) VALUES (?, ?, ?, ?, ?)`)
+	// INSERT OR REPLACE: a mesma pessoa pode aparecer tanto nos contatos
+	// salvos quanto como membro de um grupo — sem o "OR REPLACE", a
+	// segunda inserção com o mesmo chat_jid quebraria por chave duplicada.
+	stmt, err := tx.PrepareContext(ctx, `INSERT OR REPLACE INTO synced_contacts (session_id, chat_jid, name, is_group, synced_at) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
