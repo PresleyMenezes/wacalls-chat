@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Phone } from "lucide-react";
-import { resolveLidPhone, syncChatContact } from "@/services/chats";
+import { resolveLidPhone, syncChatContact, assignChat } from "@/services/chats";
 import { updateContact } from "@/services/contacts";
 import { formatPhone } from "@/lib/phone-format";
 import { useStartCall } from "@/hooks/useStartCall";
@@ -103,14 +103,17 @@ export const GroupParticipantSheet = ({
               // (o mesmo que o botão "Ligar" usa) quando disponível.
               const openJid = phone ? `${phone}@s.whatsapp.net` : participantJid;
               // Garante que o chat abra com o MESMO nome que aparecia no
-              // grupo (em vez do número cru, caso essa pessoa nunca tenha
-              // tido uma conversa individual registrada ainda).
-              if (displayName) {
-                try {
-                  await updateContact(sessionId, openJid, { name: displayName });
-                } catch {
-                  /* segue mesmo se falhar — não é crítico pra abrir o chat */
-                }
+              // grupo, e já "aceito" (aberto pra esse operador) — sem
+              // isso, a conversa abria em "aguardando" e travava o campo
+              // de digitar até alguém clicar em aceitar manualmente. As
+              // duas chamadas rodam em paralelo pra não demorar o dobro.
+              try {
+                await Promise.all([
+                  displayName ? updateContact(sessionId, openJid, { name: displayName }) : Promise.resolve(),
+                  assignChat(sessionId, openJid),
+                ]);
+              } catch {
+                /* segue mesmo se falhar — não é crítico pra abrir o chat */
               }
               onOpenChat(openJid);
               onOpenChange(false);
