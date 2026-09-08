@@ -783,6 +783,7 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 		Name string `json:"name"`
 	}
 	out := make([]participant, 0, len(gi.Participants))
+	var toSync []SyncedContactRow
 	for _, p := range gi.Participants {
 		name := p.DisplayName
 		if name == "" && sess.client.Store.Contacts != nil {
@@ -797,10 +798,27 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		}
-		if name == "" {
+		if name != "" {
+			// Guarda o nome resolvido pra essa pessoa também aparecer na
+			// tela de Contatos e permitir ligar/mandar mensagem antes
+			// dela ter escrito qualquer coisa — feito aqui, de forma
+			// "preguiçosa" (só quando alguém abre esse grupo/pede a lista
+			// de membros), em vez de sincronizar TODOS os grupos de uma
+			// vez (mais pesado).
+			toSync = append(toSync, SyncedContactRow{ChatJID: p.JID.String(), Name: name, IsGroup: false})
+		} else {
 			name = p.JID.User
 		}
 		out = append(out, participant{JID: p.JID.String(), Name: name})
+	}
+	if len(toSync) > 0 && s.syncedContacts != nil {
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := s.syncedContacts.UpsertMany(bgCtx, sess.id, toSync); err != nil {
+				s.log.Warn("group participants: background contact sync failed", "err", err)
+			}
+		}()
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"participants": out})
 }
