@@ -95,7 +95,13 @@ export const GroupParticipantSheet = ({
             className="w-full justify-start"
             variant="outline"
             onClick={() => {
-              onOpenChat(participantJid);
+              // Participantes de grupo costumam ter JID do tipo @lid (um
+              // identificador interno do WhatsApp) — mandar mensagem
+              // direto pra esse endereço sem resolver o telefone real
+              // falha silenciosamente. Usa o número já resolvido acima
+              // (o mesmo que o botão "Ligar" usa) quando disponível.
+              const openJid = phone ? `${phone}@s.whatsapp.net` : participantJid;
+              onOpenChat(openJid);
               onOpenChange(false);
             }}
           >
