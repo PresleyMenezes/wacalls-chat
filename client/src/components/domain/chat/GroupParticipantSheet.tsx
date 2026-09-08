@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Phone } from "lucide-react";
 import { resolveLidPhone, syncChatContact, assignChat } from "@/services/chats";
 import { updateContact } from "@/services/contacts";
-import { fetchChats } from "@/stores/chats";
+import { fetchChats, useChats } from "@/stores/chats";
 import { formatPhone } from "@/lib/phone-format";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useDevices } from "@/stores/devices";
@@ -38,6 +38,10 @@ export const GroupParticipantSheet = ({
   const micId = useDevices((s) => s.micId);
   const outId = useDevices((s) => s.outId);
   const start = useStartCall(sessionId, micId, outId);
+  // Conversas já conhecidas nessa conexão — se essa pessoa já tem uma
+  // conversa aberta, reaproveita ela direto (já em cache, abre na hora),
+  // em vez de tratar como se fosse um contato novo toda vez.
+  const knownChats = useChats((s) => s.chatsBySession[sessionId] ?? []);
 
   useEffect(() => {
     if (!open || !participantJid) {
@@ -113,11 +117,22 @@ export const GroupParticipantSheet = ({
               // Usa o JID canônico já resolvido (não remonta na mão) —
               // garante que abre a MESMA conversa que já existe com essa
               // pessoa, em vez de criar uma duplicata em "Atendendo".
-              const openJid = resolvedJid ?? participantJid;
-              // Abre o chat NA HORA — não espera nada pra navegar. Definir
-              // o nome e aceitar a conversa rodam em segundo plano, sem
-              // travar a experiência (a UI resolve sozinha, via evento em
-              // tempo real, assim que essas chamadas terminarem).
+              const resolved = resolvedJid ?? participantJid;
+              // Se essa pessoa já tem uma conversa aberta nessa conexão,
+              // usa exatamente essa conversa (já em cache no navegador) —
+              // abre na hora, sem esperar nada. Só faz as chamadas de
+              // nome/aceitar/recarregar quando é uma conversa GENUINAMENTE
+              // nova (nunca vista antes), que é quando elas são realmente
+              // necessárias.
+              const existing = knownChats.find(
+                (c) => c.chatJid === resolved || (phone && c.chatJid.split("@")[0]?.replace(/\D/g, "") === phone),
+              );
+              if (existing) {
+                onOpenChat(existing.chatJid);
+                onOpenChange(false);
+                return;
+              }
+              const openJid = resolved;
               // Depois que as chamadas em segundo plano terminarem, recarrega
               // a lista de conversas do zero (mesma coisa que o F5 faz) —
               // corrige sozinho qualquer entrada duplicada que apareça
