@@ -30,6 +30,7 @@ export const GroupParticipantSheet = ({
   onOpenChat,
 }: Props) => {
   const [phone, setPhone] = useState<string | null>(null);
+  const [resolvedJid, setResolvedJid] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
   const [displayName, setDisplayName] = useState(participantName);
@@ -40,6 +41,7 @@ export const GroupParticipantSheet = ({
   useEffect(() => {
     if (!open || !participantJid) {
       setPhone(null);
+      setResolvedJid(null);
       setAvatarUrl(undefined);
       setDisplayName(participantName);
       return;
@@ -48,12 +50,22 @@ export const GroupParticipantSheet = ({
     if (participantJid.endsWith("@lid")) {
       setResolving(true);
       setPhone(null);
+      setResolvedJid(null);
       resolveLidPhone(sessionId, participantJid)
-        .then((r) => setPhone(r?.phone ? r.phone.replace(/\D/g, "") : null))
+        .then((r) => {
+          setPhone(r?.phone ? r.phone.replace(/\D/g, "") : null);
+          // Usa o JID canônico devolvido pela própria resolução, em vez de
+          // remontar "telefone@s.whatsapp.net" na mão — remontar pode gerar
+          // um formato levemente diferente do que o WhatsApp usa de
+          // verdade (ex.: o "9" extra em celulares brasileiros), criando
+          // uma conversa duplicada em vez de abrir a que já existe.
+          setResolvedJid(r?.jid ?? null);
+        })
         .finally(() => setResolving(false));
     } else {
       const digits = (participantJid.split("@")[0] ?? "").replace(/\D/g, "");
       setPhone(digits || null);
+      setResolvedJid(participantJid);
     }
     // Busca nome e foto de perfil reais direto do WhatsApp — o nome que
     // aparece na mensagem do grupo às vezes é só o "nome de exibição"
@@ -93,15 +105,15 @@ export const GroupParticipantSheet = ({
         </SheetHeader>
         <div className="mt-6 space-y-2 px-4">
           <Button
+          <Button
             className="w-full justify-start"
             variant="outline"
+            disabled={resolving}
             onClick={() => {
-              // Participantes de grupo costumam ter JID do tipo @lid (um
-              // identificador interno do WhatsApp) — mandar mensagem
-              // direto pra esse endereço sem resolver o telefone real
-              // falha silenciosamente. Usa o número já resolvido acima
-              // (o mesmo que o botão "Ligar" usa) quando disponível.
-              const openJid = phone ? `${phone}@s.whatsapp.net` : participantJid;
+              // Usa o JID canônico já resolvido (não remonta na mão) —
+              // garante que abre a MESMA conversa que já existe com essa
+              // pessoa, em vez de criar uma duplicata em "Atendendo".
+              const openJid = resolvedJid ?? participantJid;
               // Abre o chat NA HORA — não espera nada pra navegar. Definir
               // o nome e aceitar a conversa rodam em segundo plano, sem
               // travar a experiência (a UI resolve sozinha, via evento em
