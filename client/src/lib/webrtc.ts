@@ -121,7 +121,13 @@ export const openCall = async (
   // é confiável feito TCP — ótimo pra dados, péssimo pra voz em tempo real,
   // já que um pouco de perda é sempre preferível a atraso crescente).
   // Mesma configuração já usada no canal de vídeo (H264) logo abaixo.
-  const dc = pc.createDataChannel(PCM_CHANNEL_LABEL, { ordered: false, maxRetransmits: 0 });
+  // ordered: false continua evitando o atraso em cascata de canais TCP-like
+  // (pacotes fora de ordem não ficam esperando os anteriores). Mas em vez
+  // de "zero tentativas de reenvio" (que descarta pra sempre qualquer
+  // pacote perdido, causando cortes no áudio), dá um prazo curto — 40ms —
+  // pra tentar reenviar antes de desistir. Imperceptível como atraso, mas
+  // recupera boa parte das perdas passageiras de rede.
+  const dc = pc.createDataChannel(PCM_CHANNEL_LABEL, { ordered: false, maxPacketLifeTime: 40 });
   dc.binaryType = "arraybuffer";
 
   const ctx = new AudioContext({ sampleRate: SAMPLE_RATE });
