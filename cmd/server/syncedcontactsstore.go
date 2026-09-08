@@ -75,6 +75,39 @@ func (s *syncedContactsStore) ReplaceAll(ctx context.Context, sessionID string, 
 	return tx.Commit()
 }
 
+// UpsertMany adds/updates individual rows WITHOUT touching the rest of the
+// session's synced roster — unlike ReplaceAll, nothing gets deleted. Used
+// for lightweight, incremental syncs (e.g. a single group's member list
+// fetched in the background when that group is opened), where wiping the
+// whole cached roster each time would be wasteful and could momentarily
+// drop entries from OTHER groups/contacts still being displayed elsewhere.
+func (s *syncedContactsStore) UpsertMany(ctx context.Context, sessionID string, rows []SyncedContactRow) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	stmt, err := tx.PrepareContext(ctx, `INSERT OR REPLACE INTO synced_contacts (session_id, chat_jid, name, is_group, synced_at) VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	now := time.Now().UnixMilli()
+	for _, r := range rows {
+		isGroup := 0
+		if r.IsGroup {
+			isGroup = 1
+		}
+		if _, err := stmt.ExecContext(ctx, sessionID, r.ChatJID, r.Name, isGroup, now); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 // ListBySession returns every synced contact/group for a connection,
 // keyed by chat JID for cheap merging against message-derived chats.
 func (s *syncedContactsStore) ListBySession(ctx context.Context, sessionID string) (map[string]SyncedContactRow, error) {
