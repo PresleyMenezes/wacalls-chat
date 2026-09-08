@@ -811,12 +811,20 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 		}
 		out = append(out, participant{JID: p.JID.String(), Name: name})
 	}
+	// Log temporário de diagnóstico — mostra quantos participantes tiveram
+	// nome resolvido (vão ser sincronizados) vs quantos ficaram sem nome
+	// (o WhatsApp simplesmente não fornece nome pra gente sobre essa
+	// pessoa, geralmente por privacidade — nesse caso não tem nome pra
+	// sincronizar mesmo, não é bug).
+	s.log.Info("group participants: sync diagnostics", "group", jidStr, "total", len(gi.Participants), "withName", len(toSync), "syncedContactsNil", s.syncedContacts == nil)
 	if len(toSync) > 0 && s.syncedContacts != nil {
 		go func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			if err := s.syncedContacts.UpsertMany(bgCtx, sess.id, toSync); err != nil {
 				s.log.Warn("group participants: background contact sync failed", "err", err)
+			} else {
+				s.log.Info("group participants: background sync done", "group", jidStr, "count", len(toSync))
 			}
 		}()
 	}
