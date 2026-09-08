@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button";
 import { Loader2, MessageCircle, Phone } from "lucide-react";
 import { resolveLidPhone, syncChatContact } from "@/services/chats";
+import { updateContact } from "@/services/contacts";
 import { formatPhone } from "@/lib/phone-format";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useDevices } from "@/stores/devices";
@@ -85,7 +86,7 @@ export const GroupParticipantSheet = ({
               (displayName || "?").slice(0, 1).toUpperCase()
             )}
           </div>
-          <SheetTitle className="mt-2 truncate">{displayName || "Participante"}</SheetTitle>
+          <SheetTitle className="mt-2 break-words px-2 text-center">{displayName || "Participante"}</SheetTitle>
           <SheetDescription>
             {resolving ? "Resolvendo número..." : phone ? formatPhone(`+${phone}`) : "Número não disponível"}
           </SheetDescription>
@@ -94,13 +95,23 @@ export const GroupParticipantSheet = ({
           <Button
             className="w-full justify-start"
             variant="outline"
-            onClick={() => {
+            onClick={async () => {
               // Participantes de grupo costumam ter JID do tipo @lid (um
               // identificador interno do WhatsApp) — mandar mensagem
               // direto pra esse endereço sem resolver o telefone real
               // falha silenciosamente. Usa o número já resolvido acima
               // (o mesmo que o botão "Ligar" usa) quando disponível.
               const openJid = phone ? `${phone}@s.whatsapp.net` : participantJid;
+              // Garante que o chat abra com o MESMO nome que aparecia no
+              // grupo (em vez do número cru, caso essa pessoa nunca tenha
+              // tido uma conversa individual registrada ainda).
+              if (displayName) {
+                try {
+                  await updateContact(sessionId, openJid, { name: displayName });
+                } catch {
+                  /* segue mesmo se falhar — não é crítico pra abrir o chat */
+                }
+              }
               onOpenChat(openJid);
               onOpenChange(false);
             }}
