@@ -34,7 +34,8 @@ import { ChatTagsManager } from "./ChatTagsManager";
 import type { Tag } from "@/types/tag";
 import { tagChipStyle } from "@/lib/tag-color";
 import { EditContactDialog } from "./EditContactDialog";
-import { Pencil } from "lucide-react";
+import { GroupMembersDialog } from "./GroupMembersDialog";
+import { Pencil, Users } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -44,6 +45,10 @@ interface Props {
   chat?: ChatSummary;
   messages: ChatMessage[];
   onTagsChange?: (tags: Tag[]) => void;
+  // Usado pelo botão "Ver membros do grupo" — abre a conversa individual
+  // com o membro escolhido (mesma navegação usada no painel de
+  // participante do grupo).
+  onOpenChat?: (jid: string) => void;
 }
 
 type Tab = "summary" | "media" | "notes" | "history";
@@ -102,9 +107,11 @@ export const ContactDetailsPanel = ({
   chat,
   messages,
   onTagsChange,
+  onOpenChat,
 }: Props) => {
   const [tab, setTab] = useState<Tab>("summary");
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
+  const [showMembers, setShowMembers] = useState(false);
   const [query, setQuery] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -294,11 +301,17 @@ export const ContactDetailsPanel = ({
               <Badge variant="outline" className={`border ${statusInfo.cls}`}>{statusInfo.label}</Badge>
               {isGroup && <Badge variant="outline">Grupo</Badge>}
             </SheetDescription>
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
                 <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
                 Atualizar contato
               </Button>
+              {isGroup && (
+                <Button size="sm" variant="outline" onClick={() => setShowMembers(true)}>
+                  <Users className="mr-1.5 h-3.5 w-3.5" />
+                  Ver membros do grupo
+                </Button>
+              )}
               {!isGroup && (
                 <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
                   <Pencil className="mr-1.5 h-3.5 w-3.5" />
@@ -320,6 +333,19 @@ export const ContactDetailsPanel = ({
               void syncChatContact(sessionId, chatJid).catch(() => {});
             }}
           />
+
+          {isGroup && (
+            <GroupMembersDialog
+              open={showMembers}
+              onOpenChange={setShowMembers}
+              sessionId={sessionId}
+              chatJid={chatJid}
+              onOpenChat={(jid) => {
+                onOpenChat?.(jid);
+                onOpenChange(false);
+              }}
+            />
+          )}
 
           <div className="space-y-1 border-b px-6 py-4 text-sm">
             <Row icon={<Phone className="h-3.5 w-3.5" />} label="Telefone" value={phone} onCopy={() => copy(phone)} />
