@@ -77,8 +77,12 @@ export const GroupParticipantSheet = ({
     // o nome do grupo já é suficiente), pula essa busca ao vivo — ela é
     // lenta e não é necessária, e evita gerar atualizações em segundo
     // plano bem na hora que o chat está abrindo.
+    const pLidNumber = participantJid.endsWith("@lid") ? participantJid.split("@")[0]?.split(":")[0] : null;
     const alreadyKnown = knownChats.some((c) => {
       if (c.chatJid === participantJid) return true;
+      if (pLidNumber && c.chatJid.endsWith("@lid") && c.chatJid.split("@")[0]?.split(":")[0] === pLidNumber) {
+        return true;
+      }
       const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
       const pDigits = (participantJid.split("@")[0] ?? "").replace(/\D/g, "");
       return cDigits.length >= 8 && pDigits.length >= 8 && cDigits.slice(-8) === pDigits.slice(-8);
@@ -129,14 +133,24 @@ export const GroupParticipantSheet = ({
               // garante que abre a MESMA conversa que já existe com essa
               // pessoa, em vez de criar uma duplicata em "Atendendo".
               const resolved = resolvedJid ?? participantJid;
-              // Se essa pessoa já tem uma conversa aberta nessa conexão,
-              // usa exatamente essa conversa (já em cache no navegador) —
-              // abre na hora, sem esperar nada. Só faz as chamadas de
-              // nome/aceitar/recarregar quando é uma conversa GENUINAMENTE
-              // nova (nunca vista antes), que é quando elas são realmente
-              // necessárias.
+              // O JID original do participante do grupo costuma ser do
+              // tipo @lid (identificador interno do WhatsApp) — a
+              // conversa JÁ existente com essa pessoa pode estar guardada
+              // com ESSE identificador (não com o telefone resolvido).
+              // Compara os números de LID direto (ignorando o sufixo de
+              // aparelho, tipo ":46"), e só usa o telefone resolvido como
+              // segunda tentativa — evita criar uma conversa nova e
+              // duplicada quando a antiga já existe, só que sob outro
+              // formato de identificador.
+              const participantLidNumber = participantJid.endsWith("@lid")
+                ? participantJid.split("@")[0]?.split(":")[0]
+                : null;
               const existing = knownChats.find((c) => {
-                if (c.chatJid === resolved) return true;
+                if (c.chatJid === resolved || c.chatJid === participantJid) return true;
+                if (participantLidNumber && c.chatJid.endsWith("@lid")) {
+                  const cLidNumber = c.chatJid.split("@")[0]?.split(":")[0];
+                  if (cLidNumber === participantLidNumber) return true;
+                }
                 if (!phone) return false;
                 const cDigits = c.chatJid.split("@")[0]?.replace(/\D/g, "") ?? "";
                 // Compara só os últimos 8 dígitos — evita falhar por causa
