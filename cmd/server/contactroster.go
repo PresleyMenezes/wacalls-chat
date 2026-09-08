@@ -55,6 +55,33 @@ func (s *Session) syncContactsAndGroups(ctx context.Context) (int, error) {
 				continue
 			}
 			out = append(out, SyncedContactRow{ChatJID: g.JID.String(), Name: g.Name, IsGroup: true})
+			// Também sincroniza os MEMBROS de cada grupo, com o nome
+			// resolvido (mesma lógica usada em "Ver membros do grupo") —
+			// sem isso, alguém que nunca mandou mensagem direto pra você
+			// só aparecia com o @lid cru, sem nome nenhum.
+			gi, gierr := s.client.GetGroupInfo(ctx, g.JID)
+			if gierr != nil || gi == nil {
+				continue
+			}
+			for _, p := range gi.Participants {
+				name := p.DisplayName
+				if name == "" && s.client.Store.Contacts != nil {
+					if ci, cerr := s.client.Store.Contacts.GetContact(ctx, p.JID.ToNonAD()); cerr == nil && ci.Found {
+						switch {
+						case ci.FullName != "":
+							name = ci.FullName
+						case ci.PushName != "":
+							name = ci.PushName
+						case ci.BusinessName != "":
+							name = ci.BusinessName
+						}
+					}
+				}
+				if name == "" {
+					continue
+				}
+				out = append(out, SyncedContactRow{ChatJID: p.JID.String(), Name: name, IsGroup: false})
+			}
 		}
 	} else {
 		s.log.Warn("contact sync: GetJoinedGroups failed", "err", gerr)
