@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed } from "@/stores/chats";
+import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed, setActiveChat } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
 import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
 import type { GroupParticipant } from "@/services/chats";
@@ -139,7 +138,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   // Painel lateral do participante do grupo — aberto ao clicar duas vezes no
   // nome de quem mandou a mensagem, dentro de uma conversa de grupo.
   const [participantSheet, setParticipantSheet] = useState<{ jid: string; name: string } | null>(null);
-  const navigate = useNavigate();
   const [noteMode, setNoteMode] = useState(false);
   const [showFlows, setShowFlows] = useState(false);
   const [suggestIdx, setSuggestIdx] = useState(-1);
@@ -1768,7 +1766,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           sessionId={sessionId}
           participantJid={participantSheet.jid}
           participantName={participantSheet.name}
-          onOpenChat={(jid) => navigate(`/chats?sid=${sessionId}&jid=${encodeURIComponent(jid)}`)}
+          onOpenChat={(jid) => setActiveChat(sessionId, jid)}
         />
       )}
     </div>
