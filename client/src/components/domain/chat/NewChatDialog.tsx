@@ -28,8 +28,8 @@ interface PendingTarget {
 
 const onlyDigits = (s: string) => s.replace(/\D+/g, "");
 
-  useEffect(() => {
-
+export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props) => {
+  const me = useAuth((s) => s.user);
   const [mode, setMode] = useState<Mode>("search");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
