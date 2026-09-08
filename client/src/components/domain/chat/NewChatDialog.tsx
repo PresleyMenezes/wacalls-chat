@@ -9,6 +9,7 @@ import { fetchChats, setActiveChat } from "@/stores/chats";
 import { assignChatTo, listOperators, type OperatorRef } from "@/services/chats";
 import { listQueues } from "@/services/queues";
 import type { Queue } from "@/types/queue";
+import { useAuth } from "@/stores/auth";
 
 interface Props {
   open: boolean;
@@ -27,7 +28,8 @@ interface PendingTarget {
 
 const onlyDigits = (s: string) => s.replace(/\D+/g, "");
 
-export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props) => {
+  useEffect(() => {
+
   const [mode, setMode] = useState<Mode>("search");
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,10 +49,15 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
       setPhone("");
       setName("");
       setMode("search");
-      setAssignUserId("");
-      setAssignQueueId("");
+      return;
     }
-  }, [open]);
+    // Pré-seleciona quem já está usando o sistema: o próprio operador
+    // logado e a primeira fila dele — assim, ao clicar num contato, já dá
+    // pra abrir o atendimento na hora, sem precisar escolher operador/fila
+    // toda vez (quem clicou no "+" já é operador e já pertence a uma fila).
+    setAssignUserId(me?.id ?? "");
+    setAssignQueueId(me?.queueIds?.[0] ?? "");
+  }, [open, me]);
 
   useEffect(() => {
     if (!open) return;
