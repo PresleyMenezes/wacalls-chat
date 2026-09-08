@@ -798,6 +798,26 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 				}
 			}
 		}
+		// Se ainda não achou nome e o participante é identificado por
+		// @lid, o contato salvo pode estar guardado pelo TELEFONE (não
+		// pelo lid) — resolve o lid pro telefone real primeiro, e tenta
+		// de novo com esse JID. Sem isso, alguém que você já conversou
+		// há meses (antes desse recurso existir) aparecia sem nome aqui,
+		// mesmo já tendo o nome salvo no seu WhatsApp.
+		if name == "" && p.JID.Server == types.HiddenUserServer && sess.client.Store.LIDs != nil {
+			if pn, perr := sess.client.Store.LIDs.GetPNForLID(ctx, p.JID); perr == nil && !pn.IsEmpty() && sess.client.Store.Contacts != nil {
+				if ci, cerr := sess.client.Store.Contacts.GetContact(ctx, pn.ToNonAD()); cerr == nil && ci.Found {
+					switch {
+					case ci.FullName != "":
+						name = ci.FullName
+					case ci.PushName != "":
+						name = ci.PushName
+					case ci.BusinessName != "":
+						name = ci.BusinessName
+					}
+				}
+			}
+		}
 		if name != "" {
 			// Guarda o nome resolvido pra essa pessoa também aparecer na
 			// tela de Contatos e permitir ligar/mandar mensagem antes
