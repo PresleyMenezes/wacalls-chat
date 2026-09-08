@@ -95,26 +95,19 @@ export const GroupParticipantSheet = ({
           <Button
             className="w-full justify-start"
             variant="outline"
-            onClick={async () => {
+            onClick={() => {
               // Participantes de grupo costumam ter JID do tipo @lid (um
               // identificador interno do WhatsApp) — mandar mensagem
               // direto pra esse endereço sem resolver o telefone real
               // falha silenciosamente. Usa o número já resolvido acima
               // (o mesmo que o botão "Ligar" usa) quando disponível.
               const openJid = phone ? `${phone}@s.whatsapp.net` : participantJid;
-              // Garante que o chat abra com o MESMO nome que aparecia no
-              // grupo, e já "aceito" (aberto pra esse operador) — sem
-              // isso, a conversa abria em "aguardando" e travava o campo
-              // de digitar até alguém clicar em aceitar manualmente. As
-              // duas chamadas rodam em paralelo pra não demorar o dobro.
-              try {
-                await Promise.all([
-                  displayName ? updateContact(sessionId, openJid, { name: displayName }) : Promise.resolve(),
-                  assignChat(sessionId, openJid),
-                ]);
-              } catch {
-                /* segue mesmo se falhar — não é crítico pra abrir o chat */
-              }
+              // Abre o chat NA HORA — não espera nada pra navegar. Definir
+              // o nome e aceitar a conversa rodam em segundo plano, sem
+              // travar a experiência (a UI resolve sozinha, via evento em
+              // tempo real, assim que essas chamadas terminarem).
+              if (displayName) void updateContact(sessionId, openJid, { name: displayName });
+              void assignChat(sessionId, openJid);
               onOpenChat(openJid);
               onOpenChange(false);
             }}
