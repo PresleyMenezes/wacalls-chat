@@ -784,40 +784,73 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 	}
 	out := make([]participant, 0, len(gi.Participants))
 	var toSync []SyncedContactRow
-	for _, p := range gi.Participants {
-		name := p.DisplayName
-		if name == "" && sess.client.Store.Contacts != nil {
+	// Função auxiliar: tenta resolver o nome de um participante a partir do
+	// que já temos localmente (nome de exibição do grupo, contato salvo
+	// pelo próprio lid, ou contato salvo pelo telefone equivalente já
+	// mapeado em cache).
+	resolveLocal := func(p *types.GroupParticipant) string {
+		if p.DisplayName != "" {
+			return p.DisplayName
+		}
+		if sess.client.Store.Contacts != nil {
 			if ci, cerr := sess.client.Store.Contacts.GetContact(ctx, p.JID.ToNonAD()); cerr == nil && ci.Found {
 				switch {
 				case ci.FullName != "":
-					name = ci.FullName
+					return ci.FullName
 				case ci.PushName != "":
-					name = ci.PushName
+					return ci.PushName
 				case ci.BusinessName != "":
-					name = ci.BusinessName
+					return ci.BusinessName
 				}
 			}
 		}
-		// Se ainda não achou nome e o participante é identificado por
-		// @lid, o contato salvo pode estar guardado pelo TELEFONE (não
-		// pelo lid) — resolve o lid pro telefone real primeiro, e tenta
-		// de novo com esse JID. Sem isso, alguém que você já conversou
-		// há meses (antes desse recurso existir) aparecia sem nome aqui,
-		// mesmo já tendo o nome salvo no seu WhatsApp.
-		if name == "" && p.JID.Server == types.HiddenUserServer && sess.client.Store.LIDs != nil {
-			if pn, perr := sess.client.Store.LIDs.GetPNForLID(ctx, p.JID); perr == nil && !pn.IsEmpty() && sess.client.Store.Contacts != nil {
+		if p.JID.Server == types.HiddenUserServer && sess.client.Store.LIDs != nil && sess.client.Store.Contacts != nil {
+			if pn, perr := sess.client.Store.LIDs.GetPNForLID(ctx, p.JID); perr == nil && !pn.IsEmpty() {
 				if ci, cerr := sess.client.Store.Contacts.GetContact(ctx, pn.ToNonAD()); cerr == nil && ci.Found {
 					switch {
 					case ci.FullName != "":
-						name = ci.FullName
+						return ci.FullName
 					case ci.PushName != "":
-						name = ci.PushName
+						return ci.PushName
 					case ci.BusinessName != "":
-						name = ci.BusinessName
+						return ci.BusinessName
 					}
 				}
 			}
 		}
+		return ""
+	}
+
+	names := make(map[string]string, len(gi.Participants))
+	var stillUnresolved []types.JID
+	for i := range gi.Participants {
+		p := &gi.Participants[i]
+		if name := resolveLocal(p); name != "" {
+			names[p.JID.String()] = name
+		} else if p.JID.Server == types.HiddenUserServer {
+			stillUnresolved = append(stillUnresolved, p.JID)
+		}
+	}
+	// "Aquecimento" ao vivo: pra quem ainda não resolveu e é @lid, pergunta
+	// ao WhatsApp de uma vez só (agrupado, não um por um) — isso preenche
+	// o mapeamento lid↔telefone no cache local como efeito colateral,
+	// mesmo quando essa conversa aconteceu há muito tempo, antes desse
+	// recurso existir aqui.
+	if len(stillUnresolved) > 0 {
+		_, _ = sess.client.GetUserDevices(ctx, stillUnresolved)
+		for i := range gi.Participants {
+			p := &gi.Participants[i]
+			if _, already := names[p.JID.String()]; already || p.JID.Server != types.HiddenUserServer {
+				continue
+			}
+			if name := resolveLocal(p); name != "" {
+				names[p.JID.String()] = name
+			}
+		}
+	}
+
+	for _, p := range gi.Participants {
+		name := names[p.JID.String()]
 		if name != "" {
 			// Guarda o nome resolvido pra essa pessoa também aparecer na
 			// tela de Contatos e permitir ligar/mandar mensagem antes
