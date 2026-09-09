@@ -870,6 +870,13 @@ func (s *server) handleGroupParticipants(w http.ResponseWriter, r *http.Request)
 	// pessoa, geralmente por privacidade — nesse caso não tem nome pra
 	// sincronizar mesmo, não é bug).
 	s.log.Info("group participants: sync diagnostics", "group", jidStr, "total", len(gi.Participants), "withName", len(toSync), "syncedContactsNil", s.syncedContacts == nil)
+	// Log de diagnóstico: mostra quantos ainda ficaram sem nome mesmo
+	// depois da tentativa ao vivo — se esse número não cair a zero mesmo
+	// assim, é sinal de limite real da plataforma pra aparelhos vinculados
+	// (não uma falha no nosso código).
+	s.log.Info("group participants: resolution result",
+		"group", jidStr, "total", len(gi.Participants), "resolved", len(toSync),
+		"stillUnresolved", len(gi.Participants)-len(toSync), "liveWarmupUsed", len(stillUnresolved))
 	if len(toSync) > 0 && s.syncedContacts != nil {
 		go func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
