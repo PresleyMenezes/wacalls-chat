@@ -1896,32 +1896,6 @@ const CallButtons = ({
       return peerDigits && realDigits && peerDigits === realDigits;
     }),
   );
-  // Toca um som de "chamando" (ringback) enquanto a chamada está tocando
-  // do outro lado, até a pessoa atender (ou a chamada acabar) — sem
-  // precisar de nenhum arquivo de áudio, sintetizado na hora.
-  useEffect(() => {
-    if (activeCall?.status !== "ringing") return;
-    const ctx = new AudioContext();
-    let stopped = false;
-    const playPulse = () => {
-      if (stopped) return;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 425; // tom clássico de "chamando" (padrão brasileiro)
-      gain.gain.value = 0.06;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 1);
-    };
-    playPulse();
-    const interval = window.setInterval(playPulse, 4000);
-    return () => {
-      stopped = true;
-      window.clearInterval(interval);
-      void ctx.close().catch(() => {});
-    };
-  }, [activeCall?.status]);
   // Only ever dial the real E.164 phone — never a LID. This mirrors the
   // Discador panel, which always sends "+digits".
   const target = realDigits ? `+${realDigits}` : "";
