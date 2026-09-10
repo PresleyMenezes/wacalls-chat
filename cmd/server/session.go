@@ -324,6 +324,12 @@ func (s *Session) handleEvent(rawEvt any) {
 		callID := callIDFromNode(wrapCall(evt.From, evt.Data))
 		if ac, ok := s.reg.get(callID); ok {
 			s.log.Info("call terminate event", "call_id", callID, "from", evt.From.String())
+			// Avisa o frontend NA HORA (mesmo padrão de quando o próprio
+			// operador desliga) — sem isso, o balão "em atendimento" só
+			// sumia quando o processamento interno da biblioteca de
+			// chamadas terminasse sozinho, levando vários segundos.
+			s.removeCall(callID)
+			s.mgr.broker.endCall(callID, "peer_terminated")
 			ac.cm.HandleCallTerminate(wrapCall(evt.From, evt.Data))
 			if s.mgr.flowExec != nil {
 				s.mgr.flowExec.Abort(callID)
@@ -333,6 +339,8 @@ func (s *Session) handleEvent(rawEvt any) {
 	case *events.CallReject:
 		callID := callIDFromNode(wrapCall(evt.From, evt.Data))
 		if ac, ok := s.reg.get(callID); ok {
+			s.removeCall(callID)
+			s.mgr.broker.endCall(callID, "peer_rejected")
 			ac.cm.HandleCallTerminate(wrapCall(evt.From, evt.Data))
 			if s.mgr.flowExec != nil {
 				s.mgr.flowExec.Abort(callID)
