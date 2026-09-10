@@ -29,7 +29,7 @@ import { eventStream } from "@/lib/event-stream";
 import { useDevices } from "@/stores/devices";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useEndCall } from "@/hooks/useEndCall";
-import { useCalls } from "@/stores/calls";
+import { useCalls, forceEndCallLocally } from "@/stores/calls";
 import { useSessions } from "@/stores/sessions";
 import { listQueues } from "@/services/queues";
 import type { Queue } from "@/types/queue";
@@ -1720,14 +1720,14 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
               if (forwardTarget) {
                 await forwardMessage(sessionId, chatJid, forwardTarget.id, targets);
               } else {
-                // Encaminha cada mensagem selecionada, na ordem em que aparecem
-                // na conversa, para todos os destinos escolhidos.
+                // Encaminha todas as mensagens selecionadas EM PARALELO —
+                // antes, cada mídia esperava a anterior terminar de subir
+                // e enviar por completo antes de começar a próxima, o que
+                // deixava o encaminhamento de várias mídias bem lento.
                 const ids = timeline
                   .filter((it) => it.kind !== "evt" && selectedIds.has(it.msg.id))
                   .map((it) => (it.msg as ChatMessage).id);
-                for (const mid of ids) {
-                  await forwardMessage(sessionId, chatJid, mid, targets);
-                }
+                await Promise.all(ids.map((mid) => forwardMessage(sessionId, chatJid, mid, targets)));
               }
               setForwardTarget(null);
               setShowForwardSelection(false);
@@ -1896,6 +1896,32 @@ const CallButtons = ({
       return peerDigits && realDigits && peerDigits === realDigits;
     }),
   );
+  // Toca um som de "chamando" (ringback) enquanto a chamada está tocando
+  // do outro lado, até a pessoa atender (ou a chamada acabar) — sem
+  // precisar de nenhum arquivo de áudio, sintetizado na hora.
+  useEffect(() => {
+    if (activeCall?.status !== "ringing") return;
+    const ctx = new AudioContext();
+    let stopped = false;
+    const playPulse = () => {
+      if (stopped) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 425; // tom clássico de "chamando" (padrão brasileiro)
+      gain.gain.value = 0.06;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 1);
+    };
+    playPulse();
+    const interval = window.setInterval(playPulse, 4000);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      void ctx.close().catch(() => {});
+    };
+  }, [activeCall?.status]);
   // Only ever dial the real E.164 phone — never a LID. This mirrors the
   // Discador panel, which always sends "+digits".
   const target = realDigits ? `+${realDigits}` : "";
@@ -1922,7 +1948,19 @@ const CallButtons = ({
           variant="destructive"
           title="Desligar chamada"
           disabled={end.isPending}
-          onClick={() => end.mutate({ sid: sessionId, callId: activeCall.callId })}
+          onClick={() => {
+            const callId = activeCall.callId;
+            end.mutate({ sid: sessionId, callId });
+            // Rede de segurança: se o servidor não confirmar o fim da
+            // chamada em alguns segundos (por qualquer motivo), limpa a
+            // tela mesmo assim — evita deixar o operador travado com o
+            // botão "Desligar" sem efeito visível.
+            window.setTimeout(() => {
+              if (useCalls.getState().calls.some((c) => c.callId === callId)) {
+                forceEndCallLocally(callId);
+              }
+            }, 6000);
+          }}
         >
           <PhoneOff className="h-4 w-4" />
         </Button>
