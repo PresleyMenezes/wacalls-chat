@@ -60,6 +60,7 @@ export const ensureCallsWired = (): void => {
         ),
       }));
     } else if (ev.type === "call-ended") {
+      console.log("[DIAG] call-ended event received at", new Date().toISOString(), ev);
       const before = useCalls.getState();
       const conn = before.ownConnections.get(ev.id);
       const sid = before.ownSessions.get(ev.id);
