@@ -150,6 +150,18 @@ export const registerOwnConnection = (id: string, conn: OpenCall, sid?: string):
     if (sid) nextSessions.set(id, sid);
     return { ownConnections: next, ownSessions: nextSessions };
   });
+  // Fonte de verdade adicional: monitora o estado REAL da conexão de voz
+  // no navegador, em vez de depender só do evento do servidor avisando que
+  // a chamada acabou (que às vezes falha em chegar — seja porque nós
+  // desligamos, seja porque a outra pessoa desligou). Se a conexão cair de
+  // verdade, limpa a tela na hora, sem precisar de F5.
+  const pc = conn.pc;
+  const onStateChange = () => {
+    if (pc.connectionState === "disconnected" || pc.connectionState === "failed" || pc.connectionState === "closed") {
+      forceEndCallLocally(id);
+    }
+  };
+  pc.addEventListener("connectionstatechange", onStateChange);
 };
 
 export const clearIncoming = (): void => useCalls.setState({ incoming: null });
