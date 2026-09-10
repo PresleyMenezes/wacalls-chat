@@ -44,6 +44,9 @@ class EventStream {
     this.#es.onmessage = (ev) => {
       try {
         const parsed: BrokerEvent = JSON.parse(ev.data);
+        if (parsed.type === "call-ended") {
+          console.log("[DIAG] raw SSE call-ended received at", new Date().toISOString());
+        }
         for (const l of this.#listeners) l(parsed);
       } catch {}
     };
