@@ -206,6 +206,11 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
         className={`relative max-w-[78%] rounded-2xl px-3 py-1.5 text-sm shadow-sm ${
           mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-background"
         } ${deleted ? "opacity-80" : ""}`}
+        onDoubleClick={() => {
+          // Duplo clique na mensagem já responde direto — mesmo efeito do
+          // item "Responder" no menu, só mais rápido de usar.
+          if (showReply) onReply!(message);
+        }}
       >
         {hasMenu && (
           <button
@@ -323,7 +328,12 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           <div
             className={`mb-0.5 text-[11px] font-semibold leading-tight ${onSenderDoubleClick ? "cursor-pointer select-none" : ""}`}
             style={{ color: senderColor }}
-            onDoubleClick={() => onSenderDoubleClick?.(message.senderJid, senderLabel)}
+            onDoubleClick={(e) => {
+              // Impede que o duplo clique no nome também dispare o
+              // "responder" do balão em volta (são duas ações diferentes).
+              e.stopPropagation();
+              onSenderDoubleClick?.(message.senderJid, senderLabel);
+            }}
           >
             {senderLabel}
           </div>
