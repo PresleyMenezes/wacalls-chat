@@ -42,13 +42,17 @@ class EventStream {
     if (this.#es) return;
     this.#es = new EventSource(`/api/events?clientId=${encodeURIComponent(clientId)}`);
     this.#es.onmessage = (ev) => {
+      // Log temporário de diagnóstico: mostra TODA mensagem bruta que
+      // chega, e qualquer erro de parse (que antes era engolido
+      // silenciosamente pelo catch vazio) — precisamos ver se o evento
+      // "call-ended" está mesmo chegando aqui, e se falha ao ser lido.
+      console.log("[DIAG] raw SSE message at", new Date().toISOString(), ev.data);
       try {
         const parsed: BrokerEvent = JSON.parse(ev.data);
-        if (parsed.type === "call-ended") {
-          console.log("[DIAG] raw SSE call-ended received at", new Date().toISOString());
-        }
         for (const l of this.#listeners) l(parsed);
-      } catch {}
+      } catch (err) {
+        console.error("[DIAG] SSE message parse/dispatch failed", err, ev.data);
+      }
     };
     this.#es.onerror = () => {};
   }
