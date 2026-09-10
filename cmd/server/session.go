@@ -322,6 +322,8 @@ func (s *Session) handleEvent(rawEvt any) {
 		}
 	case *events.CallTerminate:
 		callID := callIDFromNode(wrapCall(evt.From, evt.Data))
+		_, foundInReg := s.reg.get(callID)
+		s.log.Info("[DIAG] CallTerminate event received", "call_id", callID, "from", evt.From.String(), "foundInReg", foundInReg)
 		if ac, ok := s.reg.get(callID); ok {
 			s.log.Info("call terminate event", "call_id", callID, "from", evt.From.String())
 			// Avisa o frontend NA HORA (mesmo padrão de quando o próprio
