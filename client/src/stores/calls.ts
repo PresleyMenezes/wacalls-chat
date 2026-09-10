@@ -154,6 +154,29 @@ export const registerOwnConnection = (id: string, conn: OpenCall, sid?: string):
 
 export const clearIncoming = (): void => useCalls.setState({ incoming: null });
 
+// Rede de segurança: limpa uma chamada do estado local mesmo sem o
+// servidor confirmar o fim dela — usado quando o botão "Desligar" não
+// recebe confirmação em alguns segundos, pra nunca deixar o operador com
+// a tela de chamada travada (mesmo que o motivo real do travamento
+// continue precisando de investigação por trás).
+export const forceEndCallLocally = (callId: string): void => {
+  const before = useCalls.getState();
+  const conn = before.ownConnections.get(callId);
+  if (conn) void conn.close().catch(() => {});
+  useCalls.setState((s) => {
+    const next = new Map(s.ownConnections);
+    next.delete(callId);
+    const nextSessions = new Map(s.ownSessions);
+    nextSessions.delete(callId);
+    return {
+      calls: s.calls.filter((c) => c.callId !== callId),
+      ownConnections: next,
+      ownSessions: nextSessions,
+      incoming: s.incoming?.callId === callId ? null : s.incoming,
+    };
+  });
+};
+
 const formatPeer = (peer: string): string => {
   // peer é tipicamente "<digits>@s.whatsapp.net" ou "<digits>@lid".
   const raw = (peer || "").split("@")[0] || peer;
