@@ -162,9 +162,15 @@ func (b *Broker) deliverScoped(sessionID string, ev any) {
 				continue
 			}
 		}
+		// Espera um pouco antes de desistir de entregar — antes, se o canal
+		// estivesse momentaneamente cheio (rajada de eventos, como vários
+		// "receipt event" seguidos), a mensagem era descartada NA HORA e
+		// sem aviso nenhum, mesmo pra eventos importantes como o fim de
+		// uma chamada. 150ms dá uma chance real de esvaziar sem travar o
+		// broker por muito tempo.
 		select {
 		case s.ch <- data:
-		default:
+		case <-time.After(150 * time.Millisecond):
 		}
 	}
 }
@@ -373,7 +379,7 @@ func (b *Broker) broadcastCallList() {
 		for s := range b.subs {
 			select {
 			case s.ch <- data:
-			default:
+			case <-time.After(150 * time.Millisecond):
 			}
 		}
 		return
@@ -393,7 +399,7 @@ func (b *Broker) broadcastCallList() {
 		data, _ := json.Marshal(map[string]any{"type": "call-list", "calls": filtered})
 		select {
 		case s.ch <- data:
-		default:
+		case <-time.After(150 * time.Millisecond):
 		}
 	}
 }
