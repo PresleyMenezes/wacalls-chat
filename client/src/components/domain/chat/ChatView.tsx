@@ -1920,10 +1920,15 @@ const CallButtons = ({
     // precisamos desmutar — sem precisar de uma nova permissão de
     // autoplay, que é onde a tentativa anterior falhava silenciosamente.
     el.muted = true;
-    void el.play().catch(() => {});
+    console.log("[DIAG] primeRingback called", { src: el.src });
+    void el.play()
+      .then(() => console.log("[DIAG] primeRingback play() succeeded"))
+      .catch((err) => console.error("[DIAG] primeRingback play() FAILED", err));
   };
   useEffect(() => {
     const el = ringbackRef.current;
+    // Log temporário de diagnóstico.
+    console.log("[DIAG] ringback effect", { status: activeCall?.status, hasEl: !!el, paused: el?.paused, muted: el?.muted, src: el?.src });
     if (!el) return;
     el.muted = activeCall?.status !== "ringing";
   }, [activeCall?.status]);
