@@ -30,6 +30,7 @@ import { useDevices } from "@/stores/devices";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useEndCall } from "@/hooks/useEndCall";
 import { useCalls, forceEndCallLocally } from "@/stores/calls";
+import { getRingbackUrl } from "@/lib/ringback";
 import { useSessions } from "@/stores/sessions";
 import { listQueues } from "@/services/queues";
 import type { Queue } from "@/types/queue";
@@ -1896,6 +1897,30 @@ const CallButtons = ({
       return peerDigits && realDigits && peerDigits === realDigits;
     }),
   );
+  // Toca o som de "chamando" enquanto a chamada está tocando do outro
+  // lado, até a pessoa atender (ou a chamada acabar). Usa uma tag <audio>
+  // comum com um arquivo gerado uma única vez — não um AudioContext "ao
+  // vivo", que já causou conflito real com o áudio da própria chamada
+  // numa tentativa anterior.
+  useEffect(() => {
+    if (activeCall?.status !== "ringing") return;
+    let cancelled = false;
+    let audioEl: HTMLAudioElement | null = null;
+    void getRingbackUrl().then((url) => {
+      if (cancelled) return;
+      audioEl = new Audio(url);
+      audioEl.loop = true;
+      audioEl.volume = 0.5;
+      void audioEl.play().catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+      if (audioEl) {
+        audioEl.pause();
+        audioEl.src = "";
+      }
+    };
+  }, [activeCall?.status]);
   // Only ever dial the real E.164 phone — never a LID. This mirrors the
   // Discador panel, which always sends "+digits".
   const target = realDigits ? `+${realDigits}` : "";
