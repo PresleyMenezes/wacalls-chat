@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed, setActiveChat } from "@/stores/chats";
@@ -1714,28 +1715,31 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
           message={forwardTarget ?? timeline.find((it) => it.kind !== "evt" && selectedIds.has(it.msg.id))?.msg as ChatMessage}
           chats={chats ?? []}
           onClose={() => { setForwardTarget(null); setShowForwardSelection(false); }}
-          onSubmit={async (targets) => {
+          onSubmit={(targets) => {
             if (!chatJid) return;
-            try {
+            // Fecha o diálogo NA HORA e libera o operador pra outras
+            // tarefas — o envio de verdade continua em segundo plano.
+            // Antes, encaminhar 5-10 mídias travava a tela por vários
+            // segundos até tudo terminar de subir e enviar.
+            setForwardTarget(null);
+            setShowForwardSelection(false);
+            cancelSelection();
+            const run = async () => {
               if (forwardTarget) {
                 await forwardMessage(sessionId, chatJid, forwardTarget.id, targets);
               } else {
-                // Encaminha todas as mensagens selecionadas EM PARALELO —
-                // antes, cada mídia esperava a anterior terminar de subir
-                // e enviar por completo antes de começar a próxima, o que
-                // deixava o encaminhamento de várias mídias bem lento.
                 const ids = timeline
                   .filter((it) => it.kind !== "evt" && selectedIds.has(it.msg.id))
                   .map((it) => (it.msg as ChatMessage).id);
                 await Promise.all(ids.map((mid) => forwardMessage(sessionId, chatJid, mid, targets)));
               }
-              setForwardTarget(null);
-              setShowForwardSelection(false);
-              cancelSelection();
-            } catch (e) {
-              console.error("forward failed", e);
-              alert("Não foi possível encaminhar.");
-            }
+            };
+            run()
+              .then(() => toast.success("Encaminhado com sucesso."))
+              .catch((e) => {
+                console.error("forward failed", e);
+                toast.error("Não foi possível encaminhar.");
+              });
           }}
         />
       )}
