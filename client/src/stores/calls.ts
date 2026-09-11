@@ -54,46 +54,48 @@ let wired = false;
 // recriar. Aqui ele sobrevive à vida inteira da aba, sem depender de
 // nenhum ciclo de vida de componente.
 let ringbackEl: HTMLAudioElement | null = null;
-let ringbackMuteTimer: number | null = null;
+let ringbackStopTimer: number | null = null;
+
+// Descobrimos (na prática, testando) que o status "tocando" de uma
+// chamada não é confiável como sinal contínuo — o sistema de chamadas
+// marca a chamada como "terminada" internamente logo no início da
+// configuração (antes de realmente tocar por completo), e só atualiza de
+// novo quando ela termina de verdade. Por isso, em vez de tocar/pausar
+// seguindo esse status a cada instante, tocamos direto ao ligar e só
+// paramos quando a chamada CONECTA de verdade ou depois de um tempo
+// máximo de segurança (a maioria das chamadas não atendidas desiste
+// sozinha por volta de 30-40s).
+const RINGBACK_MAX_MS = 40000;
 
 export const primeRingback = (): void => {
   if (ringbackEl) return;
   const el = new Audio();
   el.loop = true;
   el.volume = 0.5;
-  el.muted = true;
   el.src = getRingbackUrl();
   ringbackEl = el;
   void el.play().catch(() => {});
+  if (ringbackStopTimer) window.clearTimeout(ringbackStopTimer);
+  ringbackStopTimer = window.setTimeout(stopRingback, RINGBACK_MAX_MS);
+};
+
+const stopRingback = (): void => {
+  if (ringbackStopTimer) {
+    window.clearTimeout(ringbackStopTimer);
+    ringbackStopTimer = null;
+  }
+  if (ringbackEl) {
+    ringbackEl.pause();
+    ringbackEl.currentTime = 0;
+  }
 };
 
 const updateRingback = (): void => {
   if (!ringbackEl) return;
-  const ringing = useCalls.getState().calls.some((c) => isMine(c) && c.status === "ringing");
-  console.log("[DIAG] updateRingback", {
-    ringing,
-    currentTime: ringbackEl.currentTime,
-    paused: ringbackEl.paused,
-    muted: ringbackEl.muted,
-    duration: ringbackEl.duration,
-    readyState: ringbackEl.readyState,
-    ended: ringbackEl.ended,
-  });
-  if (ringbackMuteTimer) {
-    window.clearTimeout(ringbackMuteTimer);
-    ringbackMuteTimer = null;
-  }
-  if (ringing) {
-    ringbackEl.muted = false;
-  } else {
-    // Espera um pouquinho antes de mutar — o status pisca rapidamente
-    // entre "tocando" e "sumida" nos primeiros instantes da chamada
-    // (registro provisório sendo substituído pelo definitivo).
-    const el = ringbackEl;
-    ringbackMuteTimer = window.setTimeout(() => {
-      el.muted = true;
-    }, 500);
-  }
+  // Só para o som quando a chamada realmente CONECTA (atendida) — esse
+  // sim é um sinal confiável, diferente do status "tocando" que pisca.
+  const connected = useCalls.getState().calls.some((c) => isMine(c) && c.status === "connected");
+  if (connected) stopRingback();
 };
 
 export const ensureCallsWired = (): void => {
@@ -225,6 +227,7 @@ export const clearIncoming = (): void => useCalls.setState({ incoming: null });
 // a tela de chamada travada (mesmo que o motivo real do travamento
 // continue precisando de investigação por trás).
 export const forceEndCallLocally = (callId: string): void => {
+  stopRingback();
   const before = useCalls.getState();
   const conn = before.ownConnections.get(callId);
   if (conn) void conn.close().catch(() => {});
