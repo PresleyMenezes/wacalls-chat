@@ -36,7 +36,7 @@ const encodeWav = (samples: Float32Array, sampleRate: number): Blob => {
 
 // Padrão clássico de "chamando" no Brasil: ~1s de tom, ~4s de silêncio,
 // repetindo (a tag <audio loop> cuida da repetição sozinha).
-export const getRingbackUrl = async (): Promise<string> => {
+export const getRingbackUrl = (): string => {
   if (cachedUrl) return cachedUrl;
   const sampleRate = 8000;
   const totalSeconds = 5;
