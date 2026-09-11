@@ -70,12 +70,22 @@ export const primeRingback = (): void => {
 const updateRingback = (): void => {
   if (!ringbackEl) return;
   const ringing = useCalls.getState().calls.some((c) => isMine(c) && c.status === "ringing");
+  console.log("[DIAG] updateRingback", {
+    ringing,
+    currentTime: ringbackEl.currentTime,
+    paused: ringbackEl.paused,
+    muted: ringbackEl.muted,
+    duration: ringbackEl.duration,
+    readyState: ringbackEl.readyState,
+    ended: ringbackEl.ended,
+  });
   if (ringbackMuteTimer) {
     window.clearTimeout(ringbackMuteTimer);
     ringbackMuteTimer = null;
   }
   if (ringing) {
     ringbackEl.muted = false;
+    if (ringbackEl.paused) void ringbackEl.play().catch(() => {});
   } else {
     // Espera um pouquinho antes de mutar — o status pisca rapidamente
     // entre "tocando" e "sumida" nos primeiros instantes da chamada
