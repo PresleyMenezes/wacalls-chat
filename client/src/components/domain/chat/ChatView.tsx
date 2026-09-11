@@ -1902,10 +1902,6 @@ const CallButtons = ({
       return !!(peerDigits && realDigits && peerDigits === realDigits);
     }),
   );
-  // Log temporário de diagnóstico — roda em TODO render (não só em
-  // efeitos), pra confirmar se esse componente realmente re-renderiza com
-  // o status atualizado.
-  console.log("[DIAG] CallButtons render", { activeCallStatus: activeCall?.status, chatJid });
   // Toca o som de "chamando" enquanto a chamada está tocando do outro
   // lado, até a pessoa atender (ou a chamada acabar). Usa uma tag <audio>
   // comum (não um AudioContext "ao vivo", que já causou conflito real com
@@ -1936,10 +1932,21 @@ const CallButtons = ({
   };
   useEffect(() => {
     const el = ringbackRef.current;
-    // Log temporário de diagnóstico.
-    console.log("[DIAG] ringback effect", { status: activeCall?.status, hasEl: !!el, paused: el?.paused, muted: el?.muted, src: el?.src });
     if (!el) return;
-    el.muted = activeCall?.status !== "ringing";
+    if (activeCall?.status === "ringing") {
+      el.muted = false;
+      return;
+    }
+    // Antes de mutar, espera um pouquinho — o status da chamada pisca
+    // rapidamente entre "tocando" e "sumida" nos primeiros instantes
+    // (registro provisório sendo substituído pelo definitivo), e mutar
+    // na hora deixava o som inaudível (desmuta e muta de novo em menos
+    // de um milissegundo). Se voltar a "tocando" dentro desse prazo, o
+    // som continua tocando normalmente sem interrupção perceptível.
+    const t = window.setTimeout(() => {
+      el.muted = true;
+    }, 500);
+    return () => window.clearTimeout(t);
   }, [activeCall?.status]);
   useEffect(() => {
     return () => {
