@@ -68,13 +68,18 @@ let ringbackStopTimer: number | null = null;
 const RINGBACK_MAX_MS = 40000;
 
 export const primeRingback = (): void => {
-  if (ringbackEl) return;
-  const el = new Audio();
-  el.loop = true;
-  el.volume = 0.5;
-  el.src = getRingbackUrl();
-  ringbackEl = el;
-  void el.play().catch(() => {});
+  if (!ringbackEl) {
+    const el = new Audio();
+    el.loop = true;
+    el.volume = 0.5;
+    el.src = getRingbackUrl();
+    ringbackEl = el;
+  }
+  // Sempre garante que está tocando e com o prazo de segurança reiniciado
+  // — antes, numa segunda chamada, o elemento já existia e a função não
+  // fazia mais nada, deixando o som mudo até um F5 recriar tudo do zero.
+  ringbackEl.currentTime = 0;
+  void ringbackEl.play().catch(() => {});
   if (ringbackStopTimer) window.clearTimeout(ringbackStopTimer);
   ringbackStopTimer = window.setTimeout(stopRingback, RINGBACK_MAX_MS);
 };
