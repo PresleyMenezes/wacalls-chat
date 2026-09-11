@@ -1921,19 +1921,15 @@ const CallButtons = ({
           size="sm"
           variant="destructive"
           title="Desligar chamada"
-          disabled={end.isPending}
           onClick={() => {
             const callId = activeCall.callId;
+            // Experiência instantânea: a decisão de desligar já foi tomada
+            // aqui, então a tela reage NA HORA — não faz sentido o
+            // operador esperar o WhatsApp confirmar nada (às vezes leva
+            // alguns segundos, especialmente cancelando antes de atender).
+            // O pedido de desligar de verdade continua em segundo plano.
+            forceEndCallLocally(callId);
             end.mutate({ sid: sessionId, callId });
-            // Rede de segurança: se o servidor não confirmar o fim da
-            // chamada em alguns segundos (por qualquer motivo), limpa a
-            // tela mesmo assim — evita deixar o operador travado com o
-            // botão "Desligar" sem efeito visível.
-            window.setTimeout(() => {
-              if (useCalls.getState().calls.some((c) => c.callId === callId)) {
-                forceEndCallLocally(callId);
-              }
-            }, 6000);
           }}
         >
           <PhoneOff className="h-4 w-4" />
