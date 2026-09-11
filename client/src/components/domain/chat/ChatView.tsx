@@ -1899,28 +1899,43 @@ const CallButtons = ({
   );
   // Toca o som de "chamando" enquanto a chamada está tocando do outro
   // lado, até a pessoa atender (ou a chamada acabar). Usa uma tag <audio>
-  // comum com um arquivo gerado uma única vez — não um AudioContext "ao
-  // vivo", que já causou conflito real com o áudio da própria chamada
-  // numa tentativa anterior.
-  useEffect(() => {
-    if (activeCall?.status !== "ringing") return;
-    let cancelled = false;
-    let audioEl: HTMLAudioElement | null = null;
+  // comum (não um AudioContext "ao vivo", que já causou conflito real com
+  // o áudio da própria chamada numa tentativa anterior). O elemento é
+  // criado e "destravado" no PRÓPRIO CLIQUE de ligar (ver primeRingback,
+  // chamado pelo botão "Ligar" abaixo) — navegadores bloqueiam áudio que
+  // não começa direto de um gesto do usuário; tentar tocar só depois,
+  // quando o status muda pra "tocando", cai fora dessa janela e é
+  // silenciosamente bloqueado.
+  const ringbackRef = useRef<HTMLAudioElement | null>(null);
+  const primeRingback = () => {
+    if (ringbackRef.current) return;
+    const el = new Audio();
+    el.loop = true;
+    el.volume = 0.5;
+    ringbackRef.current = el;
     void getRingbackUrl().then((url) => {
-      if (cancelled) return;
-      audioEl = new Audio(url);
-      audioEl.loop = true;
-      audioEl.volume = 0.5;
-      void audioEl.play().catch(() => {});
+      el.src = url;
     });
-    return () => {
-      cancelled = true;
-      if (audioEl) {
-        audioEl.pause();
-        audioEl.src = "";
-      }
-    };
+    // Toca e pausa na hora, dentro do próprio clique — "destrava" o
+    // elemento pro navegador permitir .play() depois, fora do gesto.
+    void el.play().then(() => el.pause()).catch(() => {});
+  };
+  useEffect(() => {
+    const el = ringbackRef.current;
+    if (!el) return;
+    if (activeCall?.status === "ringing") {
+      void el.play().catch(() => {});
+    } else {
+      el.pause();
+      el.currentTime = 0;
+    }
   }, [activeCall?.status]);
+  useEffect(() => {
+    return () => {
+      ringbackRef.current?.pause();
+      ringbackRef.current = null;
+    };
+  }, []);
   // Only ever dial the real E.164 phone — never a LID. This mirrors the
   // Discador panel, which always sends "+digits".
   const target = realDigits ? `+${realDigits}` : "";
@@ -1969,7 +1984,10 @@ const CallButtons = ({
         variant="ghost"
         title={needsResolve ? "Número real não disponível para este contato" : "Ligar"}
         disabled={disabled}
-        onClick={() => start.mutate({ phone: target, record: false, video: false })}
+        onClick={() => {
+          primeRingback();
+          start.mutate({ phone: target, record: false, video: false });
+        }}
       >
         <Phone className="h-4 w-4 text-emerald-500" />
       </Button>
