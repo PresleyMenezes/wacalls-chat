@@ -5,6 +5,7 @@ import { getClientId } from "@/lib/client-id";
 import { queryClient, queryKeys } from "@/lib/query";
 import type { OpenCall } from "@/lib/webrtc";
 import type { CallSummary, IncomingPayload } from "@/types/call";
+import { getRingbackUrl } from "@/lib/ringback";
 
 type State = {
   calls: CallSummary[];
@@ -60,10 +61,8 @@ export const primeRingback = (): void => {
   const el = new Audio();
   el.loop = true;
   el.volume = 0.5;
-  import("@/lib/ringback").then(({ getRingbackUrl }) => {
-    el.src = getRingbackUrl();
-  });
   el.muted = true;
+  el.src = getRingbackUrl();
   ringbackEl = el;
   void el.play().catch(() => {});
 };
