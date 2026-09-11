@@ -1894,7 +1894,12 @@ const CallButtons = ({
     s.calls.find((c) => {
       if (c.sessionId !== sessionId) return false;
       const peerDigits = (c.peer || "").replace(/[^\d]/g, "");
-      return peerDigits && realDigits && peerDigits === realDigits;
+      // A chamada pode registrar o peer como @lid mesmo — nesse caso,
+      // comparar contra o telefone resolvido nunca bate (são numerações
+      // diferentes). Compara também o LID cru diretamente, sem depender
+      // da resolução do telefone ter terminado.
+      if (server === "lid" && c.peer?.endsWith("@lid") && rawLocal && peerDigits === rawLocal) return true;
+      return !!(peerDigits && realDigits && peerDigits === realDigits);
     }),
   );
   // Log temporário de diagnóstico — roda em TODO render (não só em
