@@ -85,7 +85,6 @@ const updateRingback = (): void => {
   }
   if (ringing) {
     ringbackEl.muted = false;
-    if (ringbackEl.paused) void ringbackEl.play().catch(() => {});
   } else {
     // Espera um pouquinho antes de mutar — o status pisca rapidamente
     // entre "tocando" e "sumida" nos primeiros instantes da chamada
