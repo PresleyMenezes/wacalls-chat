@@ -29,8 +29,7 @@ import { eventStream } from "@/lib/event-stream";
 import { useDevices } from "@/stores/devices";
 import { useStartCall } from "@/hooks/useStartCall";
 import { useEndCall } from "@/hooks/useEndCall";
-import { useCalls, forceEndCallLocally } from "@/stores/calls";
-import { getRingbackUrl } from "@/lib/ringback";
+import { useCalls, forceEndCallLocally, primeRingback } from "@/stores/calls";
 import { useSessions } from "@/stores/sessions";
 import { listQueues } from "@/services/queues";
 import type { Queue } from "@/types/queue";
@@ -1902,58 +1901,12 @@ const CallButtons = ({
       return !!(peerDigits && realDigits && peerDigits === realDigits);
     }),
   );
-  // Toca o som de "chamando" enquanto a chamada está tocando do outro
-  // lado, até a pessoa atender (ou a chamada acabar). Usa uma tag <audio>
-  // comum (não um AudioContext "ao vivo", que já causou conflito real com
-  // o áudio da própria chamada numa tentativa anterior). O elemento é
-  // criado e "destravado" no PRÓPRIO CLIQUE de ligar (ver primeRingback,
-  // chamado pelo botão "Ligar" abaixo) — navegadores bloqueiam áudio que
-  // não começa direto de um gesto do usuário; tentar tocar só depois,
-  // quando o status muda pra "tocando", cai fora dessa janela e é
-  // silenciosamente bloqueado.
-  const ringbackRef = useRef<HTMLAudioElement | null>(null);
-  const primeRingback = () => {
-    if (ringbackRef.current) return;
-    const el = new Audio();
-    el.loop = true;
-    el.volume = 0.5;
-    el.src = getRingbackUrl();
-    ringbackRef.current = el;
-    // Começa tocando JÁ, mas mudo — tocar mudo é sempre permitido pelos
-    // navegadores, mesmo fora de um clique. Assim, quando a chamada entrar
-    // em "tocando" (evento assíncrono, fora do gesto original), só
-    // precisamos desmutar — sem precisar de uma nova permissão de
-    // autoplay, que é onde a tentativa anterior falhava silenciosamente.
-    el.muted = true;
-    console.log("[DIAG] primeRingback called", { src: el.src });
-    void el.play()
-      .then(() => console.log("[DIAG] primeRingback play() succeeded"))
-      .catch((err) => console.error("[DIAG] primeRingback play() FAILED", err));
-  };
-  useEffect(() => {
-    const el = ringbackRef.current;
-    if (!el) return;
-    if (activeCall?.status === "ringing") {
-      el.muted = false;
-      return;
-    }
-    // Antes de mutar, espera um pouquinho — o status da chamada pisca
-    // rapidamente entre "tocando" e "sumida" nos primeiros instantes
-    // (registro provisório sendo substituído pelo definitivo), e mutar
-    // na hora deixava o som inaudível (desmuta e muta de novo em menos
-    // de um milissegundo). Se voltar a "tocando" dentro desse prazo, o
-    // som continua tocando normalmente sem interrupção perceptível.
-    const t = window.setTimeout(() => {
-      el.muted = true;
-    }, 500);
-    return () => window.clearTimeout(t);
-  }, [activeCall?.status]);
-  useEffect(() => {
-    return () => {
-      ringbackRef.current?.pause();
-      ringbackRef.current = null;
-    };
-  }, []);
+  // Som de "chamando": controlado globalmente em stores/calls.ts (não
+  // aqui) — esse componente pode ser desmontado/remontado no meio da
+  // chamada, o que mataria um elemento de áudio preso ao seu ciclo de
+  // vida. primeRingback() só "destrava" o áudio no clique de ligar
+  // (necessário pra passar da política de autoplay do navegador); o
+  // tocar/mutar de verdade acontece na store, de forma resiliente.
   // Only ever dial the real E.164 phone — never a LID. This mirrors the
   // Discador panel, which always sends "+digits".
   const target = realDigits ? `+${realDigits}` : "";
