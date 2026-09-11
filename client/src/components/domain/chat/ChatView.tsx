@@ -1897,6 +1897,10 @@ const CallButtons = ({
       return peerDigits && realDigits && peerDigits === realDigits;
     }),
   );
+  // Log temporário de diagnóstico — roda em TODO render (não só em
+  // efeitos), pra confirmar se esse componente realmente re-renderiza com
+  // o status atualizado.
+  console.log("[DIAG] CallButtons render", { activeCallStatus: activeCall?.status, chatJid });
   // Toca o som de "chamando" enquanto a chamada está tocando do outro
   // lado, até a pessoa atender (ou a chamada acabar). Usa uma tag <audio>
   // comum (não um AudioContext "ao vivo", que já causou conflito real com
