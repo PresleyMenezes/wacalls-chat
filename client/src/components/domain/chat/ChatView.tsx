@@ -1912,23 +1912,20 @@ const CallButtons = ({
     const el = new Audio();
     el.loop = true;
     el.volume = 0.5;
+    el.src = getRingbackUrl();
     ringbackRef.current = el;
-    void getRingbackUrl().then((url) => {
-      el.src = url;
-    });
-    // Toca e pausa na hora, dentro do próprio clique — "destrava" o
-    // elemento pro navegador permitir .play() depois, fora do gesto.
-    void el.play().then(() => el.pause()).catch(() => {});
+    // Começa tocando JÁ, mas mudo — tocar mudo é sempre permitido pelos
+    // navegadores, mesmo fora de um clique. Assim, quando a chamada entrar
+    // em "tocando" (evento assíncrono, fora do gesto original), só
+    // precisamos desmutar — sem precisar de uma nova permissão de
+    // autoplay, que é onde a tentativa anterior falhava silenciosamente.
+    el.muted = true;
+    void el.play().catch(() => {});
   };
   useEffect(() => {
     const el = ringbackRef.current;
     if (!el) return;
-    if (activeCall?.status === "ringing") {
-      void el.play().catch(() => {});
-    } else {
-      el.pause();
-      el.currentTime = 0;
-    }
+    el.muted = activeCall?.status !== "ringing";
   }, [activeCall?.status]);
   useEffect(() => {
     return () => {
@@ -1961,15 +1958,19 @@ const CallButtons = ({
           size="sm"
           variant="destructive"
           title="Desligar chamada"
+          disabled={end.isPending}
           onClick={() => {
             const callId = activeCall.callId;
-            // Experiência instantânea: a decisão de desligar já foi tomada
-            // aqui, então a tela reage NA HORA — não faz sentido o
-            // operador esperar o WhatsApp confirmar nada (às vezes leva
-            // alguns segundos, especialmente cancelando antes de atender).
-            // O pedido de desligar de verdade continua em segundo plano.
-            forceEndCallLocally(callId);
             end.mutate({ sid: sessionId, callId });
+            // Rede de segurança: se o servidor não confirmar o fim da
+            // chamada em alguns segundos (por qualquer motivo), limpa a
+            // tela mesmo assim — evita deixar o operador travado com o
+            // botão "Desligar" sem efeito visível.
+            window.setTimeout(() => {
+              if (useCalls.getState().calls.some((c) => c.callId === callId)) {
+                forceEndCallLocally(callId);
+              }
+            }, 6000);
           }}
         >
           <PhoneOff className="h-4 w-4" />
