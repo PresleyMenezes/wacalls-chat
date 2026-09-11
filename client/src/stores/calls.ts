@@ -45,9 +45,53 @@ export const resetCallsStore = (): void => {
 };
 
 let wired = false;
+
+// Som de "chamando" — vive aqui, no nível do módulo (não dentro de nenhum
+// componente React), porque o componente que antes controlava isso podia
+// ser desmontado/remontado no meio da chamada (o app tem bastante
+// atividade em tempo real acontecendo), matando o elemento de áudio sem
+// recriar. Aqui ele sobrevive à vida inteira da aba, sem depender de
+// nenhum ciclo de vida de componente.
+let ringbackEl: HTMLAudioElement | null = null;
+let ringbackMuteTimer: number | null = null;
+
+export const primeRingback = (): void => {
+  if (ringbackEl) return;
+  const el = new Audio();
+  el.loop = true;
+  el.volume = 0.5;
+  import("@/lib/ringback").then(({ getRingbackUrl }) => {
+    el.src = getRingbackUrl();
+  });
+  el.muted = true;
+  ringbackEl = el;
+  void el.play().catch(() => {});
+};
+
+const updateRingback = (): void => {
+  if (!ringbackEl) return;
+  const ringing = useCalls.getState().calls.some((c) => isMine(c) && c.status === "ringing");
+  if (ringbackMuteTimer) {
+    window.clearTimeout(ringbackMuteTimer);
+    ringbackMuteTimer = null;
+  }
+  if (ringing) {
+    ringbackEl.muted = false;
+  } else {
+    // Espera um pouquinho antes de mutar — o status pisca rapidamente
+    // entre "tocando" e "sumida" nos primeiros instantes da chamada
+    // (registro provisório sendo substituído pelo definitivo).
+    const el = ringbackEl;
+    ringbackMuteTimer = window.setTimeout(() => {
+      el.muted = true;
+    }, 500);
+  }
+};
+
 export const ensureCallsWired = (): void => {
   if (wired) return;
   wired = true;
+  useCalls.subscribe(updateRingback);
   eventStream.on((ev: BrokerEvent) => {
     if (ev.type === "call-list") {
       useCalls.setState({ calls: ev.calls });
