@@ -39,7 +39,7 @@ const encodeWav = (samples: Float32Array, sampleRate: number): Blob => {
 export const getRingbackUrl = (): string => {
   if (cachedUrl) return cachedUrl;
   const sampleRate = 8000;
-  const totalSeconds = 5;
+  const totalSeconds = 3;
   const toneSeconds = 1;
   const samples = new Float32Array(sampleRate * totalSeconds);
   for (let i = 0; i < samples.length; i++) {
