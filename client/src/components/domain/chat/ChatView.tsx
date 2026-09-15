@@ -376,6 +376,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  // Atribuição automática ao digitar — o useRef precisa estar aqui em
+  // cima (antes de qualquer "return" condicional do componente), senão
+  // quebra a regra dos hooks do React (ordem tem que ser sempre a mesma).
+  const autoAssigningRef = useRef(false);
   // Foca o campo de digitar automaticamente ao trocar de conversa — sem
   // isso, era preciso clicar no campo antes de conseguir escrever.
   useEffect(() => {
@@ -541,7 +545,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   // antes. Os outros botões (Finalizar, Transferir, Devolver pra fila)
   // continuam exatamente como eram.
   const canType = status === "open" || status === "waiting";
-  const autoAssigningRef = useRef(false);
   const autoAssignOnType = () => {
     if (status !== "waiting" || autoAssigningRef.current) return;
     autoAssigningRef.current = true;
