@@ -38,8 +38,15 @@ const EMPTY_CHATS: ChatSummary[] = [];
 
 export const ChatsPage = () => {
   const { t } = useTranslation();
-  ensureSessionsWired();
-  ensureChatsWired();
+  // Roda só uma vez por montagem (não a cada re-render) — antes, chamar
+  // isso direto no corpo do componente disparava uma busca nova de
+  // sessões a CADA renderização, e se a sessão de login expirasse,
+  // gerava uma enxurrada de erros 401 repetidos até a página realmente
+  // trocar pra tela de login.
+  useEffect(() => {
+    ensureSessionsWired();
+    ensureChatsWired();
+  }, []);
 
   const sessions = useSessions((s) => s.sessions);
   const activeId = useSessions((s) => s.activeId);
