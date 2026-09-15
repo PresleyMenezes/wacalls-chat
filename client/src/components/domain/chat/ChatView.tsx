@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, UserPlus, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
+import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, PhoneOff, Send, Smile, Image as ImageIcon, FileText, Film, Contact2, Signature, StickyNote, Workflow, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed, setActiveChat } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
@@ -1120,26 +1120,9 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
             <KanbanSquare className="h-4 w-4" />
           </Button>
           {status === "waiting" && (
-            <>
-              <Button
-                size="sm"
-                variant="default"
-                onClick={async () => {
-                  try {
-                    await assignChat(sessionId, chatJid);
-                    setChatStatus(sessionId, chatJid, "open", myId);
-                    onStatusChange?.("open");
-                  } catch (e) {
-                    console.error("assign chat failed", e);
-                  }
-                }}
-              >
-                <UserPlus className="mr-1 h-3.5 w-3.5" /> Atender
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => void confirmClose()} disabled={closing}>
-                <CheckCheck className="mr-1 h-3.5 w-3.5" /> Finalizar
-              </Button>
-            </>
+            <Button size="sm" variant="outline" onClick={() => void confirmClose()} disabled={closing}>
+              <CheckCheck className="mr-1 h-3.5 w-3.5" /> Finalizar
+            </Button>
           )}
           {status === "open" && (
             <Button size="sm" variant="outline" onClick={() => void confirmClose()} disabled={closing}>
@@ -1295,7 +1278,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
       )}
       {!isGroup && status === "waiting" && (
         <div className="border-t border-amber-400/40 bg-amber-100/40 px-3 py-2 text-center text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-          Este atendimento está <strong>aguardando</strong>. Aceite o ticket para poder enviar mensagens.
+          Este atendimento está <strong>aguardando</strong>. Comece a digitar para aceitá-lo automaticamente.
         </div>
       )}
       <form
@@ -1536,7 +1519,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                 </div>
               )}
               {mentionCandidates.length > 0 && (
-                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
+                <div className="absolute bottom-full left-0 right-1/2 z-20 mb-1 mr-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     Marcar participante · Tab para selecionar
                   </div>
@@ -1553,8 +1536,12 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                   ))}
                 </div>
               )}
-              {suggestions.length > 0 && mentionCandidates.length === 0 && (
-                <div className="absolute bottom-full left-0 right-0 z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
+              {suggestions.length > 0 && (
+                <div
+                  className={`absolute bottom-full z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg ${
+                    mentionCandidates.length > 0 ? "left-1/2 right-0 ml-1" : "left-0 right-0"
+                  }`}
+                >
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     Sugestões · Tab para aceitar
                   </div>
