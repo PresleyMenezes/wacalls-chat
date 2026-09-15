@@ -1903,7 +1903,16 @@ func parseChatJID(s string) (types.JID, error) {
 		return types.JID{}, errors.New("missing jid")
 	}
 	if strings.Contains(s, "@") {
-		return types.ParseJID(s)
+		j, err := types.ParseJID(s)
+		if err != nil {
+			return types.JID{}, err
+		}
+		// Remove o sufixo de aparelho (":59" etc.) — enviar mensagem exige
+		// um JID de usuário "puro", sem essa parte. Sem isso, mandar
+		// mensagem pra alguém cujo JID veio com sufixo de aparelho (comum
+		// em participantes de grupo) falhava com "message recipient must
+		// be a user JID with no device part".
+		return j.ToNonAD(), nil
 	}
 	digits := strings.Map(func(r rune) rune {
 		if r >= '0' && r <= '9' {
