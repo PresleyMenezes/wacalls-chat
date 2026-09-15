@@ -678,7 +678,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
       removeMessage(sessionId, chatJid!, tempId);
       upsertMessage(real);
     } catch (e) {
-      console.error("send failed", e);
+      // console.error("send failed", e);
       markMessageFailed(sessionId, chatJid!, tempId);
     }
   };
