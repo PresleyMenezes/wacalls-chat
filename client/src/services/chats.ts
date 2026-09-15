@@ -11,14 +11,15 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error("[chats] network error", url, err);
+    // Log de diagnóstico (comentado) — descomentar se precisar depurar
+    // falhas de rede de novo. Atenção: essa função é usada por TODAS as
+    // chamadas de API deste arquivo, não só o envio de mensagem.
+    // console.error("[chats] network error", url, err);
     throw err;
   }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    // eslint-disable-next-line no-console
-    console.error("[chats] HTTP", res.status, url, body);
+    // console.error("[chats] HTTP", res.status, url, body);
     throw new Error(`${res.status} ${body}`);
   }
   return res.json() as Promise<T>;
