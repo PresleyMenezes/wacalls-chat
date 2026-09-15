@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, Check, RotateCcw, Send, X } from "lucide-react";
+import { ArrowLeftRight, RotateCcw, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { setChatStatus, useChats } from "@/stores/chats";
 import { useSessions } from "@/stores/sessions";
 import type { ChatSummary } from "@/types/chat";
 import { formatPeer, formatRelative, isGroupJid, previewBody } from "./format";
-import { assignChat, closeChat, requeueChat } from "@/services/chats";
+import { closeChat, requeueChat } from "@/services/chats";
 import { TransferDialog } from "./TransferDialog";
 import { useAuth } from "@/stores/auth";
 
@@ -149,8 +149,7 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
   const name = chat.name && chat.name.trim() !== "" ? chat.name : formatPeer(chat.chatJid);
   const unread = chat.unread ?? 0;
   const isGroup = chat.isGroup || isGroupJid(chat.chatJid);
-  const me = useAuth((s) => s.user);
-  
+
   const [busy, setBusy] = useState<null | "assign" | "close" | "requeue" | "transfer">(null);
   const run = async (kind: typeof busy, fn: () => Promise<void>) => {
     if (busy) return;
@@ -160,21 +159,6 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
 
   // Action handlers. Each one calls the existing API and optimistically
   // mutates the local chat store so the row hops to the right tab instantly.
-  const handleAssign = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    void run("assign", async () => {
-      try {
-        await assignChat(sessionId, chat.chatJid);
-        setChatStatus(sessionId, chat.chatJid, "open", me?.id ?? null);
-        onStatusChange?.("open");
-        // Abre automaticamente o ticket recém-aceito.
-        onClick();
-        toast.success("Atendimento aceito");
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Falha ao aceitar");
-      }
-    });
-  };
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
     void run("close", async () => {
@@ -288,10 +272,8 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
           <div className="ml-3 mr-1 flex shrink-0 items-center justify-center gap-1 self-center">
             {tab === "waiting" ? (
               <>
-                {/* Aguardando: aceitar / transferir / finalizar — todos alinhados em linha */}
-                <RowAction tone="success" label="Aceitar" busy={busy === "assign"} disabled={!!busy} onClick={handleAssign} square>
-                  <Check className="h-3 w-3" strokeWidth={3} />
-                </RowAction>
+                {/* Aguardando: transferir / finalizar — aceitar acontece
+                    sozinho ao começar a digitar dentro da conversa. */}
                 <RowAction tone="lavender" label="Transferir" onClick={handleTransfer} disabled={!!busy} square>
                   <ArrowLeftRight className="h-2.5 w-2.5" />
                 </RowAction>
