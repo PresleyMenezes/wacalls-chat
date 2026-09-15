@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	// "fmt" // usado só pelos logs de diagnóstico comentados abaixo — descomente junto se reativar
 	"net/http"
 	"sync"
 	"time"
@@ -331,13 +331,12 @@ func (b *Broker) endCall(id, reason string) {
 	c, ok := b.calls[id]
 	if !ok {
 		b.mu.Unlock()
-		// Log temporário de diagnóstico — se isso aparecer, significa que
-		// endCall foi chamado mas a chamada já não estava mais registrada
-		// no broker (alguém chamou antes, ou nunca foi registrada aqui).
-		fmt.Printf("[DIAG] broker.endCall: call %s not found (already removed?) reason=%s\n", id, reason)
+		// Log de diagnóstico (comentado) — descomentar (junto com o
+		// import "fmt" acima) se precisar depurar de novo.
+		// fmt.Printf("[DIAG] broker.endCall: call %s not found (already removed?) reason=%s\n", id, reason)
 		return
 	}
-	fmt.Printf("[DIAG] broker.endCall: broadcasting call-ended id=%s reason=%s subscribers=%d\n", id, reason, len(b.subs))
+	// fmt.Printf("[DIAG] broker.endCall: broadcasting call-ended id=%s reason=%s subscribers=%d\n", id, reason, len(b.subs))
 	now := time.Now().UnixMilli()
 	c.Status = StatusEnded
 	c.EndedAt = &now
