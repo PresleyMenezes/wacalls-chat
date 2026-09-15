@@ -376,6 +376,13 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLTextAreaElement>(null);
+  // Foca o campo de digitar automaticamente ao trocar de conversa — sem
+  // isso, era preciso clicar no campo antes de conseguir escrever.
+  useEffect(() => {
+    if (!chatJid) return;
+    const t = window.setTimeout(() => messageInputRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
+  }, [chatJid]);
 
   // Audio recording
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -528,6 +535,26 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const displayName = chat?.name && chat.name.trim() !== "" ? chat.name : formatPeer(chatJid);
   const status = chat?.status ?? "open";
   const canSend = status === "open";
+  // Permite digitar mesmo com o atendimento ainda em "aguardando" — o
+  // primeiro caractere digitado já atribui a conversa automaticamente ao
+  // operador (ver autoAssignOnType), sem precisar clicar em "Atender"
+  // antes. Os outros botões (Finalizar, Transferir, Devolver pra fila)
+  // continuam exatamente como eram.
+  const canType = status === "open" || status === "waiting";
+  const autoAssigningRef = useRef(false);
+  const autoAssignOnType = () => {
+    if (status !== "waiting" || autoAssigningRef.current) return;
+    autoAssigningRef.current = true;
+    assignChat(sessionId, chatJid)
+      .then(() => {
+        setChatStatus(sessionId, chatJid, "open", myId);
+        onStatusChange?.("open");
+      })
+      .catch((e) => console.error("auto-assign on type failed", e))
+      .finally(() => {
+        autoAssigningRef.current = false;
+      });
+  };
 
   const handleSend = async () => {
     const value = text.trim();
@@ -561,7 +588,23 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
       }
       return;
     }
-    if (!canSend) return;
+    if (!canSend) {
+      // Se ainda estiver "aguardando" (ex.: digitou rápido e mandou antes
+      // da atribuição automática em segundo plano terminar), garante a
+      // atribuição agora mesmo antes de desistir de enviar.
+      if (status === "waiting") {
+        try {
+          await assignChat(sessionId, chatJid);
+          setChatStatus(sessionId, chatJid, "open", myId);
+          onStatusChange?.("open");
+        } catch (e) {
+          console.error("assign on send failed", e);
+          return;
+        }
+      } else {
+        return;
+      }
+    }
     const composed = value;
     // Assinatura automática: o nome cadastrado do usuário tem precedência
     // sobre qualquer texto antigo salvo no perfil. Assim, sempre que o
@@ -1353,6 +1396,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                   const val = e.target.value;
                   setText(val);
                   setShowSuggest(true);
+                  if (val.trim()) autoAssignOnType();
                   // Auto-cresce até um limite, depois rola dentro do campo.
                   e.target.style.height = "auto";
                   e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
@@ -1467,7 +1511,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                 className={`w-full resize-none rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring ${
                   noteMode ? "border-amber-400/50 bg-amber-100/40 dark:bg-amber-500/10" : "bg-background"
                 }`}
-                disabled={sending || (!noteMode && !canSend)}
+                disabled={sending || (!noteMode && !canType)}
               />
               {quickReplyCandidates.length > 0 && (
                 <div className="absolute bottom-full left-0 right-0 z-20 mb-1 max-h-64 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-lg">
@@ -1506,7 +1550,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                   ))}
                 </div>
               )}
-              {suggestions.length > 0 && (
+              {suggestions.length > 0 && mentionCandidates.length === 0 && (
                 <div className="absolute bottom-full left-0 right-0 z-20 mb-1 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
                   <div className="border-b px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                     Sugestões · Tab para aceitar
