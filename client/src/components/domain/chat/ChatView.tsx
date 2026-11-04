@@ -1758,6 +1758,10 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
             setForwardTarget(null);
             setShowForwardSelection(false);
             cancelSelection();
+            // Encaminhou para um único contato: abre a conversa dele na hora
+            // (as mensagens aparecem lá conforme forem enviadas). Para vários
+            // contatos, fica só o aviso, sem sair da conversa atual.
+            if (targets.length === 1) setActiveChat(sessionId, targets[0]);
             const run = async () => {
               if (forwardTarget) {
                 await forwardMessage(sessionId, chatJid, forwardTarget.id, targets);
