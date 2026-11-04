@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Smartphone } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -22,11 +22,19 @@ export const QRDialog = ({ open, onOpenChange, sessionId, sessionName }: Props) 
   const paired = useSessions((s) =>
     s.sessions.find((x) => x.id === sessionId)?.paired ?? false,
   );
+  const [pairError, setPairError] = useState("");
 
   // Auto-request a pairing as soon as the dialog opens.
   useEffect(() => {
     if (!open) return;
-    pairSession(sessionId).catch((e) => toast.error((e as Error).message));
+    setPairError("");
+    pairSession(sessionId).catch((e) => {
+      const msg = (e as Error).message;
+      // Mostra o motivo dentro da própria caixa do QR (antes ficava
+      // eternamente em "Gerando QR Code…" quando o servidor recusava).
+      setPairError(msg);
+      toast.error(msg);
+    });
   }, [open, sessionId]);
 
   // Close the modal automatically once pairing succeeds.
@@ -60,6 +68,8 @@ export const QRDialog = ({ open, onOpenChange, sessionId, sessionName }: Props) 
             <div className="grid h-[260px] w-[260px] place-items-center rounded-xl bg-white p-3 shadow-inner">
               {qr ? (
                 <QRCodeSVG value={qr} size={232} includeMargin={false} />
+              ) : pairError ? (
+                <div className="px-2 text-center text-xs text-destructive">{pairError}</div>
               ) : (
                 <div className="text-center text-xs text-muted-foreground">
                   Gerando QR Code…
