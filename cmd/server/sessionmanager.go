@@ -484,7 +484,17 @@ func (m *SessionManager) Pair(id string) error {
 		return fmt.Errorf("no session %s", id)
 	}
 	if s.client.Store.ID != nil {
-		return fmt.Errorf("session already paired")
+		s.mu.Lock()
+		st := s.auth.State
+		s.mu.Unlock()
+		if st != "logged_out" {
+			return fmt.Errorf("session already paired")
+		}
+		// Aparelho desvinculado (ex.: troca de celular) mas o registro antigo
+		// ficou guardado: descarta e deixa gerar um QR novo.
+		s.client.Disconnect()
+		_ = m.container.DeleteDevice(m.appCtx, s.client.Store)
+		_ = m.store.setJID(m.appCtx, id, "")
 	}
 	s.replaceClient(whatsmeow.NewClient(m.container.NewDevice(), m.waLogger))
 	if err := s.startPairing(m.appCtx); err != nil {
