@@ -26,6 +26,8 @@ export interface ChatMessage {
   senderName?: string;
   edited?: boolean;
   deleted?: boolean;
+  // Mensagem encaminhada (recebida ou enviada por este sistema).
+  forwarded?: boolean;
   // Snapshot of the message content before it was revoked by the sender.
   // Populated locally by the client so we can keep displaying what was sent.
   originalBody?: string;
