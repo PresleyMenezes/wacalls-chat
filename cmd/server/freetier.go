@@ -21,6 +21,11 @@ import (
 // Os limites podem ser ajustados pelo super admin em
 // settings_kv (chaves free_tier_connections/calls/chats).
 
+// freeTierEnforced liga/desliga TODO o limite do plano gratuito. Em false
+// (atual), não há limite de conexões, ligações nem mensagens, e nenhum
+// aviso de limite é gerado. Para voltar a cobrar limites, troque para true.
+const freeTierEnforced = false
+
 type freeTierLimits struct {
 	Connections int
 	CallsWeek   int
@@ -133,6 +138,9 @@ func (s *server) bumpWeeklyUsage(ctx context.Context, userID, kind string) {
 // (active/trialing) e ainda dentro do período cobrado. Admins do SaaS são
 // considerados sempre pagos para não ficarem travados.
 func (s *server) userHasPaidPlan(ctx context.Context, userID string, isAdmin bool) bool {
+	if !freeTierEnforced {
+		return true
+	}
 	if isAdmin {
 		return true
 	}
