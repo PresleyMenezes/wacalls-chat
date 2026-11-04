@@ -53,6 +53,13 @@ func (s *Session) handleWAMessage(evt *events.Message) {
 	if row.ID == "" || row.ChatJID == "" {
 		return
 	}
+	// Log temporário de diagnóstico: encaminhadas feitas em OUTRO aparelho
+	// (ex.: WhatsApp Web) — mostra o que o WhatsApp realmente manda.
+	if evt.Info.IsFromMe && s.client != nil && s.client.Store != nil && s.client.Store.ID != nil &&
+		int(evt.Info.Sender.Device) != int(s.client.Store.ID.Device) {
+		ci := contextInfoOf(evt.Message)
+		s.log.Info("[DIAG] fromMe de outro aparelho", "id", row.ID, "kind", row.Kind, "forwarded", row.Forwarded, "hasCtx", ci != nil, "isFwd", ci.GetIsForwarded(), "score", ci.GetForwardingScore())
+	}
 	// Detecta mensagens enviadas por um aparelho vinculado ESPECÍFICO
 	// (identificado pelo número do dispositivo, configurado manualmente
 	// pelo operador via o botão "Buscar dispositivos vinculados") — não
@@ -487,8 +494,31 @@ func quotedIDFromMessage(m *waE2E.Message) string {
 	return ctx.GetStanzaID()
 }
 
-// isForwardedFromMessage diz se a mensagem recebida veio marcada como
-// "encaminhada" pelo WhatsApp (mesmo desembrulhando os envelopes).
+// contextInfoOf devolve o ContextInfo da mensagem, seja qual for o tipo de
+// conteúdo (texto, imagem, vídeo, áudio, documento, figurinha, contato,
+// enquete, botões...), sem precisar listar cada tipo.
+func contextInfoOf(m *waE2E.Message) *waE2E.ContextInfo {
+	if m == nil {
+		return nil
+	}
+	var found *waE2E.ContextInfo
+	m.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		if fd.Kind() != protoreflect.MessageKind || fd.IsList() || fd.IsMap() {
+			return true
+		}
+		if g, ok := v.Message().Interface().(interface{ GetContextInfo() *waE2E.ContextInfo }); ok {
+			if ci := g.GetContextInfo(); ci != nil {
+				found = ci
+				return false
+			}
+		}
+		return true
+	})
+	return found
+}
+
+// isForwardedFromMessage diz se a mensagem veio marcada como "encaminhada" pelo
+// WhatsApp (pelo selo OU pelo contador de encaminhamentos), mesmo embrulhada.
 func isForwardedFromMessage(m *waE2E.Message) bool {
 	if m == nil {
 		return false
@@ -508,26 +538,8 @@ func isForwardedFromMessage(m *waE2E.Message) bool {
 	if d := m.GetDeviceSentMessage(); d != nil && d.GetMessage() != nil {
 		return isForwardedFromMessage(d.GetMessage())
 	}
-	var ci *waE2E.ContextInfo
-	switch {
-	case m.GetExtendedTextMessage() != nil:
-		ci = m.GetExtendedTextMessage().GetContextInfo()
-	case m.GetImageMessage() != nil:
-		ci = m.GetImageMessage().GetContextInfo()
-	case m.GetVideoMessage() != nil:
-		ci = m.GetVideoMessage().GetContextInfo()
-	case m.GetAudioMessage() != nil:
-		ci = m.GetAudioMessage().GetContextInfo()
-	case m.GetDocumentMessage() != nil:
-		ci = m.GetDocumentMessage().GetContextInfo()
-	case m.GetStickerMessage() != nil:
-		ci = m.GetStickerMessage().GetContextInfo()
-	case m.GetContactMessage() != nil:
-		ci = m.GetContactMessage().GetContextInfo()
-	case m.GetLocationMessage() != nil:
-		ci = m.GetLocationMessage().GetContextInfo()
-	}
-	return ci != nil && ci.GetIsForwarded()
+	ci := contextInfoOf(m)
+	return ci != nil && (ci.GetIsForwarded() || ci.GetForwardingScore() > 0)
 }
 
 // messageRowFromEvent maps a whatsmeow *events.Message into our local row.
