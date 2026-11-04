@@ -338,6 +338,15 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
             {senderLabel}
           </div>
         )}
+        {message.forwarded && !deleted && (
+          <div
+            className={`mb-0.5 flex items-center gap-1 text-[11px] italic ${
+              mine ? "text-primary-foreground/70" : "text-muted-foreground"
+            }`}
+          >
+            <Forward className="h-3 w-3" /> Encaminhada
+          </div>
+        )}
         {isMedia && (
           <MediaPreview message={message} mine={mine} />
         )}
