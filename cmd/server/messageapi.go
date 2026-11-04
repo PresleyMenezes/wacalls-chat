@@ -486,6 +486,49 @@ func quotedIDFromMessage(m *waE2E.Message) string {
 	return ctx.GetStanzaID()
 }
 
+// isForwardedFromMessage diz se a mensagem recebida veio marcada como
+// "encaminhada" pelo WhatsApp (mesmo desembrulhando os envelopes).
+func isForwardedFromMessage(m *waE2E.Message) bool {
+	if m == nil {
+		return false
+	}
+	if e := m.GetEphemeralMessage(); e != nil && e.GetMessage() != nil {
+		return isForwardedFromMessage(e.GetMessage())
+	}
+	if v := m.GetViewOnceMessage(); v != nil && v.GetMessage() != nil {
+		return isForwardedFromMessage(v.GetMessage())
+	}
+	if v := m.GetViewOnceMessageV2(); v != nil && v.GetMessage() != nil {
+		return isForwardedFromMessage(v.GetMessage())
+	}
+	if v := m.GetViewOnceMessageV2Extension(); v != nil && v.GetMessage() != nil {
+		return isForwardedFromMessage(v.GetMessage())
+	}
+	if d := m.GetDeviceSentMessage(); d != nil && d.GetMessage() != nil {
+		return isForwardedFromMessage(d.GetMessage())
+	}
+	var ci *waE2E.ContextInfo
+	switch {
+	case m.GetExtendedTextMessage() != nil:
+		ci = m.GetExtendedTextMessage().GetContextInfo()
+	case m.GetImageMessage() != nil:
+		ci = m.GetImageMessage().GetContextInfo()
+	case m.GetVideoMessage() != nil:
+		ci = m.GetVideoMessage().GetContextInfo()
+	case m.GetAudioMessage() != nil:
+		ci = m.GetAudioMessage().GetContextInfo()
+	case m.GetDocumentMessage() != nil:
+		ci = m.GetDocumentMessage().GetContextInfo()
+	case m.GetStickerMessage() != nil:
+		ci = m.GetStickerMessage().GetContextInfo()
+	case m.GetContactMessage() != nil:
+		ci = m.GetContactMessage().GetContextInfo()
+	case m.GetLocationMessage() != nil:
+		ci = m.GetLocationMessage().GetContextInfo()
+	}
+	return ci != nil && ci.GetIsForwarded()
+}
+
 // messageRowFromEvent maps a whatsmeow *events.Message into our local row.
 func messageRowFromEvent(sessionID string, evt *events.Message) MessageRow {
 	if evt == nil || evt.Message == nil {
@@ -508,6 +551,7 @@ func messageRowFromEvent(sessionID string, evt *events.Message) MessageRow {
 		MediaMime:  mime,
 		SenderName: evt.Info.PushName,
 		QuotedID:   quotedIDFromMessage(evt.Message),
+		Forwarded:  isForwardedFromMessage(evt.Message),
 	}
 }
 // classifyMessage returns (kind, displayBody, mediaMime).
@@ -2149,7 +2193,7 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 				row := MessageRow{
 					ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
 					SenderJID: jidOrEmpty(sess), FromMe: true,
-					Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body,
+					Ts: resp.Timestamp.UnixMilli(), Kind: src.Kind, Body: src.Body, Forwarded: true,
 					MediaMime: mime, MediaURL: localURL, FileName: src.FileName, FileSize: int64(len(data)),
 					SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
 				}
@@ -2206,7 +2250,7 @@ func (s *server) handleMessageForward(w http.ResponseWriter, r *http.Request) {
 			row := MessageRow{
 				ID: resp.ID, SessionID: sess.id, ChatJID: target.String(),
 				SenderJID: jidOrEmpty(sess), FromMe: true,
-				Ts: resp.Timestamp.UnixMilli(), Kind: "text", Body: text,
+				Ts: resp.Timestamp.UnixMilli(), Kind: "text", Body: text, Forwarded: true,
 				SentByUserID: userIDOrEmpty(currentUserFromReq(r)),
 			}
 			if row.Ts == 0 {
