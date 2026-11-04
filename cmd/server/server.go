@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"go.mau.fi/whatsmeow"
+	waStore "go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	waLog "go.mau.fi/whatsmeow/util/log"
 	_ "modernc.org/sqlite"
@@ -73,6 +75,34 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	if cerr != nil {
 		log.Warn("cache: falling back to in-memory", "err", cerr)
 	}
+	// O WhatsApp recusa versões antigas do cliente ("err-client-outdated") e o
+	// QR Code deixa de ser gerado. Busca a versão atual do WhatsApp Web ao
+	// iniciar e a cada 6h, em vez de depender da versão fixa da biblioteca.
+	refreshWAVersion := func() {
+		vctx, vcancel := context.WithTimeout(ctx, 15*time.Second)
+		defer vcancel()
+		v, verr := whatsmeow.GetLatestVersion(vctx, nil)
+		if verr != nil {
+			log.Warn("whatsapp: não foi possível buscar a versão atual do cliente; mantendo a anterior", "err", verr)
+			return
+		}
+		waStore.SetWAVersion(*v)
+		log.Info("whatsapp: versão do cliente atualizada", "version", v.String())
+	}
+	refreshWAVersion()
+	go func() {
+		t := time.NewTicker(6 * time.Hour)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				refreshWAVersion()
+			}
+		}
+	}()
+
 	container := sqlstore.NewWithDB(db, waDriver, waLog.Noop)
 	if err := container.Upgrade(ctx); err != nil {
 		return nil, err
