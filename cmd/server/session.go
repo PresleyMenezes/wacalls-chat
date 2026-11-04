@@ -402,7 +402,12 @@ func (s *Session) startPairing(ctx context.Context) error {
 				s.setAuth(AuthSnapshot{State: "open", Paired: true})
 				go s.refreshSelfAvatar()
 			case "timeout":
+				s.log.Warn("pairing: QR timeout", "session", s.id)
 				s.setAuth(AuthSnapshot{State: "logged_out", Paired: false})
+			default:
+				// Eventos de erro do canal de QR (ex.: cliente desatualizado).
+				// Antes eram ignorados em silêncio.
+				s.log.Warn("pairing: evento inesperado do QR", "session", s.id, "event", evt.Event, "err", evt.Error)
 			}
 		}
 	}()
