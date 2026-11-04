@@ -26,6 +26,7 @@ type MessageRow struct {
 	Edited        bool   `json:"edited,omitempty"`
 	Deleted       bool   `json:"deleted,omitempty"`
 	SentByUserID  string `json:"sentByUserId,omitempty"`
+	Forwarded     bool   `json:"forwarded,omitempty"`
 }
 
 // ChatSummary is the per-conversation row returned by ListChats.
@@ -88,6 +89,8 @@ func newMessageStore(ctx context.Context, db *sql.DB) (*messageStore, error) {
 		// antigas ficam com valor vazio (métrica por agente indisponível
 		// retroativamente).
 		`ALTER TABLE messages ADD COLUMN sent_by_user_id TEXT NOT NULL DEFAULT ''`,
+		// Marca mensagens encaminhadas (recebidas ou enviadas por aqui).
+		`ALTER TABLE messages ADD COLUMN forwarded INTEGER NOT NULL DEFAULT 0`,
 	} {
 		_, _ = db.ExecContext(ctx, q)
 	}
@@ -100,12 +103,16 @@ func (s *messageStore) Insert(ctx context.Context, m MessageRow) error {
 	if m.FromMe {
 		fromMe = 1
 	}
+	forwarded := 0
+	if m.Forwarded {
+		forwarded = 1
+	}
 	// Use UPSERT so subsequent inserts for the same (session_id, id) — e.g.
 	// the whatsmeow self-echo that follows a media upload — never clobber
 	// the already-persisted media_url/file_name/file_size with empty values.
 	_, err := s.db.ExecContext(ctx, `INSERT INTO messages
-		(id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, media_url, file_name, file_size, sender_name, sent_by_user_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		(id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, media_url, file_name, file_size, sender_name, sent_by_user_id, forwarded)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(session_id, id) DO UPDATE SET
 			chat_jid    = excluded.chat_jid,
 			sender_jid  = excluded.sender_jid,
@@ -119,8 +126,9 @@ func (s *messageStore) Insert(ctx context.Context, m MessageRow) error {
 			file_name   = CASE WHEN excluded.file_name  != '' THEN excluded.file_name  ELSE messages.file_name  END,
 			file_size   = CASE WHEN excluded.file_size  > 0  THEN excluded.file_size   ELSE messages.file_size  END,
 			sender_name = CASE WHEN excluded.sender_name != '' THEN excluded.sender_name ELSE messages.sender_name END,
-			sent_by_user_id = CASE WHEN excluded.sent_by_user_id != '' THEN excluded.sent_by_user_id ELSE messages.sent_by_user_id END`,
-		m.ID, m.SessionID, m.ChatJID, m.SenderJID, fromMe, m.Ts, m.Kind, m.Body, m.MediaMime, m.QuotedID, m.MediaURL, m.FileName, m.FileSize, m.SenderName, m.SentByUserID)
+			sent_by_user_id = CASE WHEN excluded.sent_by_user_id != '' THEN excluded.sent_by_user_id ELSE messages.sent_by_user_id END,
+			forwarded   = CASE WHEN excluded.forwarded = 1 THEN 1 ELSE messages.forwarded END`,
+		m.ID, m.SessionID, m.ChatJID, m.SenderJID, fromMe, m.Ts, m.Kind, m.Body, m.MediaMime, m.QuotedID, m.MediaURL, m.FileName, m.FileSize, m.SenderName, m.SentByUserID, forwarded)
 	return err
 }
 
@@ -237,11 +245,11 @@ func (s *messageStore) RespondedChatsInRange(ctx context.Context, sessionID stri
 
 // Get returns a single message by composite key (sessionID, id).
 func (s *messageStore) Get(ctx context.Context, sessionID, id string) (MessageRow, bool, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name
+	row := s.db.QueryRowContext(ctx, `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name, forwarded
 		FROM messages WHERE session_id = ? AND id = ?`, sessionID, id)
 	var m MessageRow
-	var fromMe, edited, deleted int
-	if err := row.Scan(&m.ID, &m.SessionID, &m.ChatJID, &m.SenderJID, &fromMe, &m.Ts, &m.Kind, &m.Body, &m.MediaMime, &m.QuotedID, &edited, &deleted, &m.MediaURL, &m.FileName, &m.FileSize, &m.SenderName); err != nil {
+	var fromMe, edited, deleted, forwarded int
+	if err := row.Scan(&m.ID, &m.SessionID, &m.ChatJID, &m.SenderJID, &fromMe, &m.Ts, &m.Kind, &m.Body, &m.MediaMime, &m.QuotedID, &edited, &deleted, &m.MediaURL, &m.FileName, &m.FileSize, &m.SenderName, &forwarded); err != nil {
 		if err == sql.ErrNoRows {
 			return MessageRow{}, false, nil
 		}
@@ -250,6 +258,7 @@ func (s *messageStore) Get(ctx context.Context, sessionID, id string) (MessageRo
 	m.FromMe = fromMe == 1
 	m.Edited = edited == 1
 	m.Deleted = deleted == 1
+	m.Forwarded = forwarded == 1
 	return m, true, nil
 }
 
@@ -280,7 +289,7 @@ func (s *messageStore) ListMessages(ctx context.Context, sessionID, chatJID stri
 		limit = 50
 	}
 	args := []any{sessionID, chatJID}
-	q := `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name
+	q := `SELECT id, session_id, chat_jid, sender_jid, from_me, ts, kind, body, media_mime, quoted_id, edited, deleted, media_url, file_name, file_size, sender_name, forwarded
 	      FROM messages WHERE session_id = ? AND chat_jid = ?`
 	if before > 0 {
 		q += ` AND ts < ?`
@@ -296,13 +305,14 @@ func (s *messageStore) ListMessages(ctx context.Context, sessionID, chatJID stri
 	out := []MessageRow{}
 	for rows.Next() {
 		var m MessageRow
-		var fromMe, edited, deleted int
-		if err := rows.Scan(&m.ID, &m.SessionID, &m.ChatJID, &m.SenderJID, &fromMe, &m.Ts, &m.Kind, &m.Body, &m.MediaMime, &m.QuotedID, &edited, &deleted, &m.MediaURL, &m.FileName, &m.FileSize, &m.SenderName); err != nil {
+		var fromMe, edited, deleted, forwarded int
+		if err := rows.Scan(&m.ID, &m.SessionID, &m.ChatJID, &m.SenderJID, &fromMe, &m.Ts, &m.Kind, &m.Body, &m.MediaMime, &m.QuotedID, &edited, &deleted, &m.MediaURL, &m.FileName, &m.FileSize, &m.SenderName, &forwarded); err != nil {
 			return nil, err
 		}
 		m.FromMe = fromMe == 1
 		m.Edited = edited == 1
 		m.Deleted = deleted == 1
+		m.Forwarded = forwarded == 1
 		out = append(out, m)
 	}
 	if err := rows.Err(); err != nil {
