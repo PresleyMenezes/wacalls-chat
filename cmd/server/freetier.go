@@ -78,10 +78,29 @@ func currentWeekKey() string {
 	return fmt.Sprintf("%04d-W%02d", y, w)
 }
 
+// quotaTenant devolve o "dono" da cota de um usuário: a empresa-mãe, quando
+// ele é subusuário (operador), ou ele mesmo. admin=true quando o usuário ou a
+// empresa-mãe tem papel de admin — esses ficam isentos do plano gratuito.
+func (s *server) quotaTenant(ctx context.Context, userID string) (tenantID string, admin bool) {
+	tenantID = userID
+	if s == nil || s.db == nil || userID == "" {
+		return tenantID, false
+	}
+	var parent string
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(parent_id,'') FROM users WHERE id = ?`, userID).Scan(&parent)
+	if parent != "" {
+		tenantID = parent
+	}
+	var n int
+	_ = s.db.QueryRowContext(ctx, `SELECT COUNT(1) FROM user_roles WHERE user_id IN (?, ?) AND role = ?`, userID, tenantID, RoleAdmin).Scan(&n)
+	return tenantID, n > 0
+}
+
 func (s *server) weeklyUsage(ctx context.Context, userID, kind string) int {
 	if s == nil || s.db == nil || userID == "" {
 		return 0
 	}
+	userID, _ = s.quotaTenant(ctx, userID)
 	var n int
 	_ = s.db.QueryRowContext(ctx,
 		`SELECT count FROM usage_weekly WHERE user_id=? AND week=? AND kind=?`,
@@ -94,6 +113,11 @@ func (s *server) bumpWeeklyUsage(ctx context.Context, userID, kind string) {
 	if s == nil || s.db == nil || userID == "" {
 		return
 	}
+	tenant, tenantAdmin := s.quotaTenant(ctx, userID)
+	if tenantAdmin || s.userHasPaidPlan(ctx, tenant, false) {
+		return // admin ou plano pago: não precisa contar nem alertar
+	}
+	userID = tenant
 	_, _ = s.db.ExecContext(ctx,
 		`INSERT INTO usage_weekly(user_id, week, kind, count) VALUES(?,?,?,1)
 		 ON CONFLICT(user_id, week, kind) DO UPDATE SET count=count+1`,
@@ -115,6 +139,12 @@ func (s *server) userHasPaidPlan(ctx context.Context, userID string, isAdmin boo
 	if userID == "" {
 		return false
 	}
+	// Subusuário herda o plano (e a isenção de admin) da empresa-mãe.
+	tenant, tenantAdmin := s.quotaTenant(ctx, userID)
+	if tenantAdmin {
+		return true
+	}
+	userID = tenant
 	var row subscriptionRow
 	var err error
 	if s.billingCache != nil {
@@ -197,6 +227,7 @@ func (s *server) handleFreeTierStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lim := s.freeTierLimits(r.Context())
+	alertsOwner, _ := s.quotaTenant(r.Context(), u.ID)
 	resp := freeTierStatusResponse{
 		Paid:            s.userHasPaidPlan(r.Context(), u.ID, u.IsAdmin()),
 		Connections:     lim.Connections,
@@ -206,7 +237,7 @@ func (s *server) handleFreeTierStatus(w http.ResponseWriter, r *http.Request) {
 		ChatsLimit:      lim.ChatsWeek,
 		ChatsUsed:       s.weeklyUsage(r.Context(), u.ID, "free_chats"),
 		Week:            currentWeekKey(),
-		Alerts:          s.listFreeTierAlerts(r.Context(), u.ID),
+		Alerts:          s.listFreeTierAlerts(r.Context(), alertsOwner),
 	}
 	writeJSON(w, 200, resp)
 }
