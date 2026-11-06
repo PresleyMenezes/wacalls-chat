@@ -112,7 +112,9 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 		return nil, err
 	}
 
-	waLogger := waLog.Noop
+	// Avisos e erros da biblioteca (falha ao decifrar, erros de conexão) ficam
+	// sempre visíveis; antes o log era totalmente desligado.
+	waLogger := waLog.Stdout("WA", "WARN", false)
 	if log.Enabled(ctx, slog.LevelDebug) {
 		waLogger = waLog.Stdout("WA", "INFO", true)
 	}
