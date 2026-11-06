@@ -32,6 +32,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/sessions/{sid}", s.requireAuth(s.handleSessionDelete))
 	mux.HandleFunc("POST /api/sessions/{sid}/logout", s.requireAuth(s.handleSessionLogout))
 	mux.HandleFunc("POST /api/sessions/{sid}/pair", s.requireAuth(s.handleSessionPair))
+	mux.HandleFunc("POST /api/sessions/{sid}/reconnect", s.requireAuth(s.handleSessionReconnect))
 	mux.HandleFunc("POST /api/sessions/{sid}/calls", s.requireAuth(s.handleStartCall))
 	mux.HandleFunc("POST /api/sessions/{sid}/calls/{id}/webrtc", s.requireAuth(s.handleWebRTC))
 	mux.HandleFunc("POST /api/sessions/{sid}/calls/{id}/accept", s.requireAuth(s.handleAccept))
@@ -458,6 +459,18 @@ func (s *server) handleSessionPair(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := s.sessions.Pair(r.PathValue("sid")); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *server) handleSessionReconnect(w http.ResponseWriter, r *http.Request) {
+	sess := s.sessionByID(w, r, r.PathValue("sid"))
+	if sess == nil {
+		return
+	}
+	if err := s.sessions.Reconnect(r.PathValue("sid")); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
