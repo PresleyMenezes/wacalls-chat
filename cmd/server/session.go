@@ -312,6 +312,8 @@ func (s *Session) handleEvent(rawEvt any) {
 		s.log.Info("whatsapp: keepalive restabelecido", "session", s.id)
 	case *events.StreamError:
 		s.log.Warn("whatsapp: erro de stream", "session", s.id, "code", evt.Code)
+	case *events.UndecryptableMessage:
+		s.log.Warn("whatsapp: mensagem recebida mas NÃO decifrada", "session", s.id, "chat", evt.Info.Chat.String(), "sender", evt.Info.Sender.String(), "id", evt.Info.ID, "unavailable", evt.IsUnavailable, "failMode", evt.DecryptFailMode)
 	case *events.CallOffer:
 		s.onIncomingOffer(ctx, evt)
 	case *events.CallAccept:
