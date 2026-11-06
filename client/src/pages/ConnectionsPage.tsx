@@ -25,7 +25,7 @@ import { QRDialog } from "@/components/domain/session/QRDialog";
 import { DisconnectDialog } from "@/components/domain/session/DisconnectDialog";
 import { PaymentDialog } from "@/components/domain/session/PaymentDialog";
 import { AccountHealthDialog } from "@/components/domain/session/AccountHealthDialog";
-import { deleteSession, pairSession } from "@/services/sessions";
+import { deleteSession, pairSession, reconnectSession } from "@/services/sessions";
 import { ensureSessionsWired, useSessions } from "@/stores/sessions";
 import type { SessionInfo } from "@/types/session";
 import { formatBRL, getInstancePlan } from "@/lib/instance-plan";
@@ -304,7 +304,7 @@ export const ConnectionsPage = () => {
                 onDisconnect={() => setDisconnectFor(s)}
                 onPay={() => setPayFor(s)}
                 onRestart={() =>
-                  pairSession(s.id)
+                  (s.paired ? reconnectSession(s.id) : pairSession(s.id))
                     .then(() => toast.success(t("pages.connections.restartingToast")))
                     .catch((e) => toast.error((e as Error).message))
                 }
