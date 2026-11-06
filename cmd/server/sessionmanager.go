@@ -505,6 +505,24 @@ func (m *SessionManager) Pair(id string) error {
 	return nil
 }
 
+// Reconnect derruba e refaz a conexão de uma sessão JÁ pareada, sem pedir QR
+// (é o que o botão "Reiniciar" deveria fazer).
+func (m *SessionManager) Reconnect(id string) error {
+	s, ok := m.Get(id)
+	if !ok {
+		return fmt.Errorf("no session %s", id)
+	}
+	if s.client.Store.ID == nil {
+		return fmt.Errorf("session not paired")
+	}
+	s.client.Disconnect()
+	if err := s.client.Connect(); err != nil {
+		return fmt.Errorf("reconnect: %w", err)
+	}
+	m.log.Info("session reconnected", "session", id)
+	return nil
+}
+
 func (m *SessionManager) disconnectAll() {
 	m.mu.RLock()
 	all := make([]*Session, 0, len(m.sessions))
