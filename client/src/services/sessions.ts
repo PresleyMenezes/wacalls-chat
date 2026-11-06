@@ -25,6 +25,8 @@ export const logoutSession = (id: string) => postVoid(`/api/sessions/${id}/logou
 
 export const pairSession = (id: string) => postVoid(`/api/sessions/${id}/pair`);
 
+export const reconnectSession = (id: string) => postVoid(`/api/sessions/${id}/reconnect`);
+
 export type SessionUpdate = {
   name: string;
   color: string;
