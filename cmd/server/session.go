@@ -276,6 +276,7 @@ func (s *Session) handleEvent(rawEvt any) {
 	ctx := context.Background()
 	switch evt := rawEvt.(type) {
 	case *events.Connected:
+		s.log.Info("whatsapp: conectado", "session", s.id)
 		if id := s.client.Store.ID; id != nil {
 			_ = s.mgr.store.setJID(s.mgr.appCtx, s.id, id.String())
 		}
@@ -293,7 +294,24 @@ func (s *Session) handleEvent(rawEvt any) {
 			}
 		}()
 	case *events.LoggedOut:
+		s.log.Warn("whatsapp: desvinculado (logged out)", "session", s.id, "onConnect", evt.OnConnect, "reason", evt.Reason.String())
 		s.setAuth(AuthSnapshot{State: "logged_out", Paired: false})
+	case *events.Disconnected:
+		s.log.Warn("whatsapp: websocket fechado pelo servidor", "session", s.id)
+	case *events.StreamReplaced:
+		s.log.Warn("whatsapp: sessão substituída por outro cliente com as mesmas chaves (NÃO reconecta sozinho)", "session", s.id)
+	case *events.ConnectFailure:
+		s.log.Warn("whatsapp: falha ao conectar", "session", s.id, "reason", evt.Reason.String(), "message", evt.Message)
+	case *events.ClientOutdated:
+		s.log.Warn("whatsapp: cliente desatualizado", "session", s.id)
+	case *events.TemporaryBan:
+		s.log.Warn("whatsapp: banimento temporário", "session", s.id, "code", evt.Code.String(), "expire", evt.Expire.String())
+	case *events.KeepAliveTimeout:
+		s.log.Warn("whatsapp: keepalive sem resposta", "session", s.id, "errors", evt.ErrorCount, "lastSuccess", evt.LastSuccess.String())
+	case *events.KeepAliveRestored:
+		s.log.Info("whatsapp: keepalive restabelecido", "session", s.id)
+	case *events.StreamError:
+		s.log.Warn("whatsapp: erro de stream", "session", s.id, "code", evt.Code)
 	case *events.CallOffer:
 		s.onIncomingOffer(ctx, evt)
 	case *events.CallAccept:
