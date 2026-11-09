@@ -60,6 +60,7 @@ func (s *Session) handleWAMessage(evt *events.Message) {
 		ci := contextInfoOf(evt.Message)
 		s.log.Info("[DIAG] fromMe de outro aparelho", "id", row.ID, "kind", row.Kind, "forwarded", row.Forwarded, "hasCtx", ci != nil, "isFwd", ci.GetIsForwarded(), "score", ci.GetForwardingScore())
 	}
+	s.log.Info("whatsapp: mensagem recebida", "session", s.id, "chat", row.ChatJID, "fromMe", row.FromMe, "kind", row.Kind)
 	// Detecta mensagens enviadas por um aparelho vinculado ESPECÍFICO
 	// (identificado pelo número do dispositivo, configurado manualmente
 	// pelo operador via o botão "Buscar dispositivos vinculados") — não
