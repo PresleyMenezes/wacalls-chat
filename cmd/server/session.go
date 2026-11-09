@@ -277,6 +277,14 @@ func (s *Session) handleEvent(rawEvt any) {
 	switch evt := rawEvt.(type) {
 	case *events.Connected:
 		s.log.Info("whatsapp: conectado", "session", s.id)
+		// Avisa ao WhatsApp que este aparelho está ativo (a biblioteca exige isso
+		// após conectar). Sem isso, o celular mostrava a "última sessão ativa"
+		// parada na hora do pareamento.
+		go func() {
+			if err := s.client.SendPresence(context.Background(), types.PresenceAvailable); err != nil {
+				s.log.Warn("whatsapp: falha ao enviar presença", "session", s.id, "err", err)
+			}
+		}()
 		if id := s.client.Store.ID; id != nil {
 			_ = s.mgr.store.setJID(s.mgr.appCtx, s.id, id.String())
 		}
