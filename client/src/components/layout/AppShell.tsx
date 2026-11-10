@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type ComponentType } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode, type ComponentType } from "react";
 import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, Palette, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
@@ -25,7 +25,8 @@ import { useTheme } from "@/stores/theme";
 import { useFreeTierAlerts } from "@/hooks/useFreeTierAlerts";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { updateFaviconBadge, playNotificationSound } from "@/lib/favicon-badge";
+import { updateFaviconBadge } from "@/lib/favicon-badge";
+import { NewMessageBanner } from "./NewMessageBanner";
 
 /**
  * When AppShell is rendered inside another AppShell (e.g. the unified Settings
@@ -122,13 +123,11 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
   // Badge visual no favicon (bolinha vermelha) + som curto quando o total de
   // não-lidas aumenta — replica o comportamento do "sininho" também na aba
   // do navegador, útil quando a aba não está em foco.
-  const prevUnreadRef = useRef(unreadTotal);
+  // O som e os avisos de nova mensagem vêm do <NewMessageBanner />, que reage a
+  // CADA mensagem recebida (antes, o som só tocava quando subia o número de
+  // conversas com não lidas, deixando várias mensagens sem aviso).
   useEffect(() => {
     void updateFaviconBadge(unreadTotal > 0);
-    if (unreadTotal > prevUnreadRef.current) {
-      playNotificationSound();
-    }
-    prevUnreadRef.current = unreadTotal;
   }, [unreadTotal]);
 
   // `feat` mapeia o item de menu para o rótulo do recurso no plano. Quando
@@ -323,6 +322,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
       {user && <DialerPanel />}
       {user && <IncomingCallModal />}
       {user && <ActiveCallBar />}
+      {user && <NewMessageBanner />}
     </div>
   );
 };
