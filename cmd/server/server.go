@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+	"os"
 	"time"
 
 	"go.mau.fi/whatsmeow"
@@ -89,19 +90,23 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 		waStore.SetWAVersion(*v)
 		log.Info("whatsapp: versão do cliente atualizada", "version", v.String())
 	}
-	refreshWAVersion()
-	go func() {
-		t := time.NewTicker(6 * time.Hour)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				refreshWAVersion()
+	if os.Getenv("WACALLS_WA_VERSION_REFRESH") == "0" {
+		log.Info("whatsapp: atualização automática da versão do cliente DESLIGADA (WACALLS_WA_VERSION_REFRESH=0); usando a versão da biblioteca")
+	} else {
+		refreshWAVersion()
+		go func() {
+			t := time.NewTicker(6 * time.Hour)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					refreshWAVersion()
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	container := sqlstore.NewWithDB(db, waDriver, waLog.Noop)
 	if err := container.Upgrade(ctx); err != nil {
@@ -117,6 +122,11 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 	waLogger := waLog.Stdout("WA", "WARN", false)
 	if log.Enabled(ctx, slog.LevelDebug) {
 		waLogger = waLog.Stdout("WA", "INFO", true)
+	}
+	// WACALLS_WA_DEBUG=1: log detalhado da biblioteca (para diagnóstico; ligar só
+	// por alguns minutos, o volume é grande).
+	if os.Getenv("WACALLS_WA_DEBUG") == "1" {
+		waLogger = waLog.Stdout("WA", "DEBUG", false)
 	}
 
 	broker := NewBroker()
