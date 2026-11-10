@@ -322,6 +322,10 @@ func (s *Session) handleEvent(rawEvt any) {
 		s.log.Warn("whatsapp: erro de stream", "session", s.id, "code", evt.Code)
 	case *events.UndecryptableMessage:
 		s.log.Warn("whatsapp: mensagem recebida mas NÃO decifrada", "session", s.id, "chat", evt.Info.Chat.String(), "sender", evt.Info.Sender.String(), "id", evt.Info.ID, "unavailable", evt.IsUnavailable, "failMode", evt.DecryptFailMode)
+	case *events.OfflineSyncPreview:
+		s.log.Info("whatsapp: fila offline anunciada", "session", s.id, "total", evt.Total, "mensagens", evt.Messages, "recibos", evt.Receipts, "notificacoes", evt.Notifications, "appdata", evt.AppDataChanges)
+	case *events.OfflineSyncCompleted:
+		s.log.Info("whatsapp: fila offline concluída", "session", s.id, "count", evt.Count)
 	case *events.CallOffer:
 		s.onIncomingOffer(ctx, evt)
 	case *events.CallAccept:
