@@ -3,8 +3,27 @@ package main
 import (
 	"context"
 	"net/http"
+	"sync"
 	"time"
 )
+
+// Limita a sincronização AUTOMÁTICA (ao conectar) a uma vez a cada 6h por
+// conexão. Ela consulta todos os grupos no WhatsApp; fazer isso a cada
+// reconexão (a cada 20-50 min, e em cada reinício) é pesado e parece robô.
+var (
+	rosterSyncMu   sync.Mutex
+	rosterSyncLast = map[string]time.Time{}
+)
+
+func shouldAutoSyncRoster(sessionID string) bool {
+	rosterSyncMu.Lock()
+	defer rosterSyncMu.Unlock()
+	if t, ok := rosterSyncLast[sessionID]; ok && time.Since(t) < 6*time.Hour {
+		return false
+	}
+	rosterSyncLast[sessionID] = time.Now()
+	return true
+}
 
 // registerContactSyncRoutes mounts the manual "Sincronizar contatos e
 // grupos agora" button endpoint.
@@ -59,11 +78,10 @@ func (s *Session) syncContactsAndGroups(ctx context.Context) (int, error) {
 			// resolvido (mesma lógica usada em "Ver membros do grupo") —
 			// sem isso, alguém que nunca mandou mensagem direto pra você
 			// só aparecia com o @lid cru, sem nome nenhum.
-			gi, gierr := s.client.GetGroupInfo(ctx, g.JID)
-			if gierr != nil || gi == nil {
-				continue
-			}
-			for _, p := range gi.Participants {
+			// GetJoinedGroups já traz os participantes de cada grupo: não é
+			// preciso consultar grupo por grupo (eram dezenas de chamadas
+			// extras ao WhatsApp a cada conexão).
+			for _, p := range g.Participants {
 				name := p.DisplayName
 				if name == "" && s.client.Store.Contacts != nil {
 					if ci, cerr := s.client.Store.Contacts.GetContact(ctx, p.JID.ToNonAD()); cerr == nil && ci.Found {
