@@ -104,7 +104,7 @@ func NewBroker() *Broker {
 }
 
 func (b *Broker) subscribe(clientID, userID, tenantID string, isAdmin bool) *subscriber {
-	s := &subscriber{clientID: clientID, userID: userID, tenantID: tenantID, isAdmin: isAdmin, ch: make(chan []byte, 32)}
+	s := &subscriber{clientID: clientID, userID: userID, tenantID: tenantID, isAdmin: isAdmin, ch: make(chan []byte, 256)}
 	b.mu.Lock()
 	b.subs[s] = struct{}{}
 	b.mu.Unlock()
@@ -135,6 +135,16 @@ func (b *Broker) deliverScoped(sessionID string, ev any) {
 	if scoped && b.SessionOwner != nil {
 		owner = b.SessionOwner(sessionID)
 	}
+	// Só eventos de chamada (raros e críticos) esperam o canal esvaziar; todo o
+	// resto é entregue sem bloquear. Isto roda DENTRO do processamento de
+	// eventos do WhatsApp: uma tela lenta ou travada nunca pode segurar o
+	// recebimento de mensagens.
+	wait := time.Duration(0)
+	if m, ok := ev.(map[string]any); ok {
+		if t, _ := m["type"].(string); (len(t) >= 5 && t[:5] == "call-") || t == "incoming" || t == "incoming-claimed" || t == "ura-auto-attend" {
+			wait = 150 * time.Millisecond
+		}
+	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	// Cache por chamada: evita recalcular a lista de sessões visíveis do
@@ -162,15 +172,16 @@ func (b *Broker) deliverScoped(sessionID string, ev any) {
 				continue
 			}
 		}
-		// Espera um pouco antes de desistir de entregar — antes, se o canal
-		// estivesse momentaneamente cheio (rajada de eventos, como vários
-		// "receipt event" seguidos), a mensagem era descartada NA HORA e
-		// sem aviso nenhum, mesmo pra eventos importantes como o fim de
-		// uma chamada. 150ms dá uma chance real de esvaziar sem travar o
-		// broker por muito tempo.
-		select {
-		case s.ch <- data:
-		case <-time.After(150 * time.Millisecond):
+		if wait > 0 {
+			select {
+			case s.ch <- data:
+			case <-time.After(wait):
+			}
+		} else {
+			select {
+			case s.ch <- data:
+			default: // tela lenta/travada: descarta em vez de travar o WhatsApp
+			}
 		}
 	}
 }
