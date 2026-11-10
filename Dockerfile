@@ -26,6 +26,10 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+# Atualiza a biblioteca do WhatsApp para uma versão que CONFIRMA ("ack") os pacotes
+# <status> que o WhatsApp passou a enviar. A versão fixada em go.mod (jun/2026) os
+# ignora, e o servidor então para de entregar as mensagens. Fixa num commit exato.
+RUN go get go.mau.fi/whatsmeow@d7b3e155697bd785cce4e7d5cc8e3a8ea64c198c && go mod download
 RUN CGO_ENABLED=1 GO111MODULE=on go build -tags mlow -o wacalls-server ./cmd/server
 
 # ---------- Stage 3: imagem final ----------
