@@ -295,6 +295,16 @@ func (s *Session) handleEvent(rawEvt any) {
 		// dava pra ligar/mandar mensagem pra alguém depois que essa
 		// pessoa mandasse uma mensagem primeiro.
 		go func() {
+			if !shouldAutoSyncRoster(s.id) {
+				return
+			}
+			// Espera 2 minutos depois de conectar para não competir com a
+			// entrega das mensagens pendentes logo no início da conexão.
+			select {
+			case <-time.After(2 * time.Minute):
+			case <-s.mgr.appCtx.Done():
+				return
+			}
 			ctx, cancel := context.WithTimeout(s.mgr.appCtx, 60*time.Second)
 			defer cancel()
 			if _, err := s.syncContactsAndGroups(ctx); err != nil {
