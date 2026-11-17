@@ -94,7 +94,7 @@ export const NotificationsMenu = () => {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" aria-label="Notificações">
           <Bell className="h-4 w-4" />
