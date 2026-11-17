@@ -438,6 +438,13 @@ export default function KanbanPage() {
       ];
       for (const ex of examples) {
         const b = await createBoard(ex.name, ex.color, `Board exemplo — ${ex.name}`);
+        // Remove as 3 colunas padrão semeadas pelo servidor para não duplicar.
+        try {
+          const seeded = await getBoard(b.id);
+          for (const col of seeded.columns) await deleteColumn(col.id);
+        } catch {
+          /* segue só com as colunas do exemplo */
+        }
         for (const c of ex.cols) await createColumn(b.id, c.name, c.color, c.type);
       }
       const bs = await loadBoards();
