@@ -52,6 +52,17 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 		// Board has no "open" stage; nothing reasonable to seed.
 		return
 	}
+	// Sem coluna "won"? Conversas finalizadas vão para a última coluna do
+	// quadro (se for diferente das de espera/andamento), para sempre aparecerem.
+	if wonCol == "" {
+		for i := len(sorted) - 1; i >= 0; i-- {
+			id := sorted[i].ID
+			if id != waitingCol && id != progressCol {
+				wonCol = id
+				break
+			}
+		}
+	}
 
 	for _, info := range s.sessions.infosFor(userID, isAdmin) {
 		sid := info.ID
@@ -69,9 +80,12 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 			if jid == "" {
 				continue
 			}
-			// Skip non-conversation JIDs and groups.
-			if strings.HasSuffix(jid, "@g.us") ||
-				strings.Contains(jid, "@broadcast") ||
+			// Grupos só entram quando a conexão aceita mensagens de grupo.
+			if strings.HasSuffix(jid, "@g.us") && !info.AllowGroups {
+				continue
+			}
+			// Skip non-conversation JIDs.
+			if strings.Contains(jid, "@broadcast") ||
 				strings.Contains(jid, "@newsletter") ||
 				strings.HasSuffix(jid, "status@broadcast") {
 				continue
