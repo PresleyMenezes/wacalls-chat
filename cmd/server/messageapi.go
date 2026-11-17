@@ -326,6 +326,11 @@ func (s *Session) upsertChatMeta(row MessageRow, pushName string, isGroup bool) 
 	if !row.FromMe && s.mgr.kanban != nil {
 		s.mgr.kanban.TriggerAutomation(ctx, "replied", m.SessionID, m.ChatJID, m.Name)
 	}
+	// Pipeline: atendente respondeu -> "Aguardando cliente"; cliente respondeu
+	// de volta -> volta para "Em andamento".
+	if s.mgr.kanban != nil {
+		s.mgr.kanban.ReplyFlow(ctx, m.SessionID, m.ChatJID, row.FromMe)
+	}
 	// First-time enrichment: fetch avatar (and a better name) in the
 	// background so the chat list shows a picture without user action.
 	if existing.AvatarURL == "" {
