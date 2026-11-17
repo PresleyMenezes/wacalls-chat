@@ -635,3 +635,64 @@ func (s *kanbanStore) TriggerAutomation(ctx context.Context, kind, sessionID, ch
 		_ = s.MoveCard(ctx, card.ID, r.TargetStageID, 0)
 	}
 }
+
+
+// awaitingColumnID devolve a coluna "Aguardando cliente" do quadro (pelo nome,
+// sem diferenciar maiúsculas/minúsculas). Vazio quando o quadro não tem uma.
+func awaitingColumnID(cols []kanbanColumn) string {
+	for _, c := range cols {
+		if strings.Contains(strings.ToLower(c.Name), "aguardando cliente") {
+			return c.ID
+		}
+	}
+	return ""
+}
+
+// ReplyFlow move automaticamente o cartão da conversa entre "em andamento" e
+// "Aguardando cliente": quando o atendente responde (fromMe) o cartão vai
+// para "Aguardando cliente"; quando o cliente responde de volta, retorna para
+// a coluna de andamento. Só age em quadros que tenham uma coluna chamada
+// "Aguardando cliente" e nunca mexe em cartões em colunas manuais/custom.
+func (s *kanbanStore) ReplyFlow(ctx context.Context, sessionID, chatJID string, fromMe bool) {
+	if sessionID == "" || chatJID == "" {
+		return
+	}
+	cards, err := s.CardsByChat(ctx, sessionID, chatJID)
+	if err != nil || len(cards) == 0 {
+		return
+	}
+	for _, card := range cards {
+		cols, err := s.ListColumns(ctx, card.BoardID)
+		if err != nil {
+			continue
+		}
+		awaiting := awaitingColumnID(cols)
+		if awaiting == "" {
+			continue
+		}
+		// Primeira coluna "open" = aguardando atendimento; segunda = em andamento.
+		var waiting, progress string
+		openSeen := 0
+		for _, c := range cols {
+			if c.StageType != "open" || c.ID == awaiting {
+				continue
+			}
+			if openSeen == 0 {
+				waiting = c.ID
+			} else if openSeen == 1 {
+				progress = c.ID
+			}
+			openSeen++
+		}
+		if progress == "" {
+			progress = waiting
+		}
+		if fromMe {
+			if card.ColumnID == waiting || card.ColumnID == progress {
+				_ = s.MoveCard(ctx, card.ID, awaiting, 0)
+			}
+		} else if card.ColumnID == awaiting && progress != "" {
+			_ = s.MoveCard(ctx, card.ID, progress, 0)
+		}
+	}
+}
