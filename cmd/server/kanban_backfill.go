@@ -4,7 +4,12 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 )
+
+// awaitingAfter: tempo sem resposta do cliente, depois da última mensagem do
+// atendente, para o cartão ir para "Aguardando cliente".
+const awaitingAfter = 10 * time.Minute
 
 // backfillKanbanCards materializes one card per active chat (atendimento)
 // across every session the requesting user can see, placing cards in the
@@ -111,7 +116,7 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 			case ChatStatusOpen:
 				targetCol = progressCol
 				// Última mensagem foi do atendente: está esperando o cliente.
-				if awaitingCol != "" && sum.LastFromMe {
+				if awaitingCol != "" && sum.LastFromMe && time.Now().UnixMilli()-sum.LastTs >= awaitingAfter.Milliseconds() {
 					targetCol = awaitingCol
 				}
 			default:
