@@ -317,13 +317,13 @@ func (s *Session) upsertChatMeta(row MessageRow, pushName string, isGroup bool) 
 		}
 		// Pipeline: kick off "novo contato" automations the first time we
 		// see this chat. Skip groups/channels — they're not sales contacts.
-		if !isGroup && s.mgr.kanban != nil {
+		if s.mgr.kanban != nil {
 			s.mgr.kanban.TriggerAutomation(ctx, "new_contact", m.SessionID, m.ChatJID, m.Name)
 		}
 	}
 	// Pipeline: "respondeu mensagem" fires whenever the contact (not us)
 	// sends an inbound message in a 1:1 chat.
-	if !row.FromMe && !isGroup && s.mgr.kanban != nil {
+	if !row.FromMe && s.mgr.kanban != nil {
 		s.mgr.kanban.TriggerAutomation(ctx, "replied", m.SessionID, m.ChatJID, m.Name)
 	}
 	// First-time enrichment: fetch avatar (and a better name) in the
