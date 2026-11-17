@@ -408,6 +408,7 @@ export default function KanbanPage() {
           name: "Atendimento",
           color: "#4E93FF",
           cols: [
+            { name: "Aguardando", color: "#94a3b8", type: "open" },
             { name: "Em andamento", color: "#4E93FF", type: "open" },
             { name: "Aguardando cliente", color: "#f59e0b", type: "open" },
             { name: "Resolvido", color: "#22c55e", type: "won" },
