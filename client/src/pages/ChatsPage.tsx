@@ -161,7 +161,7 @@ export const ChatsPage = () => {
   useEffect(() => {
     if (!activeChat) return;
     if (activeStatus === "open" && tab !== "open") setTab("open");
-    else if ((activeStatus === "waiting" || activeStatus === "closed") && tab !== "waiting") setTab("waiting");
+    else if (activeStatus === "waiting" && tab !== "waiting") setTab("waiting");
     // tab intentionally omitted: we only react to status flips, not user tab clicks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStatus, activeChat?.chatJid]);
@@ -363,7 +363,7 @@ export const ChatsPage = () => {
             onSelect={(jid) => setActiveChat(sessionId, jid)}
             onStatusChange={(status) => {
               if (status === "open") setTab("open");
-              else if (status === "waiting" || status === "closed") setTab("waiting");
+              else if (status === "waiting") setTab("waiting");
             }}
           />
           <div
@@ -380,7 +380,7 @@ export const ChatsPage = () => {
             onJumpHandled={() => setJumpToMessageId(null)}
             onStatusChange={(status) => {
               if (status === "open") setTab("open");
-              else if (status === "closed" || status === "waiting") setTab("waiting");
+              else if (status === "waiting") setTab("waiting");
             }}
           />
         </div>
