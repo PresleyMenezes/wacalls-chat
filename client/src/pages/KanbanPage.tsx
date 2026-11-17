@@ -382,6 +382,14 @@ export default function KanbanPage() {
     const tpl = BOARD_TEMPLATES[newBoardTemplate];
     try {
       const b = await createBoard(name, tpl.color);
+      // O servidor já semeia 3 colunas padrão (A fazer/Em andamento/Concluído);
+      // remove antes de aplicar o modelo para não duplicar colunas.
+      try {
+        const seeded = await getBoard(b.id);
+        for (const col of seeded.columns) await deleteColumn(col.id);
+      } catch {
+        /* se falhar, segue só com as colunas do modelo */
+      }
       for (const c of tpl.cols) await createColumn(b.id, c.name, c.color, c.type);
       setNewBoardName("");
       setCreatingBoard(false);
