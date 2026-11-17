@@ -110,6 +110,10 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 				}
 			case ChatStatusOpen:
 				targetCol = progressCol
+				// Última mensagem foi do atendente: está esperando o cliente.
+				if awaitingCol != "" && sum.LastFromMe {
+					targetCol = awaitingCol
+				}
 			default:
 				targetCol = waitingCol
 			}
@@ -128,11 +132,7 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 				}
 			}
 			if current != nil {
-				// Cartão em "Aguardando cliente" com chat em atendimento fica onde
-				// está (movido por ReplyFlow); só sai quando o chat é finalizado.
-				if awaitingCol != "" && current.ColumnID == awaitingCol && meta.Status != ChatStatusClosed {
-					continue
-				}
+
 				if targetCol != "" && current.ColumnID != targetCol {
 					managed := current.ColumnID == waitingCol ||
 						current.ColumnID == progressCol ||
