@@ -29,10 +29,14 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 	sorted := append([]kanbanColumn(nil), columns...)
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
 	var waitingCol, progressCol, wonCol string
+	awaitingCol := awaitingColumnID(sorted)
 	openSeen := 0
 	for _, c := range sorted {
 		switch c.StageType {
 		case "open":
+			if c.ID == awaitingCol {
+				continue
+			}
 			if openSeen == 0 {
 				waitingCol = c.ID
 			} else if openSeen == 1 {
@@ -57,7 +61,7 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 	if wonCol == "" {
 		for i := len(sorted) - 1; i >= 0; i-- {
 			id := sorted[i].ID
-			if id != waitingCol && id != progressCol {
+			if id != waitingCol && id != progressCol && id != awaitingCol {
 				wonCol = id
 				break
 			}
@@ -124,9 +128,15 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 				}
 			}
 			if current != nil {
+				// Cartão em "Aguardando cliente" com chat em atendimento fica onde
+				// está (movido por ReplyFlow); só sai quando o chat é finalizado.
+				if awaitingCol != "" && current.ColumnID == awaitingCol && meta.Status != ChatStatusClosed {
+					continue
+				}
 				if targetCol != "" && current.ColumnID != targetCol {
 					managed := current.ColumnID == waitingCol ||
 						current.ColumnID == progressCol ||
+						current.ColumnID == awaitingCol ||
 						current.ColumnID == wonCol
 					if managed {
 						if err := s.kanban.MoveCard(ctx, current.ID, targetCol, 0); err != nil && s.log != nil {
