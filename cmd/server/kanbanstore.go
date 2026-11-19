@@ -19,7 +19,11 @@ type kanbanBoard struct {
 	Color       string `json:"color"`
 	Description string `json:"description"`
 	OwnerID     string `json:"ownerId,omitempty"`
-	CreatedAt   int64  `json:"createdAt"`
+	// QueueID é a Equipe (fila) dona do quadro. Define quem enxerga o quadro:
+	// o dono da empresa vê todos; administradores e atendentes só os das
+	// equipes em que estão vinculados.
+	QueueID   string `json:"queueId"`
+	CreatedAt int64  `json:"createdAt"`
 }
 
 type kanbanColumn struct {
@@ -124,6 +128,8 @@ func newKanbanStore(ctx context.Context, db *sql.DB) (*kanbanStore, error) {
 	}
 	// Best-effort additive migration: add stage_type to existing installs.
 	_, _ = db.ExecContext(ctx, `ALTER TABLE kanban_columns ADD COLUMN stage_type TEXT NOT NULL DEFAULT 'open'`)
+	// Equipe (fila) dona do quadro.
+	_, _ = db.ExecContext(ctx, `ALTER TABLE kanban_boards ADD COLUMN queue_id TEXT NOT NULL DEFAULT ''`)
 	return &kanbanStore{db: db}, nil
 }
 
@@ -133,13 +139,13 @@ func (s *kanbanStore) ListBoards(ctx context.Context, tenantID string, isSuperAd
 	var rows *sql.Rows
 	var err error
 	if isSuperAdmin {
-		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards ORDER BY created_at ASC`)
+		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,COALESCE(queue_id,''),created_at FROM kanban_boards ORDER BY created_at ASC`)
 	} else {
 		// Isolamento por empresa: boards são persistidos contra a raiz do
 		// tenant (ver CreateBoard), então todo admin/operador da mesma
 		// empresa enxerga os mesmos boards, e nenhuma outra empresa vê os
 		// seus — mesma lógica já usada em Filas.
-		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards WHERE owner_id = ? OR owner_id = '' ORDER BY created_at ASC`, tenantID)
+		rows, err = s.db.QueryContext(ctx, `SELECT id,name,color,description,owner_id,COALESCE(queue_id,''),created_at FROM kanban_boards WHERE owner_id = ? OR owner_id = '' ORDER BY created_at ASC`, tenantID)
 	}
 	if err != nil {
 		return nil, err
@@ -148,7 +154,7 @@ func (s *kanbanStore) ListBoards(ctx context.Context, tenantID string, isSuperAd
 	out := []kanbanBoard{}
 	for rows.Next() {
 		var b kanbanBoard
-		if err := rows.Scan(&b.ID, &b.Name, &b.Color, &b.Description, &b.OwnerID, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Color, &b.Description, &b.OwnerID, &b.QueueID, &b.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, b)
@@ -157,9 +163,9 @@ func (s *kanbanStore) ListBoards(ctx context.Context, tenantID string, isSuperAd
 }
 
 func (s *kanbanStore) GetBoard(ctx context.Context, id string) (kanbanBoard, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id,name,color,description,owner_id,created_at FROM kanban_boards WHERE id = ?`, id)
+	row := s.db.QueryRowContext(ctx, `SELECT id,name,color,description,owner_id,COALESCE(queue_id,''),created_at FROM kanban_boards WHERE id = ?`, id)
 	var b kanbanBoard
-	if err := row.Scan(&b.ID, &b.Name, &b.Color, &b.Description, &b.OwnerID, &b.CreatedAt); err != nil {
+	if err := row.Scan(&b.ID, &b.Name, &b.Color, &b.Description, &b.OwnerID, &b.QueueID, &b.CreatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return kanbanBoard{}, ErrKanbanNotFound
 		}
@@ -168,7 +174,7 @@ func (s *kanbanStore) GetBoard(ctx context.Context, id string) (kanbanBoard, err
 	return b, nil
 }
 
-func (s *kanbanStore) CreateBoard(ctx context.Context, name, color, description, ownerID string) (kanbanBoard, error) {
+func (s *kanbanStore) CreateBoard(ctx context.Context, name, color, description, ownerID, queueID string) (kanbanBoard, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return kanbanBoard{}, errors.New("name required")
@@ -176,10 +182,10 @@ func (s *kanbanStore) CreateBoard(ctx context.Context, name, color, description,
 	if color == "" {
 		color = "#6366f1"
 	}
-	b := kanbanBoard{ID: newID(), Name: name, Color: color, Description: description, OwnerID: ownerID, CreatedAt: time.Now().Unix()}
+	b := kanbanBoard{ID: newID(), Name: name, Color: color, Description: description, OwnerID: ownerID, QueueID: queueID, CreatedAt: time.Now().Unix()}
 	if _, err := s.db.ExecContext(ctx,
-		`INSERT INTO kanban_boards (id,name,color,description,owner_id,created_at) VALUES (?,?,?,?,?,?)`,
-		b.ID, b.Name, b.Color, b.Description, b.OwnerID, b.CreatedAt); err != nil {
+		`INSERT INTO kanban_boards (id,name,color,description,owner_id,queue_id,created_at) VALUES (?,?,?,?,?,?,?)`,
+		b.ID, b.Name, b.Color, b.Description, b.OwnerID, b.QueueID, b.CreatedAt); err != nil {
 		return kanbanBoard{}, err
 	}
 	// Seed the board with three sensible defaults so operators don't stare at
@@ -195,10 +201,10 @@ func (s *kanbanStore) CreateBoard(ctx context.Context, name, color, description,
 	return b, nil
 }
 
-func (s *kanbanStore) UpdateBoard(ctx context.Context, id, name, color, description string) error {
+func (s *kanbanStore) UpdateBoard(ctx context.Context, id, name, color, description, queueID string) error {
 	res, err := s.db.ExecContext(ctx,
-		`UPDATE kanban_boards SET name=?, color=?, description=? WHERE id=?`,
-		strings.TrimSpace(name), color, description, id)
+		`UPDATE kanban_boards SET name=?, color=?, description=?, queue_id=CASE WHEN ?='' THEN queue_id ELSE ? END WHERE id=?`,
+		strings.TrimSpace(name), color, description, queueID, queueID, id)
 	if err != nil {
 		return err
 	}
@@ -635,7 +641,6 @@ func (s *kanbanStore) TriggerAutomation(ctx context.Context, kind, sessionID, ch
 		_ = s.MoveCard(ctx, card.ID, r.TargetStageID, 0)
 	}
 }
-
 
 // awaitingColumnID devolve a coluna "Aguardando cliente" do quadro (pelo nome,
 // sem diferenciar maiúsculas/minúsculas). Vazio quando o quadro não tem uma.
