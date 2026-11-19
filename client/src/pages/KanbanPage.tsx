@@ -51,6 +51,9 @@ import type {
   BoardSnapshot,
 } from "@/types/kanban";
 import { useChats } from "@/stores/chats";
+import { useAuth } from "@/stores/auth";
+import { listQueues } from "@/services/queues";
+import type { Queue } from "@/types/queue";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_COLORS = ["#4E93FF", "#22c55e", "#f59e0b", "#ef4444", "#a855f7", "#0ea5e9"];
@@ -178,6 +181,7 @@ function ColumnView({
   cardMeta,
   onAddCard,
   onDeleteColumn,
+  canEdit,
   onOpenCard,
   onDeleteCard,
 }: {
@@ -186,6 +190,7 @@ function ColumnView({
   cardMeta: (c: KanbanCard) => { avatarUrl?: string; contactName?: string };
   onAddCard: (colId: string) => void;
   onDeleteColumn: (col: KanbanColumn) => void;
+  canEdit: boolean;
   onOpenCard: (c: KanbanCard) => void;
   onDeleteCard: (c: KanbanCard) => void;
 }) {
@@ -204,13 +209,15 @@ function ColumnView({
           <p className="text-sm font-semibold">{column.name}</p>
           <span className="text-xs text-muted-foreground">{cards.length}</span>
         </div>
-        <button
-          onClick={() => onDeleteColumn(column)}
-          className="text-muted-foreground hover:text-destructive"
-          aria-label="Remover coluna"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => onDeleteColumn(column)}
+            className="text-muted-foreground hover:text-destructive"
+            aria-label="Remover coluna"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
       <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
         <div className="flex flex-1 flex-col gap-2 min-h-[200px]">
@@ -296,7 +303,20 @@ export default function KanbanPage() {
   const [toDeleteColumn, setToDeleteColumn] = useState<KanbanColumn | null>(null);
   const [toDeleteCard, setToDeleteCard] = useState<KanbanCard | null>(null);
   const [dragCard, setDragCard] = useState<KanbanCard | null>(null);
-  const [seeded, setSeeded] = useState(false);
+  const [teams, setTeams] = useState<Queue[]>([]);
+  const [newBoardTeam, setNewBoardTeam] = useState("");
+  const me = useAuth((s) => s.user);
+  // Dono da empresa (sem parentId) e administradores gerenciam quadros;
+  // atendentes só movem cartões. O servidor valida tudo de novo.
+  const isOwner = !me?.parentId;
+  const canManage = isOwner || !!me?.roles?.includes("admin");
+  // Equipes que o usuário pode escolher ao criar um quadro: o dono vê todas;
+  // administradores de equipe só as próprias.
+  const myTeams = useMemo(
+    () => (isOwner ? teams : teams.filter((t) => me?.queueIds?.includes(t.id))),
+    [teams, isOwner, me?.queueIds],
+  );
+  const teamName = (id?: string) => teams.find((t) => t.id === id)?.name ?? "";
 
   const chatsBySession = useChats((s) => s.chatsBySession);
   // Fast lookup for card avatar / contact name based on the linked chat.
@@ -348,13 +368,8 @@ export default function KanbanPage() {
   };
 
   useEffect(() => {
-    (async () => {
-      const bs = await loadBoards();
-      if (!seeded && bs.length === 0) {
-        setSeeded(true);
-        await seedExampleBoards();
-      }
-    })();
+    void loadBoards();
+    listQueues().then(setTeams).catch(() => setTeams([]));
   }, []);
   useEffect(() => {
     if (activeBoardId) void loadSnapshot(activeBoardId);
@@ -379,9 +394,13 @@ export default function KanbanPage() {
   const handleCreateBoard = async () => {
     const name = newBoardName.trim();
     if (!name) return;
+    if (!newBoardTeam) {
+      toast.error("Selecione a equipe do quadro");
+      return;
+    }
     const tpl = BOARD_TEMPLATES[newBoardTemplate];
     try {
-      const b = await createBoard(name, tpl.color);
+      const b = await createBoard(name, tpl.color, "", newBoardTeam);
       // O servidor já semeia 3 colunas padrão (A fazer/Em andamento/Concluído);
       // remove antes de aplicar o modelo para não duplicar colunas.
       try {
@@ -398,61 +417,6 @@ export default function KanbanPage() {
       toast.success("Board criado");
     } catch (e) {
       toast.error((e as Error).message);
-    }
-  };
-
-  const seedExampleBoards = async () => {
-    try {
-      const examples: { name: string; color: string; cols: { name: string; color: string; type: "open" | "won" | "lost" }[] }[] = [
-        {
-          name: "Atendimento",
-          color: "#4E93FF",
-          cols: [
-            { name: "Aguardando", color: "#94a3b8", type: "open" },
-            { name: "Em andamento", color: "#4E93FF", type: "open" },
-            { name: "Aguardando cliente", color: "#f59e0b", type: "open" },
-            { name: "Resolvido", color: "#22c55e", type: "won" },
-            { name: "Sem retorno", color: "#ef4444", type: "lost" },
-          ],
-        },
-        {
-          name: "Vendas",
-          color: "#22c55e",
-          cols: [
-            { name: "Prospecção", color: "#94a3b8", type: "open" },
-            { name: "Proposta enviada", color: "#4E93FF", type: "open" },
-            { name: "Negociação", color: "#a855f7", type: "open" },
-            { name: "Fechado - Ganho", color: "#22c55e", type: "won" },
-            { name: "Fechado - Perdido", color: "#ef4444", type: "lost" },
-          ],
-        },
-        {
-          name: "Suporte",
-          color: "#f59e0b",
-          cols: [
-            { name: "Novo ticket", color: "#94a3b8", type: "open" },
-            { name: "Em análise", color: "#4E93FF", type: "open" },
-            { name: "Aguardando cliente", color: "#f59e0b", type: "open" },
-            { name: "Resolvido", color: "#22c55e", type: "won" },
-          ],
-        },
-      ];
-      for (const ex of examples) {
-        const b = await createBoard(ex.name, ex.color, `Board exemplo — ${ex.name}`);
-        // Remove as 3 colunas padrão semeadas pelo servidor para não duplicar.
-        try {
-          const seeded = await getBoard(b.id);
-          for (const col of seeded.columns) await deleteColumn(col.id);
-        } catch {
-          /* segue só com as colunas do exemplo */
-        }
-        for (const c of ex.cols) await createColumn(b.id, c.name, c.color, c.type);
-      }
-      const bs = await loadBoards();
-      if (bs.length) setActiveBoardId(bs[0].id);
-      toast.success("3 boards de exemplo criados");
-    } catch (e) {
-      toast.error("Não foi possível criar boards de exemplo: " + (e as Error).message);
     }
   };
 
@@ -627,10 +591,25 @@ export default function KanbanPage() {
               onClick={() => setActiveBoardId(b.id)}
             />
           ))}
-          <Button variant="outline" size="sm" className="shrink-0" onClick={() => setCreatingBoard(true)}>
-            <Plus className="h-4 w-4" /> Novo board
-          </Button>
-          {activeBoardId && (
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setNewBoardTeam(myTeams.length === 1 ? myTeams[0].id : "");
+                setCreatingBoard(true);
+              }}
+            >
+              <Plus className="h-4 w-4" /> Novo board
+            </Button>
+          )}
+          {activeBoardId && teamName(boards.find((x) => x.id === activeBoardId)?.queueId) && (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              Equipe: {teamName(boards.find((x) => x.id === activeBoardId)?.queueId)}
+            </span>
+          )}
+          {canManage && activeBoardId && (
             <Button
               variant="ghost"
               size="sm"
@@ -644,7 +623,7 @@ export default function KanbanPage() {
             </Button>
           )}
         </div>
-        {activeBoardId && (
+        {canManage && activeBoardId && (
           <Button size="sm" className="shrink-0" onClick={() => setCreatingColumn(true)}>
             <Plus className="h-4 w-4" /> Nova coluna
           </Button>
@@ -659,10 +638,19 @@ export default function KanbanPage() {
         )}
         {!loading && !activeBoardId && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-            <p className="text-muted-foreground">Nenhum board ainda.</p>
-            <Button onClick={() => setCreatingBoard(true)}>
-              <Plus className="h-4 w-4" /> Criar primeiro board
-            </Button>
+            <p className="text-muted-foreground">
+              {canManage ? "Nenhum board ainda." : "Nenhum board disponível para a sua equipe."}
+            </p>
+            {canManage && (
+              <Button
+                onClick={() => {
+                  setNewBoardTeam(myTeams.length === 1 ? myTeams[0].id : "");
+                  setCreatingBoard(true);
+                }}
+              >
+                <Plus className="h-4 w-4" /> Criar primeiro board
+              </Button>
+            )}
           </div>
         )}
         {!loading && activeBoardId && snapshot && (
@@ -686,6 +674,7 @@ export default function KanbanPage() {
                     setNewCardDesc("");
                   }}
                   onDeleteColumn={setToDeleteColumn}
+                  canEdit={canManage}
                   onOpenCard={openChat}
                   onDeleteCard={setToDeleteCard}
                 />
@@ -722,6 +711,26 @@ export default function KanbanPage() {
                 onChange={(e) => setNewBoardName(e.target.value)}
                 autoFocus
               />
+            </div>
+            <div>
+              <label className="text-xs font-medium">Equipe</label>
+              <select
+                className="mt-1 h-9 w-full rounded-md border bg-background px-2 text-sm"
+                value={newBoardTeam}
+                onChange={(e) => setNewBoardTeam(e.target.value)}
+              >
+                <option value="">Selecione a equipe…</option>
+                {myTeams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              {myTeams.length === 0 && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Nenhuma equipe disponível. Crie uma equipe (fila) ou peça para ser vinculado a uma.
+                </p>
+              )}
             </div>
             <div>
               <label className="text-xs font-medium">Modelo</label>
