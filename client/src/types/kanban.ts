@@ -4,6 +4,8 @@ export type KanbanBoard = {
   color: string;
   description: string;
   ownerId?: string;
+  /** Equipe (fila) dona do quadro. */
+  queueId?: string;
   createdAt: number;
 };
 
