@@ -29,6 +29,11 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 	if len(columns) == 0 {
 		return
 	}
+	// Quadro de uma Equipe: só entram conversas dessa equipe.
+	boardQueue := ""
+	if b, err := s.kanban.GetBoard(ctx, boardID); err == nil {
+		boardQueue = b.QueueID
+	}
 
 	// Pick destination columns by stage type, preserving position order.
 	sorted := append([]kanbanColumn(nil), columns...)
@@ -103,6 +108,15 @@ func (s *server) backfillKanbanCards(ctx context.Context, boardID string, column
 			// Compute the column the current chat status maps to so we can
 			// either create a new card or reconcile an existing one.
 			meta := metas[jid]
+			if boardQueue != "" {
+				chatQueue := meta.QueueID
+				if chatQueue == "" {
+					chatQueue = info.QueueID
+				}
+				if chatQueue != boardQueue {
+					continue
+				}
+			}
 			var targetCol string
 			switch meta.Status {
 			case ChatStatusClosed:
