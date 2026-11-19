@@ -21,8 +21,8 @@ export const listBoards = () =>
   apiGet<{ boards: KanbanBoard[] }>("/api/kanban/boards").then((r) => r.boards ?? []);
 export const getBoard = (id: string) =>
   apiGet<BoardSnapshot>(`/api/kanban/boards/${id}`);
-export const createBoard = (name: string, color: string, description = "") =>
-  apiPost<KanbanBoard>("/api/kanban/boards", { name, color, description });
+export const createBoard = (name: string, color: string, description = "", queueId = "") =>
+  apiPost<KanbanBoard>("/api/kanban/boards", { name, color, description, queueId });
 export const updateBoard = (id: string, name: string, color: string, description: string) =>
   put(`/api/kanban/boards/${id}`, { name, color, description });
 export const deleteBoard = (id: string) => apiDelete(`/api/kanban/boards/${id}`);
