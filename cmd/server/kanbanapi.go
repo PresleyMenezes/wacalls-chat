@@ -143,6 +143,19 @@ func (s *server) handleKBBoardList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
+	// Garante o quadro padrão de cada equipe que o usuário administra (uma
+	// única vez por equipe; apagar o quadro depois não o recria).
+	if sc.all || sc.user.IsAdmin() {
+		if qs, err := s.queues.List(r.Context(), sc.user.ID, sc.user.TenantID(), true, false); err == nil {
+			for _, q := range qs {
+				if sc.all || sc.teams[q.ID] {
+					if err := s.kanban.SeedTeamBoard(r.Context(), q.ID, q.Name, sc.user.TenantID()); err != nil && s.log != nil {
+						s.log.Warn("kanban: quadro padrão da equipe falhou", "queue", q.ID, "err", err)
+					}
+				}
+			}
+		}
+	}
 	all, err := s.kanban.ListBoards(r.Context(), sc.user.TenantID(), sc.user.IsSuperAdmin())
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
