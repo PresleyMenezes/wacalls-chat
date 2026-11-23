@@ -45,6 +45,12 @@ func (s *server) handleQueueCreate(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
+	// Toda equipe nova já nasce com o quadro de atendimento no Kanban.
+	if s.kanban != nil {
+		if err := s.kanban.SeedTeamBoard(r.Context(), row.ID, row.Name, u.TenantID()); err != nil && s.log != nil {
+			s.log.Warn("kanban: quadro padrão da equipe falhou", "queue", row.ID, "err", err)
+		}
+	}
 	writeJSON(w, http.StatusOK, row)
 }
 
