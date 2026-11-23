@@ -120,6 +120,12 @@ func newKanbanStore(ctx context.Context, db *sql.DB) (*kanbanStore, error) {
 			created_at INTEGER NOT NULL
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_kanban_autom_board ON kanban_automations(board_id)`,
+		// Equipes que já receberam o quadro padrão. Evita recriar o quadro
+		// quando o admin o apaga de propósito.
+		`CREATE TABLE IF NOT EXISTS kanban_team_seeded (
+			queue_id TEXT PRIMARY KEY,
+			created_at INTEGER NOT NULL
+		)`,
 	}
 	for _, q := range stmts {
 		if _, err := db.ExecContext(ctx, q); err != nil {
@@ -700,4 +706,49 @@ func (s *kanbanStore) ReplyFlow(ctx context.Context, sessionID, chatJID string, 
 			_ = s.MoveCard(ctx, card.ID, progress, 0)
 		}
 	}
+}
+
+// SeedTeamBoard cria o quadro padrão de atendimento de uma Equipe, uma única
+// vez por equipe (controlado por kanban_team_seeded). Se o quadro for apagado
+// depois, ele não é recriado.
+func (s *kanbanStore) SeedTeamBoard(ctx context.Context, queueID, queueName, ownerID string) error {
+	if queueID == "" {
+		return nil
+	}
+	res, err := s.db.ExecContext(ctx,
+		`INSERT OR IGNORE INTO kanban_team_seeded (queue_id, created_at) VALUES (?,?)`,
+		queueID, time.Now().Unix())
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil // já semeada
+	}
+	name := "Atendimento"
+	if strings.TrimSpace(queueName) != "" {
+		name = "Atendimento · " + strings.TrimSpace(queueName)
+	}
+	b, err := s.CreateBoard(ctx, name, "#4E93FF", "", ownerID, queueID)
+	if err != nil {
+		return err
+	}
+	// CreateBoard já semeia 3 colunas genéricas; troca pelo modelo de atendimento.
+	if cols, err := s.ListColumns(ctx, b.ID); err == nil {
+		for _, c := range cols {
+			_ = s.DeleteColumn(ctx, c.ID)
+		}
+	}
+	tpl := []struct{ name, color, stage string }{
+		{"Aguardando", "#94a3b8", "open"},
+		{"Em andamento", "#4E93FF", "open"},
+		{"Aguardando cliente", "#f59e0b", "open"},
+		{"Resolvido", "#22c55e", "won"},
+		{"Sem retorno", "#ef4444", "lost"},
+	}
+	for _, c := range tpl {
+		if _, err := s.CreateColumn(ctx, b.ID, c.name, c.color, c.stage); err != nil {
+			return err
+		}
+	}
+	return nil
 }
