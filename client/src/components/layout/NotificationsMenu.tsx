@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Bell, CheckCheck, MessageSquare, PhoneIncoming, Users } from "lucide-react";
 import {
@@ -71,6 +71,27 @@ export const NotificationsMenu = () => {
     items.sort((a, b) => b.unread - a.unread);
     return { unreadChats: items.slice(0, 8), totalUnread: total };
   }, [chatsBySession, isRestrictedByQueue, myQueueIds, sessionQueueId]);
+
+  // Alertas do desktop (notificação do navegador/Windows): mostra o estado da
+  // permissão e permite ativar ou testar, para diagnosticar quando não aparecem.
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">(
+    typeof Notification === "undefined" ? "unsupported" : Notification.permission,
+  );
+  const enableDesktopAlerts = () => {
+    void Notification.requestPermission()
+      .then(setPerm)
+      .catch(() => {});
+  };
+  const testDesktopAlert = () => {
+    try {
+      new Notification("Teste de notificação", {
+        body: "Se você viu este alerta, as notificações do desktop estão funcionando.",
+        icon: "/favicon.png",
+      });
+    } catch {
+      /* ignore */
+    }
+  };
 
   const incomingCount = incoming ? 1 : 0;
   const badgeCount = totalUnread + incomingCount;
@@ -182,6 +203,32 @@ export const NotificationsMenu = () => {
             </DropdownMenuItem>
           ))
         )}
+        <DropdownMenuSeparator />
+        <div className="flex items-center justify-between gap-2 px-3 py-2 text-[11px] text-muted-foreground">
+          {perm === "unsupported" && <span>Este navegador não suporta alertas no desktop.</span>}
+          {perm === "denied" && (
+            <span>
+              Alertas do desktop bloqueados. Clique no cadeado ao lado do endereço, em Notificações escolha
+              Permitir e recarregue a página.
+            </span>
+          )}
+          {perm === "default" && (
+            <>
+              <span>Alertas do desktop desativados.</span>
+              <Button size="sm" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={enableDesktopAlerts}>
+                Ativar
+              </Button>
+            </>
+          )}
+          {perm === "granted" && (
+            <>
+              <span>Alertas do desktop ativos.</span>
+              <Button size="sm" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={testDesktopAlert}>
+                Testar
+              </Button>
+            </>
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
