@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Ban,
@@ -139,10 +139,38 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   const [reactOpen, setReactOpen] = useState(false);
   // Lista de quem reagiu (aberta ao clicar nos emojis de reação).
   const [whoReacted, setWhoReacted] = useState(false);
+  // Fechar menus/lista ao clicar fora SEM usar uma camada "fixed" por cima da
+  // tela: essa camada interceptava a roda do mouse e travava a rolagem das
+  // mensagens e da lista de conversas enquanto o menu estava aberto.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen && !whoReacted) return;
+    const closeIfOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setReactOpen(false);
+        setWhoReacted(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setReactOpen(false);
+        setWhoReacted(false);
+      }
+    };
+    document.addEventListener("mousedown", closeIfOutside);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", closeIfOutside);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen, whoReacted]);
 
   const closeAll = () => {
     setMenuOpen(false);
     setReactOpen(false);
+    setWhoReacted(false);
   };
 
   const handleCopy = async () => {
@@ -203,7 +231,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   };
 
   return (
-    <div className={`group/msg flex flex-col ${mine ? "items-end" : "items-start"} ${reactionChips.length > 0 ? "mb-3" : ""}`}>
+    <div ref={wrapRef} className={`group/msg flex flex-col ${mine ? "items-end" : "items-start"} ${reactionChips.length > 0 ? "mb-3" : ""}`}>
       <div
         className={`relative max-w-[78%] rounded-2xl px-3 py-1.5 text-sm shadow-sm ${
           mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-background"
@@ -236,13 +264,6 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
         )}
         {menuOpen && (
           <>
-            <button
-              type="button"
-              aria-hidden="true"
-              tabIndex={-1}
-              onClick={closeAll}
-              className="fixed inset-0 z-30 cursor-default bg-transparent"
-            />
             <div
               className={`absolute z-40 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
                 menuDirection === "down" ? "top-full mt-1" : "bottom-full mb-1"
@@ -419,7 +440,6 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
             </button>
             {whoReacted && reactions && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setWhoReacted(false)} aria-hidden />
                 <div
                   className={`absolute top-full z-50 mt-3 w-max min-w-[180px] max-w-[260px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md ${
                     mine ? "right-0" : "left-0"
