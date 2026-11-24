@@ -70,15 +70,21 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   // entre conversas diferentes. Guardado em memória (por sessão do app),
   // não precisa sobreviver a um recarregamento de página.
   const draftsRef = useRef<Record<string, string>>({});
+  // A mensagem marcada em "Responder" também é por conversa: segue o mesmo
+  // padrão do rascunho (não "vaza" para a conversa seguinte).
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const replyDraftsRef = useRef<Record<string, ChatMessage | null>>({});
   const prevDraftKeyRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     const newKey = chatJid ? `${sessionId}::${chatJid}` : null;
     const prevKey = prevDraftKeyRef.current;
     if (prevKey && prevKey !== newKey) {
       draftsRef.current[prevKey] = text;
+      replyDraftsRef.current[prevKey] = replyTo;
     }
     if (newKey && newKey !== prevKey) {
       setText(draftsRef.current[newKey] ?? "");
+      setReplyTo(replyDraftsRef.current[newKey] ?? null);
     }
     prevDraftKeyRef.current = newKey;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +141,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const [showForwardSelection, setShowForwardSelection] = useState(false);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [editingText, setEditingText] = useState("");
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  
   // Painel lateral do participante do grupo — aberto ao clicar duas vezes no
   // nome de quem mandou a mensagem, dentro de uma conversa de grupo.
   const [participantSheet, setParticipantSheet] = useState<{ jid: string; name: string } | null>(null);
