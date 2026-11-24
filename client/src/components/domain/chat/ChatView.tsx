@@ -4,7 +4,7 @@ import { CheckCheck, Forward, History, KanbanSquare, Mic, Paperclip, Phone, Phon
 import { Button } from "@/components/ui/button";
 import { useChats, setChatStatus, upsertMessage, removeMessage, markMessageFailed, setActiveChat } from "@/stores/chats";
 import { useAuth } from "@/stores/auth";
-import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
+import { assignChat, closeChat, deleteMessage, editMessage, forwardMessage, reactMessage, getSignature, listChatClosures, listChatEvents, listGroupParticipants, markChatRead, resolveLidPhone, sendContact, sendMedia, sendMessage, sendNote, setSignature as saveSignature, triggerFlow } from "@/services/chats";
 import type { GroupParticipant } from "@/services/chats";
 import { listQuickReplies } from "@/services/quickReplies";
 import type { QuickReply } from "@/services/quickReplies";
@@ -1001,6 +1001,27 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
     let targetId: string | undefined;
     let emoji: string | undefined;
     const actorKey = actorKeyFor(m);
+    // Reação estruturada com alvo conhecido: cada pessoa tem UMA reação por
+    // mensagem (a mais recente substitui a anterior; emoji vazio remove),
+    // igual ao WhatsApp.
+    if (m.kind === "reaction") {
+      const structuredTarget = resolveTargetId(m.quotedId);
+      const structuredEmoji = (m.body || "").trim();
+      if (structuredTarget) {
+        const kept = (reactionsByTarget.get(structuredTarget) || []).filter(
+          (r) => reactionActorKey(r) !== actorKey,
+        );
+        if (structuredEmoji) kept.push({ emoji: structuredEmoji, fromMe: m.fromMe, senderName: m.senderName });
+        if (kept.length) reactionsByTarget.set(structuredTarget, kept);
+        else reactionsByTarget.delete(structuredTarget);
+        hiddenReactionIds.add(m.id);
+        continue;
+      }
+      if (!structuredEmoji) {
+        hiddenReactionIds.add(m.id);
+        continue;
+      }
+    }
     if (m.kind === "reaction" && m.body) {
       emoji = m.body;
       targetId = resolveTargetId(m.quotedId);
@@ -1201,6 +1222,15 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
                         onForward={(msg) => setForwardTarget(msg)}
                         onSelect={startSelection}
                         onReply={(msg) => setReplyTo(msg)}
+                        onReact={async (msg, emoji) => {
+                          if (!chatJid) return;
+                          try {
+                            await reactMessage(sessionId, chatJid, msg.id, emoji);
+                          } catch (e) {
+                            console.error("react failed", e);
+                            toast.error("Não foi possível enviar a reação.");
+                          }
+                        }}
                         onEdit={(msg) => {
                           setEditing(msg);
                           setEditingText(msg.body);

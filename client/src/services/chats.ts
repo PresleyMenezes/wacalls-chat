@@ -163,6 +163,13 @@ export const editMessage = (sessionId: string, jid: string, mid: string, text: s
     { method: "POST", body: JSON.stringify({ text }) },
   ).then((r) => r.message);
 
+// Reage a uma mensagem com um emoji (como no WhatsApp). Emoji vazio remove a reação.
+export const reactMessage = (sessionId: string, jid: string, mid: string, emoji: string) =>
+  http<{ message: ChatMessage }>(
+    `/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/messages/${encodeURIComponent(mid)}/react`,
+    { method: "POST", body: JSON.stringify({ emoji }) },
+  ).then((r) => r.message);
+
 export const forwardMessage = (sessionId: string, jid: string, mid: string, targets: string[]) =>
   http<{ sent: number; errors: string[] }>(
     `/api/sessions/${sessionId}/chats/${encodeURIComponent(jid)}/messages/${encodeURIComponent(mid)}/forward`,

@@ -57,9 +57,12 @@ interface BubbleProps {
   onEdit?: (m: ChatMessage) => void;
   onDelete?: (m: ChatMessage) => void;
   onReply?: (m: ChatMessage) => void;
+  // Reage à mensagem no WhatsApp (emoji vazio = remover a reação).
+  onReact?: (m: ChatMessage, emoji: string) => void;
   // Reactions that target this message (already resolved via quotedId
   // by the parent ChatView). Rendered as a small chip under the bubble
   // so it's clear which message was reacted to.
+  reactions?: Array<{ emoji: string; fromMe: boolean; senderName?: string }>;
   // Participantes do grupo (jid -> nome), usados para trocar "@<dígitos>"
   // pelo nome legível do contato mencionado ao renderizar o texto.
   mentionNames?: Record<string, string>;
@@ -83,7 +86,7 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
-export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, reactions, mentionNames, quotedPreview, onQuotedClick, onSenderDoubleClick }: BubbleProps) => {
+export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, onReact, reactions, mentionNames, quotedPreview, onQuotedClick, onSenderDoubleClick }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
     return (
@@ -128,7 +131,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   const showOpen = !deleted && !!mediaUrl;
   const showDownload = !deleted && !!mediaUrl;
   const showShare = !deleted && (!!mediaUrl || !!message.body);
-  const showReact = !deleted;
+  const showReact = !deleted && !!onReact;
   const hasMenu =
     showEdit || showDelete || showForward || showReply || showCopy || showOpen || showDownload || showShare || showReact;
   const reactionChips = reactions?.length ? dedupeReactions(reactions) : [];
@@ -189,15 +192,12 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
     }
   };
 
+  // Reação do próprio atendente nesta mensagem (se houver): tocar no mesmo
+  // emoji de novo remove a reação, como no WhatsApp.
+  const myReaction = reactions?.find((r) => r.fromMe)?.emoji;
   const handleReact = (emoji: string) => {
     closeAll();
-    // Local-only reaction: copy emoji to clipboard so the agent can paste/forward.
-    try {
-      void navigator.clipboard.writeText(emoji);
-      toast.success(`Reação copiada: ${emoji}`);
-    } catch {
-      /* ignore */
-    }
+    onReact?.(message, myReaction === emoji ? "" : emoji);
   };
 
   return (

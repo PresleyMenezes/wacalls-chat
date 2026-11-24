@@ -801,6 +801,7 @@ func (s *server) registerMessageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sessions/{sid}/lid-pn/{jid}", s.requireAuth(s.handleLidToPN))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/messages/{mid}/delete", s.requireAuth(s.handleMessageDelete))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/messages/{mid}/edit", s.requireAuth(s.handleMessageEdit))
+	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/messages/{mid}/react", s.requireAuth(s.handleMessageReact))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/messages/{mid}/forward", s.requireAuth(s.handleMessageForward))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/note", s.requireAuth(s.handleChatNote))
 	mux.HandleFunc("POST /api/sessions/{sid}/chats/{jid}/trigger-flow", s.requireAuth(s.handleChatTriggerFlow))
@@ -2100,6 +2101,83 @@ func (s *server) handleMessageEdit(w http.ResponseWriter, r *http.Request) {
 	row.Edited = true
 	s.broker.emitMessage(row)
 	writeJSON(w, http.StatusOK, map[string]any{"message": row})
+}
+
+// handleMessageReact envia uma reação (emoji) do WhatsApp sobre uma mensagem,
+// igual ao app oficial: o emoji aparece junto à mensagem no celular do
+// contato e aqui no painel. Emoji vazio remove a reação anterior.
+func (s *server) handleMessageReact(w http.ResponseWriter, r *http.Request) {
+	sess := s.sessionByID(w, r, r.PathValue("sid"))
+	if sess == nil {
+		return
+	}
+	if sess.client.Store.ID == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "not paired"})
+		return
+	}
+	var body struct {
+		Emoji string `json:"emoji"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		return
+	}
+	emoji := strings.TrimSpace(body.Emoji)
+	mid := r.PathValue("mid")
+	row, ok, err := s.messages.Get(r.Context(), sess.id, mid)
+	if err != nil || !ok {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "message not found"})
+		return
+	}
+	chat, err := parseChatJID(row.ChatJID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	// Autor da mensagem reagida: nós mesmos, o participante (em grupos) ou o
+	// próprio contato (conversa 1:1).
+	var sender types.JID
+	switch {
+	case row.FromMe:
+		sender = *sess.client.Store.ID
+	case chat.Server == types.GroupServer && row.SenderJID != "":
+		if sj, perr := types.ParseJID(row.SenderJID); perr == nil {
+			sender = sj
+		} else {
+			sender = chat
+		}
+	default:
+		sender = chat
+	}
+	msg := sess.client.BuildReaction(chat, sender, mid, emoji)
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+	resp, err := sess.client.SendMessage(ctx, chat, msg)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	user := currentUserFromReq(r)
+	out := MessageRow{
+		ID:           resp.ID,
+		SessionID:    sess.id,
+		ChatJID:      row.ChatJID,
+		SenderJID:    jidOrEmpty(sess),
+		FromMe:       true,
+		Ts:           resp.Timestamp.UnixMilli(),
+		Kind:         "reaction",
+		Body:         emoji,
+		QuotedID:     mid,
+		SentByUserID: userIDOrEmpty(user),
+	}
+	if out.Ts == 0 {
+		out.Ts = time.Now().UnixMilli()
+	}
+	if err := s.messages.Insert(r.Context(), out); err != nil {
+		s.log.Warn("persist reaction failed", "err", err)
+	}
+	s.broker.emitMessage(out)
+	writeJSON(w, http.StatusOK, map[string]any{"message": out})
 }
 
 // handleMessageForward re-sends an existing text message to one or more
