@@ -137,6 +137,8 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   const reactionChips = reactions?.length ? dedupeReactions(reactions) : [];
 
   const [reactOpen, setReactOpen] = useState(false);
+  // Lista de quem reagiu (aberta ao clicar nos emojis de reação).
+  const [whoReacted, setWhoReacted] = useState(false);
 
   const closeAll = () => {
     setMenuOpen(false);
@@ -398,16 +400,46 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           <span>{formatTime(message.ts)}</span>
         </div>
         {reactionChips.length > 0 && (
-          <div
-            className={`absolute -bottom-2.5 z-10 inline-flex items-center gap-0.5 rounded-full border bg-background px-1.5 py-0.5 text-xs leading-none shadow-sm text-foreground ${
-              mine ? "right-2" : "left-2"
-            }`}
-            title={`${reactionChips.length} reação${reactionChips.length > 1 ? "ões" : ""}`}
-          >
-            {reactionChips.map((r, i) => (
-              <span key={`${r.emoji}-${i}`}>{r.emoji}</span>
-            ))}
-          </div>
+          <>
+            <button
+              type="button"
+              onClick={() => setWhoReacted((v) => !v)}
+              className={`absolute -bottom-2.5 z-10 inline-flex cursor-pointer items-center gap-0.5 rounded-full border bg-background px-1.5 py-0.5 text-xs leading-none shadow-sm text-foreground hover:bg-muted ${
+                mine ? "right-2" : "left-2"
+              }`}
+              title="Ver quem reagiu"
+              aria-label="Ver quem reagiu"
+            >
+              {reactionChips.map((r, i) => (
+                <span key={`${r.emoji}-${i}`}>
+                  {r.emoji}
+                  {r.count > 1 && <span className="ml-0.5 text-[10px] text-muted-foreground">{r.count}</span>}
+                </span>
+              ))}
+            </button>
+            {whoReacted && reactions && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setWhoReacted(false)} aria-hidden />
+                <div
+                  className={`absolute top-full z-50 mt-3 w-max min-w-[180px] max-w-[260px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md ${
+                    mine ? "right-0" : "left-0"
+                  }`}
+                >
+                  <p className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">
+                    {reactions.length} reação{reactions.length > 1 ? "ões" : ""}
+                  </p>
+                  <ul className="max-h-48 space-y-0.5 overflow-y-auto">
+                    {reactions.map((r, i) => (
+                      <li key={`${r.emoji}-${i}`} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm">
+                        <span className="text-base leading-none">{r.emoji}</span>
+                        <span className="truncate">{r.fromMe ? "Você" : r.senderName?.trim() || "Contato"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -706,15 +738,10 @@ function suggestFileName(m: ChatMessage): string {
 // collapse duplicates for display while keeping the count badge accurate.
 function dedupeReactions(
   list: Array<{ emoji: string; fromMe: boolean; senderName?: string }>,
-): Array<{ emoji: string }> {
-  const seen = new Set<string>();
-  const out: Array<{ emoji: string }> = [];
-  for (const r of list) {
-    if (seen.has(r.emoji)) continue;
-    seen.add(r.emoji);
-    out.push({ emoji: r.emoji });
-  }
-  return out;
+): Array<{ emoji: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const r of list) counts.set(r.emoji, (counts.get(r.emoji) ?? 0) + 1);
+  return Array.from(counts, ([emoji, count]) => ({ emoji, count }));
 }
 
 // senderDisplay picks the friendliest label available: stored push name,
