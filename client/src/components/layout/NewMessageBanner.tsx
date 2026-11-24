@@ -273,12 +273,12 @@ export const NewMessageBanner = () => {
             onMouseLeave={() => {
               pausedRef.current = null;
             }}
-            className="flex w-full items-center gap-3 rounded-xl border bg-popover px-3 py-2.5 pr-9 text-left text-popover-foreground shadow-xl ring-1 ring-black/5 transition hover:bg-accent"
+            className="flex w-full items-center gap-3 rounded-xl border border-white/20 bg-[#1DA851] px-3 py-2.5 pr-9 text-left text-white shadow-xl ring-1 ring-black/10 transition hover:bg-[#189246]"
           >
             {it.avatarUrl ? (
-              <img src={it.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              <img src={it.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/40" />
             ) : (
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-semibold text-white">
                 {(it.name || "?").slice(0, 1).toUpperCase()}
               </span>
             )}
@@ -286,19 +286,19 @@ export const NewMessageBanner = () => {
               <span className="flex items-center gap-2">
                 <span className="truncate text-sm font-semibold">{it.name}</span>
                 {it.count > 1 && (
-                  <span className="shrink-0 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  <span className="shrink-0 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#189246]">
                     {it.count} novas
                   </span>
                 )}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">{it.preview}</span>
+              <span className="block truncate text-xs text-white/90">{it.preview}</span>
             </span>
           </button>
           <button
             type="button"
             aria-label="Fechar aviso"
             onClick={() => useBanners.getState().remove(it.key)}
-            className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            className="absolute right-2 top-2 rounded-md p-1 text-white/80 hover:bg-white/20 hover:text-white"
           >
             <X className="h-3.5 w-3.5" />
           </button>
