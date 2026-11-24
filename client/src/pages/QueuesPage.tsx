@@ -48,7 +48,7 @@ export default function QueuesPage() {
       const list = await listQueues();
       setQueues(list);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao carregar filas");
+      toast.error(e instanceof Error ? e.message : "Erro ao carregar equipes");
     } finally {
       setLoading(false);
     }
@@ -66,13 +66,13 @@ export default function QueuesPage() {
         await updateQueue(modal.queue.id, modal.name.trim(), modal.color, {
           greeting: modal.greeting,
         });
-        toast.success("Fila atualizada");
+        toast.success("Equipe atualizada");
       } else {
         const q = await createQueue(modal.name.trim(), modal.color);
         if (modal.greeting.trim()) {
           await updateQueue(q.id, modal.name.trim(), modal.color, { greeting: modal.greeting });
         }
-        toast.success("Fila criada");
+        toast.success("Equipe criada");
       }
       setModal(null);
       load();
@@ -86,7 +86,7 @@ export default function QueuesPage() {
   const onDelete = async (q: Queue) => {
     try {
       await deleteQueue(q.id);
-      toast.success("Fila removida");
+      toast.success("Equipe removida");
       load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao remover");
@@ -99,14 +99,14 @@ export default function QueuesPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
-              <Users2 className="h-5 w-5 text-primary" /> Filas
+              <Users2 className="h-5 w-5 text-primary" /> Equipes
             </h2>
             <p className="text-sm text-muted-foreground">
-              Organize atendimentos em filas e vincule a conexões e usuários.
+              Organize atendimentos em equipes e vincule a conexões e usuários.
             </p>
           </div>
           <Button onClick={() => setModal(emptyEditing())}>
-            <Plus className="h-4 w-4" /> Nova fila
+            <Plus className="h-4 w-4" /> Nova equipe
           </Button>
         </div>
 
@@ -119,12 +119,12 @@ export default function QueuesPage() {
             <div className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
               <Users2 className="h-5 w-5" />
             </div>
-            <div className="mt-3 text-sm font-medium">Nenhuma fila criada</div>
+            <div className="mt-3 text-sm font-medium">Nenhuma equipe criada</div>
             <div className="mt-1 text-xs text-muted-foreground">
-              Crie sua primeira fila para começar a organizar atendimentos.
+              Crie sua primeira equipe para começar a organizar atendimentos.
             </div>
             <Button className="mt-4" onClick={() => setModal(emptyEditing())}>
-              <Plus className="h-4 w-4" /> Nova fila
+              <Plus className="h-4 w-4" /> Nova equipe
             </Button>
           </div>
         ) : (
@@ -177,7 +177,7 @@ export default function QueuesPage() {
       <Dialog open={!!modal} onOpenChange={(o) => !o && setModal(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{modal?.queue ? "Editar fila" : "Nova fila"}</DialogTitle>
+            <DialogTitle>{modal?.queue ? "Editar equipe" : "Nova equipe"}</DialogTitle>
           </DialogHeader>
           {modal && (
             <div className="space-y-4">
@@ -229,8 +229,8 @@ export default function QueuesPage() {
       <ConfirmDialog
         open={!!toDelete}
         onOpenChange={(o) => !o && setToDelete(null)}
-        title="Remover fila?"
-        description={toDelete ? `A fila "${toDelete.name}" será removida.` : undefined}
+        title="Remover equipe?"
+        description={toDelete ? `A equipe "${toDelete.name}" será removida.` : undefined}
         confirmLabel="Remover"
         destructive
         onConfirm={() => {

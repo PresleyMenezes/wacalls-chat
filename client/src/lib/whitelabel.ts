@@ -63,7 +63,7 @@ function applyBrandMeta(appName: string, favicon?: string) {
   const name = appName.trim();
   if (!name) return;
   const tagline = `${name} — Atendimento, chamadas e WhatsApp em uma única plataforma`;
-  const description = `${name} unifica atendimento, ligações VoIP e WhatsApp em uma plataforma multiusuário, com filas, campanhas, URA e relatórios em tempo real.`;
+  const description = `${name} unifica atendimento, ligações VoIP e WhatsApp em uma plataforma multiusuário, com equipes, campanhas, URA e relatórios em tempo real.`;
   document.title = tagline;
   setMeta("name", "description", description);
   setMeta("property", "og:site_name", name);

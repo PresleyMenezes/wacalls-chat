@@ -141,7 +141,6 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
   const [showForwardSelection, setShowForwardSelection] = useState(false);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [editingText, setEditingText] = useState("");
-  
   // Painel lateral do participante do grupo — aberto ao clicar duas vezes no
   // nome de quem mandou a mensagem, dentro de uma conversa de grupo.
   const [participantSheet, setParticipantSheet] = useState<{ jid: string; name: string } | null>(null);
@@ -1073,7 +1072,7 @@ export const ChatView = ({ sessionId, chatJid, onStatusChange, jumpToMessageId, 
               <span
                 className="inline-flex max-w-[160px] shrink-0 items-center truncate rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none"
                 style={tagChipStyle(sessionQueue.color)}
-                title={`Fila da conexão: ${sessionQueue.name}`}
+                title={`Equipe da conexão: ${sessionQueue.name}`}
               >
                 {sessionQueue.name}
               </span>

@@ -430,8 +430,8 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
             <DialogTitle>{editing ? t("pages.users.dialogEdit") : t("pages.users.dialogNew")}</DialogTitle>
             <DialogDescription>
               {editing
-                ? "Atualize dados de acesso e filas vinculadas. Deixe a senha em branco para mantê-la."
-                : "Crie um novo usuário e selecione as filas que ele atenderá."}
+                ? "Atualize dados de acesso e equipes vinculadas. Deixe a senha em branco para mantê-la."
+                : "Crie um novo usuário e selecione as equipes que ele atenderá."}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
@@ -449,7 +449,7 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
                   >
                     Meu perfil
                   </button>
-                  . Aqui você gerencia papel, filas, conexões e permissões.
+                  . Aqui você gerencia papel, equipes, conexões e permissões.
                 </div>
               ) : (
                 <>
@@ -513,10 +513,10 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
               </div>
             </div>
             <div>
-              <Label>Filas vinculadas</Label>
+              <Label>Equipes vinculadas</Label>
               {queues.length === 0 ? (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Nenhuma fila cadastrada. Crie filas em <span className="font-medium">Filas</span>.
+                  Nenhuma equipe cadastrada. Crie equipes em <span className="font-medium">Equipes</span>.
                 </p>
               ) : (
                 <div className="mt-1 flex flex-wrap gap-2">
@@ -685,8 +685,8 @@ export const AdminUsersPage = ({ embedded = false }: { embedded?: boolean } = {}
         description={
           roleChange
             ? roleChange.nextRole === "admin"
-              ? `${roleChange.user.email} terá acesso total: gerenciar usuários, filas, empresas e conexões.`
-              : `${roleChange.user.email} perderá acesso às telas de administração e verá apenas as filas vinculadas.`
+              ? `${roleChange.user.email} terá acesso total: gerenciar usuários, equipes, empresas e conexões.`
+              : `${roleChange.user.email} perderá acesso às telas de administração e verá apenas as equipes vinculadas.`
             : undefined
         }
         confirmLabel={roleChange?.nextRole === "admin" ? "Promover" : "Rebaixar"}

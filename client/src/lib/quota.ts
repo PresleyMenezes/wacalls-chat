@@ -6,7 +6,7 @@ type QuotaKind = "usuarios" | "conexoes" | "filas";
 const LABEL: Record<QuotaKind, string> = {
   usuarios: "usuários",
   conexoes: "conexões",
-  filas: "filas",
+  filas: "equipes",
 };
 
 /** Payload estruturado devolvido pelo backend em respostas 402 (writeQuotaError). */
@@ -21,7 +21,7 @@ export type QuotaPayload = {
 };
 
 function formatQuotaMessage(kind: string, label: string, limit: number, current: number) {
-  const niceLabel = label || LABEL[kind as QuotaKind] || kind;
+  const niceLabel = LABEL[kind as QuotaKind] || label || kind;
   const usage = Number.isFinite(current) ? ` (uso atual: ${current})` : "";
   return `Limite do plano atingido: ${limit} ${niceLabel} permitidas${usage}. Faça upgrade do plano para liberar mais.`;
 }

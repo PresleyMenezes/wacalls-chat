@@ -114,14 +114,14 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
           <div>
-            <Label htmlFor="cqueue">Fila vinculada</Label>
+            <Label htmlFor="cqueue">Equipe vinculada</Label>
             <select
               id="cqueue"
               value={queueId}
               onChange={(e) => setQueueId(e.target.value)}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
-              <option value="">— Sem fila —</option>
+              <option value="">— Sem equipe —</option>
               {queues.map((q) => (
                 <option key={q.id} value={q.id}>
                   {q.name}
@@ -129,7 +129,7 @@ export const EditConnectionModal = ({ open, onOpenChange, session, onSaved }: Pr
               ))}
             </select>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Novas conversas são direcionadas para esta fila.
+              Novas conversas são direcionadas para esta equipe.
             </p>
           </div>
 

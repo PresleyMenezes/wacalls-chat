@@ -107,7 +107,7 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
 
   const ensureAssignment = (): boolean => {
     if (!assignUserId && !assignQueueId) {
-      toast.error("Selecione um operador ou uma fila para abrir o atendimento.");
+      toast.error("Selecione um operador ou uma equipe para abrir o atendimento.");
       return false;
     }
     return true;
@@ -286,7 +286,7 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
           </div>
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <Users className="h-3 w-3" /> Fila
+              <Users className="h-3 w-3" /> Equipe
             </label>
             <select
               value={assignQueueId}
@@ -302,7 +302,7 @@ export const NewChatDialog = ({ open, onOpenChange, sessionId, onOpened }: Props
             </select>
           </div>
           <p className="col-span-full text-[10px] text-muted-foreground">
-            Atendimento será aberto em seu nome, na sua fila.
+            Atendimento será aberto em seu nome, na sua equipe.
           </p>
         </div>
       </DialogContent>

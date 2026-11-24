@@ -26,7 +26,7 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: "contacts", label: "Contatos", description: "Visualizar e gerenciar contatos." },
   { key: "connections", label: "Conexões", description: "Parear e administrar conexões WhatsApp." },
   { key: "flows", label: "Fluxos", description: "Criar e editar fluxos do FlowBuilder." },
-  { key: "queues", label: "Filas", description: "Gerenciar filas de atendimento." },
+  { key: "queues", label: "Equipes", description: "Gerenciar equipes de atendimento." },
   { key: "tags", label: "Tags", description: "Criar e organizar tags." },
   { key: "kanban", label: "Kanban", description: "Acessar o quadro Kanban." },
   { key: "campaigns", label: "Campanhas", description: "Criar e disparar campanhas." },

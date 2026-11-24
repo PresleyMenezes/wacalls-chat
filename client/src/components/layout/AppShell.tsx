@@ -140,7 +140,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
   const principal: (NavItem & { perm: Permission; feat?: string })[] = [
     { to: "/chats", icon: MessageSquare, label: t("nav.chats", { defaultValue: "Chat" }), badge: unreadTotal, perm: "chats" },
     { to: "/contacts", icon: Contact2, label: t("nav.contacts", { defaultValue: "Contatos" }), perm: "chats" },
-    { to: "/queues", icon: Users2, label: t("nav.queues", { defaultValue: "Filas" }), perm: "chats" },
+    { to: "/queues", icon: Users2, label: t("nav.queues", { defaultValue: "Equipes" }), perm: "chats" },
     { to: "/kanban", icon: KanbanSquare, label: t("nav.kanban", { defaultValue: "Kanban" }), perm: "chats" },
     { to: "/quick-replies", icon: MessageSquareText, label: "Respostas rápidas", perm: "chats" },
     { to: "/connections", icon: Wifi, label: t("nav.connections", { defaultValue: "Conexões" }), perm: "connections" },
@@ -172,7 +172,7 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
     // Fallback titles for routes not present in the side menu.
     const fallbacks: Array<{ match: (p: string) => boolean; label: string }> = [
       { match: (p) => p.startsWith("/users"), label: t("nav.users") || "Usuários" },
-      { match: (p) => p.startsWith("/queues"), label: t("nav.queues") || "Filas" },
+      { match: (p) => p.startsWith("/queues"), label: t("nav.queues") || "Equipes" },
       { match: (p) => p.startsWith("/tags"), label: t("nav.tags") || "Tags" },
       { match: (p) => p.startsWith("/agents"), label: t("nav.agents") || "Agentes IA" },
       { match: (p) => p.startsWith("/api"), label: t("nav.api") || "Documentação" },

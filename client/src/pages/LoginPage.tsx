@@ -85,7 +85,7 @@ export const LoginPage = () => {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-3">
                 <MessageCircle className="mt-0.5 h-4 w-4 opacity-90" />
-                <span>WhatsApp multi-conexão com filas, tags e histórico completo.</span>
+                <span>WhatsApp multi-conexão com equipes, tags e histórico completo.</span>
               </li>
               <li className="flex items-start gap-3">
                 <PhoneCall className="mt-0.5 h-4 w-4 opacity-90" />
@@ -93,7 +93,7 @@ export const LoginPage = () => {
               </li>
               <li className="flex items-start gap-3">
                 <BarChart3 className="mt-0.5 h-4 w-4 opacity-90" />
-                <span>Relatórios em tempo real de atendimentos, filas e ligações.</span>
+                <span>Relatórios em tempo real de atendimentos, equipes e ligações.</span>
               </li>
               <li className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 h-4 w-4 opacity-90" />

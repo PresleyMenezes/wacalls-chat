@@ -6,7 +6,7 @@
     "contacts": "Contatos",
     "connections": "Conexões",
     "flows": "Fluxos",
-    "queues": "Filas",
+    "queues": "Equipes",
     "tags": "Tags",
     "kanban": "Kanban",
     "campaigns": "Campanhas",
@@ -290,19 +290,19 @@
       "newName": "Novo fluxo"
     },
     "queues": {
-      "title": "Filas",
-      "subtitle": "Organize atendimentos em filas e vincule-as a conexões do WhatsApp.",
-      "nameLabel": "Nome da fila",
+      "title": "Equipes",
+      "subtitle": "Organize atendimentos em equipes e vincule-as a conexões do WhatsApp.",
+      "nameLabel": "Nome da equipe",
       "namePh": "Ex: Suporte",
       "create": "Criar",
-      "readonlyHint": "Você está vendo apenas as filas vinculadas ao seu usuário. Somente administradores podem criar ou editar filas.",
-      "empty": "Nenhuma fila criada ainda.",
+      "readonlyHint": "Você está vendo apenas as equipes vinculadas ao seu usuário. Somente administradores podem criar ou editar equipes.",
+      "empty": "Nenhuma equipe criada ainda.",
       "colCor": "Cor",
       "colName": "Nome",
       "colActions": "Ações",
-      "createdToast": "Fila criada",
-      "deleteTitle": "Excluir fila?",
-      "deleteDescription": "A fila \"{{name}}\" será removida. Conexões vinculadas ficarão sem fila."
+      "createdToast": "Equipe criada",
+      "deleteTitle": "Excluir equipe?",
+      "deleteDescription": "A equipe \"{{name}}\" será removida. Conexões vinculadas ficarão sem equipe."
     },
     "tags": {
       "title": "Etiquetas",
@@ -333,7 +333,7 @@
     },
     "users": {
       "title": "Usuários",
-      "subtitle": "Gerencie acesso, papéis e filas vinculadas a cada usuário.",
+      "subtitle": "Gerencie acesso, papéis e equipes vinculadas a cada usuário.",
       "newUser": "Novo usuário",
       "onlyAdmins": "Somente administradores podem gerenciar usuários.",
       "auditTitle": "Histórico de mudanças de papel",

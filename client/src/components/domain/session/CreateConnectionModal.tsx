@@ -85,7 +85,7 @@ export const CreateConnectionModal = ({ open, onOpenChange, onCreated }: Props) 
             <div className="min-w-0">
               <DialogTitle className="truncate text-base">Nova conexão</DialogTitle>
               <p className="truncate text-xs text-muted-foreground">
-                Configure a descrição, fila e preferências de grupo.
+                Configure a descrição, equipe e preferências de grupo.
               </p>
             </div>
           </div>
@@ -122,14 +122,14 @@ export const CreateConnectionModal = ({ open, onOpenChange, onCreated }: Props) 
           </div>
 
           <div>
-            <Label htmlFor="cqueue">Fila vinculada</Label>
+            <Label htmlFor="cqueue">Equipe vinculada</Label>
             <select
               id="cqueue"
               value={queueId}
               onChange={(e) => setQueueId(e.target.value)}
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
             >
-              <option value="">— Sem fila —</option>
+              <option value="">— Sem equipe —</option>
               {queues.map((q) => (
                 <option key={q.id} value={q.id}>
                   {q.name}
@@ -137,7 +137,7 @@ export const CreateConnectionModal = ({ open, onOpenChange, onCreated }: Props) 
               ))}
             </select>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              Novas conversas são direcionadas para esta fila.
+              Novas conversas são direcionadas para esta equipe.
             </p>
           </div>
 
