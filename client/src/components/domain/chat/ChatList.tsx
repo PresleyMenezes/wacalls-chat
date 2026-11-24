@@ -201,9 +201,8 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
         }}
         className={`group flex w-full cursor-pointer items-start gap-3 border-b pl-3 pr-4 py-3 text-left transition-colors hover:bg-muted/60 ${active ? "bg-muted" : ""}`}
       >
-        {/* Avatar with a small WhatsApp channel badge in the bottom-right,
-            matching the reference: the green circle marks the origin even
-            when the connection pill is not visible. */}
+        {/* Avatar. O selo verde do WhatsApp foi removido: era confundido com
+            o contador de mensagens não lidas. */}
         <div className="relative shrink-0">
           <span className="relative grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-primary/10 text-sm font-semibold text-primary">
             {/* Letra de fallback sempre renderiza por baixo, então o card
@@ -227,15 +226,6 @@ const ChatRow = ({ chat, sessionId, sessionName, active, tab, onClick, onTransfe
                 }}
               />
             )}
-          </span>
-          <span
-            aria-label="WhatsApp"
-            title="WhatsApp"
-            className="absolute -bottom-0.5 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-[#25D366] text-white ring-2 ring-background"
-          >
-            <svg viewBox="0 0 32 32" className="h-2.5 w-2.5" fill="currentColor" aria-hidden>
-              <path d="M19.11 17.27c-.28-.14-1.65-.81-1.9-.9-.26-.1-.45-.14-.63.14-.19.28-.72.9-.88 1.08-.16.19-.32.21-.6.07-.28-.14-1.17-.43-2.23-1.37-.82-.73-1.38-1.63-1.54-1.91-.16-.28-.02-.43.12-.57.13-.13.28-.32.42-.49.14-.17.19-.28.28-.47.09-.19.05-.35-.02-.49-.07-.14-.63-1.52-.86-2.08-.23-.55-.46-.47-.63-.48l-.54-.01c-.19 0-.49.07-.74.35-.26.28-.97.95-.97 2.32 0 1.37 1 2.69 1.14 2.88.14.19 1.96 3 4.75 4.21.66.29 1.18.46 1.58.59.66.21 1.26.18 1.74.11.53-.08 1.65-.67 1.88-1.32.23-.65.23-1.21.16-1.32-.07-.11-.26-.18-.54-.32z M16.02 4C9.4 4 4.04 9.36 4.04 15.98c0 2.12.55 4.12 1.6 5.91L4 28l6.27-1.64a11.94 11.94 0 0 0 5.74 1.46h.01c6.62 0 11.98-5.36 11.98-11.98C28 9.36 22.64 4 16.02 4zm0 21.84h-.01a9.86 9.86 0 0 1-5.02-1.37l-.36-.21-3.72.97.99-3.63-.23-.37a9.86 9.86 0 0 1-1.51-5.25c0-5.45 4.43-9.88 9.88-9.88 2.64 0 5.12 1.03 6.98 2.9a9.81 9.81 0 0 1 2.89 6.99c0 5.45-4.43 9.88-9.89 9.88z"/>
-            </svg>
           </span>
           {unread > 0 && (
             <span
