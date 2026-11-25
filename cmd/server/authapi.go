@@ -101,6 +101,9 @@ func (s *server) registerAuthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/companies", s.requireSuperAdmin(s.handleListCompanies))
 	mux.HandleFunc("POST /api/companies/{id}/active", s.requireSuperAdmin(s.handleSetActive))
 	mux.HandleFunc("DELETE /api/companies/{id}", s.requireSuperAdmin(s.handleDeleteUser))
+
+	// Painel de Empresas do super admin (lista, criar, ativar, apagar).
+	s.registerCompanyAdminRoutes(mux)
 }
 
 type credentialsBody struct {
