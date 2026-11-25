@@ -6,6 +6,7 @@ import { ChatsPage } from "@/pages/ChatsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminUsersPage } from "@/pages/AdminUsersPage";
 import { CompaniesPage } from "@/pages/CompaniesPage";
+import { SubscriptionPage } from "@/pages/SubscriptionPage";
 import WhitelabelSettingsPage from "@/pages/WhitelabelSettingsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
@@ -50,6 +51,7 @@ const Root = () => {
               <Route path="/kanban" element={<RequireAuth><KanbanPage /></RequireAuth>} />
               <Route path="/quick-replies" element={<RequireAuth><QuickRepliesPage /></RequireAuth>} />
               <Route path="/admin/users" element={<RequireAuth adminOnly><AdminUsersPage /></RequireAuth>} />
+              <Route path="/subscription" element={<RequireAuth adminOnly><SubscriptionPage /></RequireAuth>} />              
               <Route path="/admin/companies" element={<RequireAuth superAdminOnly><CompaniesPage /></RequireAuth>} />              
               <Route path="/admin/whitelabel" element={<RequireAuth superAdminOnly><WhitelabelSettingsPage /></RequireAuth>} />
               <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
