@@ -139,6 +139,34 @@ export const setCompanyActive = (id: string, active: boolean) =>
 export const deleteCompany = (id: string) =>
   req<void>(`/api/companies/${id}`, { method: "DELETE" });
 
+export interface CompanyRow {
+  id: string;
+  email: string;
+  companyName: string;
+  active: boolean;
+  createdAt: number;
+  usersCount: number;
+  sessionsCount: number;
+}
+
+export const listCompaniesOverview = () =>
+  req<{ companies: CompanyRow[] }>("/api/admin/companies").then((r) => r.companies ?? []);
+
+export const createCompany = (p: { companyName: string; email: string; password: string }) =>
+  req<CompanyRow>("/api/admin/companies", { method: "POST", body: JSON.stringify(p) });
+
+export const setCompanyActiveAdmin = (id: string, active: boolean) =>
+  req<{ ok: boolean }>(`/api/admin/companies/${id}/active`, {
+    method: "POST",
+    body: JSON.stringify({ active }),
+  });
+
+export const deleteCompanyAdmin = (id: string, password: string) =>
+  req<void>(`/api/admin/companies/${id}/delete`, {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
+
 export interface CompanySubscription {
   userId: string;
   planId: string;
