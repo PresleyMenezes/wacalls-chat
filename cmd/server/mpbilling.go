@@ -549,11 +549,77 @@ func (s *server) handleCompanyCancelSub(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// planUserLimit devolve o máximo de usuários do plano da empresa (0 = sem limite).
+func (s *server) planUserLimit(ctx context.Context, tenantID string) (int, string) {
+	b := s.getBilling(ctx, tenantID)
+	if b.Courtesy || b.PlanID == "" {
+		return 0, ""
+	}
+	p, ok := s.getPlan(ctx, b.PlanID)
+	if !ok {
+		return 0, ""
+	}
+	return p.MaxUsers, p.Name
+}
+
+// GET /api/billing/mine — assinatura da própria empresa (só o dono).
+func (s *server) handleBillingMine(w http.ResponseWriter, r *http.Request) {
+	u := currentUserFromReq(r)
+	if u == nil || u.ParentID != "" || !u.IsAdmin() || u.IsSuperAdmin() {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "somente o dono da empresa"})
+		return
+	}
+	ctx := r.Context()
+	b := s.getBilling(ctx, u.ID)
+	if b.MPID != "" && mpToken() != "" && !b.Courtesy {
+		sc, cancel := context.WithTimeout(ctx, 8*time.Second)
+		_ = s.syncPreapproval(sc, u.ID)
+		cancel()
+		b = s.getBilling(ctx, u.ID)
+	}
+	out := map[string]any{
+		"courtesy": b.Courtesy,
+		"status":   b.Status,
+		"nextDue":  b.NextDue,
+	}
+	if b.OverdueSince > 0 {
+		days := int((time.Now().Unix() - b.OverdueSince) / 86400)
+		out["overdueDays"] = days
+		left := billingCancelDays - days
+		if left < 0 {
+			left = 0
+		}
+		out["daysUntilCancel"] = left
+		gl := billingGraceDays - days
+		if gl < 0 {
+			gl = 0
+		}
+		out["graceDaysLeft"] = gl
+	}
+	if b.Status == "pending" || b.Status == "overdue" || b.Status == "suspended" {
+		out["initPoint"] = b.InitPoint
+	}
+	if p, ok := s.getPlan(ctx, b.PlanID); ok {
+		out["plan"] = p
+	}
+	if users, err := s.auth.ListUsersByTenant(ctx, u.ID); err == nil {
+		n := 0
+		for _, x := range users {
+			if x.Active {
+				n++
+			}
+		}
+		out["usersCount"] = n
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 var mpLoopOnce sync.Once
 
 func (s *server) registerMPBillingRoutes(mux *http.ServeMux) {
 	s.ensureMPSchema(context.Background())
 	mux.HandleFunc("POST /api/billing/mp/webhook", s.handleMPWebhook)
+	mux.HandleFunc("GET /api/billing/mine", s.requireAuth(s.handleBillingMine))
 	mux.HandleFunc("GET /api/admin/billing/plans", s.requireSuperAdmin(s.handlePlansList))
 	mux.HandleFunc("POST /api/admin/billing/plans", s.requireSuperAdmin(s.handlePlanSave))
 	mux.HandleFunc("POST /api/admin/companies/{id}/courtesy", s.requireSuperAdmin(s.handleCompanyCourtesy))
