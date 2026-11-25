@@ -253,7 +253,7 @@ func (s *authStore) Login(ctx context.Context, email, password string) (UserRow,
 	}
 	u.Active = active == 1
 	u.SignatureEnabled = sigEnabled == 1
-	if !u.Active {
+	if !u.Active || s.accountBlocked(ctx, u.ID) {
 		return UserRow{}, "", ErrInactive
 	}
 	roles, err := s.RolesFor(ctx, u.ID)
@@ -320,6 +320,10 @@ func (s *authStore) UserByToken(ctx context.Context, token string) (UserRow, err
 	}
 	u.Active = active == 1
 	u.SignatureEnabled = sigEnabled == 1
+	// Usuário ou empresa desativada: a sessão deixa de valer imediatamente.
+	if !u.Active || s.accountBlocked(ctx, u.ID) {
+		return UserRow{}, ErrInactive
+	}
 	roles, err := s.RolesFor(ctx, u.ID)
 	if err != nil {
 		return UserRow{}, err
