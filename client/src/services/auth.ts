@@ -147,7 +147,39 @@ export interface CompanyRow {
   createdAt: number;
   usersCount: number;
   sessionsCount: number;
+  courtesy: boolean;
+  planName: string;
+  billingStatus: "none" | "pending" | "active" | "overdue" | "suspended" | "canceled";
+  nextDue: number;
+  overdueDays: number;
+  initPoint: string;
 }
+
+export interface BillingPlan {
+  id: string;
+  name: string;
+  maxUsers: number;
+  priceCents: number;
+  active: boolean;
+}
+
+export const listBillingPlans = () =>
+  req<{ plans: BillingPlan[]; mpConfigured: boolean }>("/api/admin/billing/plans");
+
+export const saveBillingPlan = (p: Partial<BillingPlan> & { name: string; maxUsers: number; priceCents: number; active: boolean }) =>
+  req<BillingPlan>("/api/admin/billing/plans", { method: "POST", body: JSON.stringify(p) });
+
+export const setCompanyCourtesy = (id: string, courtesy: boolean) =>
+  req<{ ok: boolean }>(`/api/admin/companies/${id}/courtesy`, { method: "POST", body: JSON.stringify({ courtesy }) });
+
+export const subscribeCompany = (id: string, planId: string, payerEmail?: string) =>
+  req<{ initPoint: string }>(`/api/admin/companies/${id}/subscribe`, {
+    method: "POST",
+    body: JSON.stringify({ planId, payerEmail: payerEmail || "" }),
+  });
+
+export const cancelCompanySubscription = (id: string) =>
+  req<{ ok: boolean }>(`/api/admin/companies/${id}/cancel-subscription`, { method: "POST" });
 
 export const listCompaniesOverview = () =>
   req<{ companies: CompanyRow[] }>("/api/admin/companies").then((r) => r.companies ?? []);
