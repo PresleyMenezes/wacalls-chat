@@ -155,6 +155,20 @@ export interface CompanyRow {
   initPoint: string;
 }
 
+export interface MySubscription {
+  courtesy: boolean;
+  status: "none" | "pending" | "active" | "overdue" | "suspended" | "canceled";
+  nextDue: number;
+  overdueDays?: number;
+  graceDaysLeft?: number;
+  daysUntilCancel?: number;
+  initPoint?: string;
+  plan?: { id: string; name: string; maxUsers: number; priceCents: number; active: boolean };
+  usersCount?: number;
+}
+
+export const getMySubscription = () => req<MySubscription>("/api/billing/mine");
+
 export interface BillingPlan {
   id: string;
   name: string;
