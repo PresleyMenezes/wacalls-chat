@@ -114,14 +114,16 @@ const showBrowserNotification = (
   try {
     // silent: o som já é tocado pelo próprio app (evita bip duplo).
     const n = new Notification(title, { body, icon: icon || "/favicon.png", tag: `chat:${key}`, silent: true });
+    n.onerror = (e) => console.warn("[notificação] erro ao exibir", e);
     n.onclick = () => {
       window.focus();
       onClick();
       n.close();
     };
     window.setTimeout(() => n.close(), 12_000);
-  } catch {
+  } catch (e) {
     /* notificação é um extra — nunca deve quebrar a UI */
+    console.warn("[notificação] falhou", e);
   }
 };
 
@@ -186,6 +188,7 @@ export const NewMessageBanner = () => {
       const name = chat?.name?.trim() || m.senderName?.trim() || formatPhone(m.chatJid);
       const preview = previewOf(m);
 
+      console.info("[notificação] nova mensagem", { focused, permissao: typeof Notification === "undefined" ? "n/a" : Notification.permission });
       playNotificationSound();
       useBanners.getState().push({ key, sessionId: m.sessionId, chatJid: m.chatJid, name, avatarUrl: chat?.avatarUrl, preview });
       if (!focused) {
