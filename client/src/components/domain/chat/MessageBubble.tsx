@@ -89,7 +89,9 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
 // Espaço mínimo (px) abaixo da mensagem para o menu / a lista de reações
 // abrirem para baixo; abaixo disso, abrem para cima.
 const MENU_SPACE_NEEDED = 380;
-const WHO_SPACE_NEEDED = 260;
+// Margem do topo da tela (cabeçalho/abas) considerada ao decidir se a lista de
+// reações cabe acima da mensagem.
+const WHO_TOP_MARGIN = 140;
 
 export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, onReact, reactions, mentionNames, quotedPreview, onQuotedClick, onSenderDoubleClick }: BubbleProps) => {
   const mine = message.fromMe;
@@ -237,8 +239,9 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   };
 
   return (
-    <div ref={wrapRef} className={`group/msg flex flex-col ${mine ? "items-end" : "items-start"} ${reactionChips.length > 0 ? "mb-3" : ""}`}>
+    <div className={`group/msg flex flex-col ${mine ? "items-end" : "items-start"} ${reactionChips.length > 0 ? "mb-3" : ""}`}>
       <div
+        ref={wrapRef}
         className={`relative max-w-[78%] rounded-2xl px-3 py-1.5 text-sm shadow-sm ${
           mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-background"
         } ${deleted ? "opacity-80" : ""}`}
@@ -260,6 +263,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
               // a partir do topo dela e para baixo; perto do fim, abre para cima.
               const rect = e.currentTarget.getBoundingClientRect();
               setMenuDirection(window.innerHeight - rect.top >= MENU_SPACE_NEEDED ? "down" : "up");
+              setWhoReacted(false);
               setMenuOpen((v) => !v);
             }}
             className={`absolute right-1 top-1 hidden rounded-full p-0.5 transition group-hover/msg:flex ${
@@ -273,7 +277,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           <>
             <div
               className={`absolute z-40 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
-                menuDirection === "down" ? "top-0" : "bottom-full mb-1"
+                menuDirection === "down" ? "top-8" : "bottom-full mb-1"
               } ${
                 mine ? "right-0" : "left-0"
               }`}
@@ -432,10 +436,14 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
             <button
               type="button"
               onClick={(e) => {
-                // Mesma regra do menu da setinha: abre por cima da mensagem
-                // (de cima para baixo) e, perto do fim da tela, para cima.
+                // A reação fica na base da mensagem: a lista abre para cima, por
+                // cima da própria mensagem. Só se a mensagem estiver no topo da
+                // tela (sem espaço acima) ela abre para baixo.
                 const rect = e.currentTarget.getBoundingClientRect();
-                setWhoDirection(window.innerHeight - rect.top >= WHO_SPACE_NEEDED ? "down" : "up");
+                const needed = Math.min(240, 56 + 28 * (reactions?.length ?? 1)) + WHO_TOP_MARGIN;
+                setWhoDirection(rect.top >= needed ? "up" : "down");
+                setMenuOpen(false);
+                setReactOpen(false);
                 setWhoReacted((v) => !v);
               }}
               className={`absolute -bottom-2.5 z-10 inline-flex cursor-pointer items-center gap-0.5 rounded-full border bg-background px-1.5 py-0.5 text-xs leading-none shadow-sm text-foreground hover:bg-muted ${
@@ -455,7 +463,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
               <>
                 <div
                   className={`absolute z-50 w-max min-w-[180px] max-w-[260px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md ${
-                    whoDirection === "down" ? "top-0" : "bottom-full mb-3"
+                    whoDirection === "up" ? "bottom-0" : "top-full mt-3"
                   } ${mine ? "right-0" : "left-0"}`}
                 >
                   <p className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">
