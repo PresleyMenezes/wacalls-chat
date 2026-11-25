@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -28,6 +29,13 @@ type companyRow struct {
 	CreatedAt     int64  `json:"createdAt"`
 	UsersCount    int    `json:"usersCount"`
 	SessionsCount int    `json:"sessionsCount"`
+	// Cobrança (Mercado Pago)
+	Courtesy      bool   `json:"courtesy"`
+	PlanName      string `json:"planName"`
+	BillingStatus string `json:"billingStatus"`
+	NextDue       int64  `json:"nextDue"`
+	OverdueDays   int    `json:"overdueDays"`
+	InitPoint     string `json:"initPoint"`
 }
 
 // accountBlocked informa se o usuário (ou a empresa dele) está desativado.
@@ -161,6 +169,23 @@ func (s *server) handleCompaniesOverview(w http.ResponseWriter, r *http.Request)
 		}
 		c.Active = active == 1
 		out = append(out, c)
+	}
+	rows.Close()
+	now := time.Now().Unix()
+	for i := range out {
+		b := s.getBilling(r.Context(), out[i].ID)
+		out[i].Courtesy = b.Courtesy
+		out[i].BillingStatus = b.Status
+		out[i].NextDue = b.NextDue
+		out[i].InitPoint = b.InitPoint
+		if b.OverdueSince > 0 {
+			out[i].OverdueDays = int((now - b.OverdueSince) / 86400)
+		}
+		if b.PlanID != "" {
+			if p, ok := s.getPlan(r.Context(), b.PlanID); ok {
+				out[i].PlanName = p.Name
+			}
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"companies": out})
 }
@@ -326,7 +351,7 @@ func (s *server) purgeCompany(ctx context.Context, rootID string) error {
 	exec(`DELETE FROM tags WHERE owner_id IN `+inUsers, uargs...)
 	exec(`DELETE FROM quick_replies WHERE owner_id IN `+inUsers, uargs...)
 	exec(`DELETE FROM billing_subscriptions WHERE user_id IN `+inUsers, uargs...)
-	exec(`DELETE FROM company_payments WHERE company_id = ?`, rootID)
+	exec(`DELETE FROM company_billing WHERE company_id = ?`, rootID)
 
 	// 5) Usuários e tabelas de vínculo.
 	for _, q := range []string{
