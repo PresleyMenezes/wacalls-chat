@@ -86,6 +86,11 @@ const applyMentionNames = (text: string, mentionNames?: Record<string, string>):
     return name ? `@${name}` : full;
   });
 };
+// Espaço mínimo (px) abaixo da mensagem para o menu / a lista de reações
+// abrirem para baixo; abaixo disso, abrem para cima.
+const MENU_SPACE_NEEDED = 380;
+const WHO_SPACE_NEEDED = 260;
+
 export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit, onDelete, onReply, onReact, reactions, mentionNames, quotedPreview, onQuotedClick, onSenderDoubleClick }: BubbleProps) => {
   const mine = message.fromMe;
   if (message.kind === "note") {
@@ -139,6 +144,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
   const [reactOpen, setReactOpen] = useState(false);
   // Lista de quem reagiu (aberta ao clicar nos emojis de reação).
   const [whoReacted, setWhoReacted] = useState(false);
+  const [whoDirection, setWhoDirection] = useState<"up" | "down">("down");
   // Fechar menus/lista ao clicar fora SEM usar uma camada "fixed" por cima da
   // tela: essa camada interceptava a roda do mouse e travava a rolagem das
   // mensagens e da lista de conversas enquanto o menu estava aberto.
@@ -250,9 +256,10 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
               // Se a mensagem estiver na parte superior da área visível do
               // chat, abre o menu para baixo (há espaço); caso contrário
               // (centro ou fim da tela), abre para cima, sobre o balão.
+              // Fora da parte inferior da tela, o menu abre POR CIMA da mensagem,
+              // a partir do topo dela e para baixo; perto do fim, abre para cima.
               const rect = e.currentTarget.getBoundingClientRect();
-              const viewportTop = rect.top / window.innerHeight;
-              setMenuDirection(viewportTop < 0.33 ? "down" : "up");
+              setMenuDirection(window.innerHeight - rect.top >= MENU_SPACE_NEEDED ? "down" : "up");
               setMenuOpen((v) => !v);
             }}
             className={`absolute right-1 top-1 hidden rounded-full p-0.5 transition group-hover/msg:flex ${
@@ -266,7 +273,7 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           <>
             <div
               className={`absolute z-40 min-w-[200px] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md ${
-                menuDirection === "down" ? "top-full mt-1" : "bottom-full mb-1"
+                menuDirection === "down" ? "top-0" : "bottom-full mb-1"
               } ${
                 mine ? "right-0" : "left-0"
               }`}
@@ -424,7 +431,13 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
           <>
             <button
               type="button"
-              onClick={() => setWhoReacted((v) => !v)}
+              onClick={(e) => {
+                // Mesma regra do menu da setinha: abre por cima da mensagem
+                // (de cima para baixo) e, perto do fim da tela, para cima.
+                const rect = e.currentTarget.getBoundingClientRect();
+                setWhoDirection(window.innerHeight - rect.top >= WHO_SPACE_NEEDED ? "down" : "up");
+                setWhoReacted((v) => !v);
+              }}
               className={`absolute -bottom-2.5 z-10 inline-flex cursor-pointer items-center gap-0.5 rounded-full border bg-background px-1.5 py-0.5 text-xs leading-none shadow-sm text-foreground hover:bg-muted ${
                 mine ? "right-2" : "left-2"
               }`}
@@ -441,9 +454,9 @@ export const MessageBubble = ({ message, showSender, onForward, onSelect, onEdit
             {whoReacted && reactions && (
               <>
                 <div
-                  className={`absolute top-full z-50 mt-3 w-max min-w-[180px] max-w-[260px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md ${
-                    mine ? "right-0" : "left-0"
-                  }`}
+                  className={`absolute z-50 w-max min-w-[180px] max-w-[260px] rounded-md border bg-popover p-2 text-popover-foreground shadow-md ${
+                    whoDirection === "down" ? "top-0" : "bottom-full mb-3"
+                  } ${mine ? "right-0" : "left-0"}`}
                 >
                   <p className="mb-1 px-1 text-[11px] font-medium text-muted-foreground">
                     {reactions.length} reação{reactions.length > 1 ? "ões" : ""}
