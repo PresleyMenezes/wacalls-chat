@@ -394,6 +394,23 @@ func (s *server) handleCreateUser(w http.ResponseWriter, r *http.Request) {
 			writeQuotaError(w, qe)
 			return
 		}
+	}	// Limite de usuários do plano contratado (cobrança Mercado Pago).
+	// Empresas em cortesia ou sem plano atribuído não têm limite aqui.
+	if tenantID != "" && qerr == nil {
+		if limit, planName := s.planUserLimit(r.Context(), tenantID); limit > 0 {
+			active := 0
+			for _, u := range existing {
+				if u.Active {
+					active++
+				}
+			}
+			if active >= limit {
+				writeJSON(w, http.StatusForbidden, map[string]string{
+					"error": fmt.Sprintf("Limite de %d usuários do plano %s atingido. Fale com o suporte para mudar de plano.", limit, planName),
+				})
+				return
+			}
+		}
 	}
 	parentID := ""
 	if actor != nil && !actor.IsSuperAdmin() {
