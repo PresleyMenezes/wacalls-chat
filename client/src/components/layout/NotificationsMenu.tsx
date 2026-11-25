@@ -92,7 +92,7 @@ export const NotificationsMenu = () => {
         new Notification("Teste de notificação", {
           body: "Se você viu este alerta, as notificações do desktop estão funcionando.",
           icon: "/favicon.png",
-          tag: "chat:teste",
+          tag: `chat:teste:${Date.now()}`,
           silent: true,
         });
       } catch (e) {
