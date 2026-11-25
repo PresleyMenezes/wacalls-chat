@@ -103,6 +103,11 @@ const previewOf = (m: ChatMessage): string => {
   }
 };
 
+// Notificação ativa por conversa: ao chegar outra mensagem da mesma conversa,
+// fecha a anterior antes de abrir a nova — senão o Windows a troca em silêncio
+// (mesma "tag") e o alerta não aparece de novo na lateral.
+const activeNotifications = new Map<string, Notification>();
+
 const showBrowserNotification = (
   key: string,
   title: string,
@@ -113,7 +118,12 @@ const showBrowserNotification = (
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
   try {
     // silent: o som já é tocado pelo próprio app (evita bip duplo).
-    const n = new Notification(title, { body, icon: icon || "/favicon.png", tag: `chat:${key}`, silent: true });
+    activeNotifications.get(key)?.close();
+    const n = new Notification(title, { body, icon: icon || "/favicon.png", tag: `chat:${key}:${Date.now()}`, silent: true });
+    activeNotifications.set(key, n);
+    n.onclose = () => {
+      if (activeNotifications.get(key) === n) activeNotifications.delete(key);
+    };
     n.onerror = (e) => console.warn("[notificação] erro ao exibir", e);
     n.onclick = () => {
       window.focus();
@@ -188,7 +198,6 @@ export const NewMessageBanner = () => {
       const name = chat?.name?.trim() || m.senderName?.trim() || formatPhone(m.chatJid);
       const preview = previewOf(m);
 
-      console.info("[notificação] nova mensagem", { focused, permissao: typeof Notification === "undefined" ? "n/a" : Notification.permission });
       playNotificationSound();
       useBanners.getState().push({ key, sessionId: m.sessionId, chatJid: m.chatJid, name, avatarUrl: chat?.avatarUrl, preview });
       if (!focused) {
