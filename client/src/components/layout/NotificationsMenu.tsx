@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Bell, CheckCheck, MessageSquare, PhoneIncoming, Users } from "lucide-react";
 import {
   DropdownMenu,
@@ -82,15 +83,22 @@ export const NotificationsMenu = () => {
       .then(setPerm)
       .catch(() => {});
   };
+  // Dispara 5 s depois, com as MESMAS opções das notificações reais, para dar
+  // tempo de trocar de aba/janela e testar o caso "aba em segundo plano".
   const testDesktopAlert = () => {
-    try {
-      new Notification("Teste de notificação", {
-        body: "Se você viu este alerta, as notificações do desktop estão funcionando.",
-        icon: "/favicon.png",
-      });
-    } catch {
-      /* ignore */
-    }
+    toast.info("Troque de aba ou minimize: o alerta de teste aparece em 5 segundos.");
+    window.setTimeout(() => {
+      try {
+        new Notification("Teste de notificação", {
+          body: "Se você viu este alerta, as notificações do desktop estão funcionando.",
+          icon: "/favicon.png",
+          tag: "chat:teste",
+          silent: true,
+        });
+      } catch (e) {
+        console.warn("[notificação] teste falhou", e);
+      }
+    }, 5000);
   };
 
   const incomingCount = incoming ? 1 : 0;
@@ -224,7 +232,7 @@ export const NotificationsMenu = () => {
             <>
               <span>Alertas do desktop ativos.</span>
               <Button size="sm" variant="outline" className="h-6 shrink-0 px-2 text-[11px]" onClick={testDesktopAlert}>
-                Testar
+                Testar (5 s)
               </Button>
             </>
           )}
