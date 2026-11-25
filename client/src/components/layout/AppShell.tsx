@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode, type ComponentType } from "react";
-import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Building2, Contact2, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, Palette, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
+import { BarChart3, ChevronDown, ChevronsLeft, ChevronsRight, Building2, Contact2, CreditCard, History, KanbanSquare, Layers, Maximize2, Megaphone, Menu as MenuIcon, MessageSquare, MessageSquareText, Minimize2, Palette, PhoneCall, Radio, Settings, ShoppingCart, Tag, Users2, Wifi, Workflow } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { GlobalSearch } from "./GlobalSearch";
@@ -150,6 +150,10 @@ const AppShellInner = ({ children }: { children: ReactNode }) => {
   if (isAdmin) {
     aplicacoes.push({ to: "/admin/users", icon: Contact2, label: t("nav.users", { defaultValue: "Usuários" }), perm: "chats" });
   }
+  // "Minha assinatura": só o dono da empresa (primeiro admin, sem parentId).
+  if (isAdmin && !user?.parentId && !user?.isSuperAdmin) {
+    aplicacoes.push({ to: "/subscription", icon: CreditCard, label: "Minha assinatura", perm: "chats" });
+  }  
   if (user?.isSuperAdmin) {
     aplicacoes.push({ to: "/admin/companies", icon: Building2, label: "Empresas", perm: "chats" });
     aplicacoes.push({ to: "/admin/whitelabel", icon: Palette, label: "Marca do sistema", perm: "chats" });
